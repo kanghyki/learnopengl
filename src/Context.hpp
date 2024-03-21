@@ -4,6 +4,7 @@
 #include "Common.hpp"
 #include "Shader.hpp"
 #include "Program.hpp"
+#include "Buffer.hpp"
 
 class Context
 {
@@ -17,7 +18,8 @@ class Context
         bool init();
 
         std::unique_ptr<Program>    mProgram;
-        unsigned int                mVAO, mVBO, mEBO;
+        std::unique_ptr<Buffer>     mVBO, mEBO;
+        unsigned int                mVAO;
 };
 
 #endif

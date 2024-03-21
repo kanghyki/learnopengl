@@ -5,10 +5,10 @@ Context::Context()
 
 Context::~Context()
 {
-    glDeleteVertexArrays(1, &mVAO);
-    glDeleteBuffers(1, &mVBO);
-    glDeleteBuffers(1, &mEBO);
-    mProgram = nullptr;
+    if (mVAO)
+    {
+      glDeleteVertexArrays(1, &mVAO);
+    }
 }
 
 std::unique_ptr<Context> Context::create()
@@ -26,7 +26,6 @@ void Context::render()
 {
     glClear(GL_COLOR_BUFFER_BIT);
     mProgram->Use();
-    glBindVertexArray(mVAO);
     glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
 }
 
@@ -38,12 +37,15 @@ bool Context::init()
     {
         return false;
     }
+    SPDLOG_INFO("vertex shader id : {}", vertexShader->get());
+    SPDLOG_INFO("fragment shader id : {}", fragmentShader->get());
 
     mProgram = Program::create({vertexShader, fragmentShader});
     if (!mProgram)
     {
         return false;
     }
+    SPDLOG_INFO("program id: {}", mProgram->get());
 
     float vertices[] = {
          0.5f,  0.5f, 0.0f,
@@ -57,25 +59,25 @@ bool Context::init()
         1, 2, 3
     };
 
-    // VAO/VBO/EBO
     glGenVertexArrays(1, &mVAO);  
-    glGenBuffers(1, &mVBO);  
-    glGenBuffers(1, &mEBO);
-
     glBindVertexArray(mVAO);
 
-    glBindBuffer(GL_ARRAY_BUFFER, mVBO);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
-    
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, mEBO);
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
+    mVBO = Buffer::create(GL_ARRAY_BUFFER, GL_STATIC_DRAW, vertices, sizeof(vertices));
+    if (!mVBO)
+    {
+        return false;
+    }
+    SPDLOG_INFO("VBO id : {}", mVBO->get());
 
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
-    glEnableVertexAttribArray(0);  
+    glEnableVertexAttribArray(0);
 
-    // unbind
-    glBindBuffer(GL_ARRAY_BUFFER, 0); 
-    glBindVertexArray(0); 
+    mEBO = Buffer::create(GL_ELEMENT_ARRAY_BUFFER, GL_STATIC_DRAW, indices, sizeof(indices));
+    if (!mEBO)
+    {
+        return false;
+    }
+    SPDLOG_INFO("EBO id : {}", mEBO->get());
 
     // wireframe
     // glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);

@@ -15,6 +15,7 @@ src/Common.cpp  src/Common.hpp
 src/Shader.cpp  src/Shader.hpp
 src/Program.cpp src/Program.hpp
 src/Context.cpp src/Context.hpp
+src/Buffer.cpp  src/Buffer.hpp
 )
 
 include(Dependency.cmake)
