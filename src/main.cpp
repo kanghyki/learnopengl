@@ -76,6 +76,7 @@ int main(int argc, char** argv)
         glfwSwapBuffers(window);
         glfwPollEvents();
     }
+    context = nullptr;
 
     glfwTerminate();
     return 0;
