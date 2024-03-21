@@ -9,7 +9,6 @@ class Shader
         ~Shader();
         static std::shared_ptr<Shader>  createFromFile(const std::string& fileName, GLenum shaderType);
         uint32_t                        get() const;
-        void                            release() const;
 
       private:
         Shader();
