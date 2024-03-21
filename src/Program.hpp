@@ -16,7 +16,7 @@ class Program
         Program();
         bool link(const std::vector<std::shared_ptr<Shader>>& shaders);
 
-        uint32_t program;
+        uint32_t mProgram;
 };
 
 #endif

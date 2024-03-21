@@ -1,6 +1,6 @@
 #include "Program.hpp"
 
-Program::Program() : program(0)
+Program::Program() : mProgram(0)
 {}
 
 std::unique_ptr<Program> Program::create(const std::vector<std::shared_ptr<Shader>>& shaders)
@@ -16,19 +16,19 @@ std::unique_ptr<Program> Program::create(const std::vector<std::shared_ptr<Shade
 
 bool Program::link(const std::vector<std::shared_ptr<Shader>>& shaders)
 {
-    this->program = glCreateProgram();
+    mProgram = glCreateProgram();
     for (auto& shader: shaders)
     {
-        glAttachShader(this->program, shader->get());
+        glAttachShader(mProgram, shader->get());
     }
-    glLinkProgram(this->program);
+    glLinkProgram(mProgram);
 
     int success = 0;
-    glGetProgramiv(this->program, GL_LINK_STATUS, &success);
+    glGetProgramiv(mProgram, GL_LINK_STATUS, &success);
     if (!success)
     {
         char infoLog[512];
-        glGetProgramInfoLog(this->program, 512, nullptr, infoLog);
+        glGetProgramInfoLog(mProgram, 512, nullptr, infoLog);
         SPDLOG_ERROR("ERROR::PROGRAM::LINKING_FAILED");
         SPDLOG_ERROR("{}", infoLog);
     }
@@ -38,16 +38,16 @@ bool Program::link(const std::vector<std::shared_ptr<Shader>>& shaders)
 
 void Program::Use() const
 {
-    glUseProgram(this->program);
+    glUseProgram(mProgram);
 }
 
 uint32_t Program::get() const
 {
-    return this->program;
+    return mProgram;
 }
 
 Program::~Program() {
-    if (this->program) {
-        glDeleteProgram(this->program);
+    if (mProgram) {
+        glDeleteProgram(mProgram);
     }
 }

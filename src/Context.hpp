@@ -16,8 +16,8 @@ class Context
         Context();
         bool init();
 
-        std::unique_ptr<Program>    pProgram;
-        unsigned int                VAO, VBO, EBO;
+        std::unique_ptr<Program>    mProgram;
+        unsigned int                mVAO, mVBO, mEBO;
 };
 
 #endif

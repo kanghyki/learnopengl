@@ -1,13 +1,13 @@
 #include "Shader.hpp"
 
-Shader::Shader() : shader(0)
+Shader::Shader() : mShader(0)
 {}
 
 Shader::~Shader()
 {
-    if (this->shader)
+    if (mShader)
     {
-        glDeleteShader(this->shader);
+        glDeleteShader(mShader);
     }
 }
 
@@ -33,16 +33,16 @@ bool Shader::loadFile(const std::string& fileName, GLenum shaderType)
     const char* pSource = code.c_str();
     int32_t codeLength = code.length();
 
-    this->shader = glCreateShader(shaderType);
-    glShaderSource(this->shader, 1, &pSource, &codeLength);
-    glCompileShader(this->shader);
+    mShader = glCreateShader(shaderType);
+    glShaderSource(mShader, 1, &pSource, &codeLength);
+    glCompileShader(mShader);
 
     int success = 0;
-    glGetShaderiv(this->shader, GL_COMPILE_STATUS, &success);
+    glGetShaderiv(mShader, GL_COMPILE_STATUS, &success);
     if (!success)
     {
         char infoLog[512];
-        glGetShaderInfoLog(this->shader, 512, nullptr, infoLog);
+        glGetShaderInfoLog(mShader, 512, nullptr, infoLog);
         SPDLOG_ERROR("ERROR::SHADER::COMPILATION_FAILED: {}", fileName);
         SPDLOG_ERROR("{}", infoLog);
     }
@@ -52,5 +52,5 @@ bool Shader::loadFile(const std::string& fileName, GLenum shaderType)
 
 uint32_t Shader::get() const
 { 
-    return this->shader;
+    return mShader;
 }
