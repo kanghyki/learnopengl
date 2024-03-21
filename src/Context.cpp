@@ -36,16 +36,14 @@ bool Context::init()
     auto fragmentShader = Shader::createFromFile("shader/fs.glsl", GL_FRAGMENT_SHADER);
     if (!vertexShader || !fragmentShader)
     {
-        return 0;
+        return false;
     }
 
     mProgram = Program::create({vertexShader, fragmentShader});
     if (!mProgram)
     {
-        return 0;
+        return false;
     }
-    vertexShader = nullptr;
-    fragmentShader = nullptr;
 
     float vertices[] = {
          0.5f,  0.5f, 0.0f,
@@ -80,7 +78,7 @@ bool Context::init()
     glBindVertexArray(0); 
 
     // wireframe
-    glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+    // glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 
     glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
 
