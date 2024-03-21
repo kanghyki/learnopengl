@@ -11,11 +11,12 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS 1)
 project(${PROJECT_NAME})
 add_executable(${PROJECT_NAME}
 src/main.cpp
-src/Common.cpp  src/Common.hpp
-src/Shader.cpp  src/Shader.hpp
-src/Program.cpp src/Program.hpp
-src/Context.cpp src/Context.hpp
-src/Buffer.cpp  src/Buffer.hpp
+src/Common.cpp      src/Common.hpp
+src/Shader.cpp      src/Shader.hpp
+src/Program.cpp     src/Program.hpp
+src/Context.cpp     src/Context.hpp
+src/Buffer.cpp      src/Buffer.hpp
+src/VertexArray.cpp src/VertexArray.hpp
 )
 
 include(Dependency.cmake)

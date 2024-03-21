@@ -5,6 +5,7 @@
 #include "Shader.hpp"
 #include "Program.hpp"
 #include "Buffer.hpp"
+#include "VertexArray.hpp"
 
 class Context
 {
@@ -17,9 +18,9 @@ class Context
         Context();
         bool init();
 
-        std::unique_ptr<Program>    mProgram;
-        std::unique_ptr<Buffer>     mVBO, mEBO;
-        unsigned int                mVAO;
+        std::unique_ptr<Program>        mProgram;
+        std::unique_ptr<Buffer>         mVBO, mEBO;
+        std::unique_ptr<VertexArray>    mVAO;
 };
 
 #endif

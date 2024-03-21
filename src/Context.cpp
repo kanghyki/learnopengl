@@ -4,12 +4,7 @@ Context::Context()
 {}
 
 Context::~Context()
-{
-    if (mVAO)
-    {
-      glDeleteVertexArrays(1, &mVAO);
-    }
-}
+{}
 
 std::unique_ptr<Context> Context::create()
 {
@@ -48,29 +43,24 @@ bool Context::init()
     SPDLOG_INFO("program id: {}", mProgram->get());
 
     float vertices[] = {
-         0.5f,  0.5f, 0.0f,
-         0.5f, -0.5f, 0.0f,
+        0.5f,  0.5f, 0.0f,
+        0.5f, -0.5f, 0.0f,
         -0.5f, -0.5f, 0.0f,
         -0.5f,  0.5f, 0.0f
     };
-
     unsigned int indices[] = {
         0, 1, 3,
         1, 2, 3
     };
 
-    glGenVertexArrays(1, &mVAO);  
-    glBindVertexArray(mVAO);
-
+    mVAO = VertexArray::create();
     mVBO = Buffer::create(GL_ARRAY_BUFFER, GL_STATIC_DRAW, vertices, sizeof(vertices));
     if (!mVBO)
     {
         return false;
     }
     SPDLOG_INFO("VBO id : {}", mVBO->get());
-
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
-    glEnableVertexAttribArray(0);
+    mVAO->setAttrib(0, 3, GL_FLOAT, GL_FALSE, sizeof(float) * 3, 0);
 
     mEBO = Buffer::create(GL_ELEMENT_ARRAY_BUFFER, GL_STATIC_DRAW, indices, sizeof(indices));
     if (!mEBO)
