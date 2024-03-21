@@ -6,11 +6,21 @@ void framebufferSizeCallbackFunc(GLFWwindow* window, int width, int height)
     SPDLOG_INFO("frame buffer size w:{}, h:{}", width, height);
 }
 
-void processInput(GLFWwindow *window)
+void onKeyEvent(GLFWwindow* window, int key, int scancode, int action, int mods)
 {
-    if(glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
+    SPDLOG_INFO("key: {}, scancode: {}, action: {}, mods: {}{}{}",
+        key, scancode,
+        action == GLFW_PRESS ? "Pressed" :
+        action == GLFW_RELEASE ? "Released" :
+        action == GLFW_REPEAT ? "Repeat" : "Unknown",
+        mods & GLFW_MOD_CONTROL ? "C" : "-",
+        mods & GLFW_MOD_SHIFT ? "S" : "-",
+        mods & GLFW_MOD_ALT ? "A" : "-");
+    if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS) {
         glfwSetWindowShouldClose(window, true);
+    }
 }
+
 
 int main(int argc, char** argv)
 {
@@ -42,20 +52,26 @@ int main(int argc, char** argv)
 
     if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress))
     {
-        SPDLOG_INFO("failed to initialize GLAD");
+        SPDLOG_ERROR("failed to initialize GLAD");
+        glfwTerminate();
         return -1;
     }
 
     glViewport(0, 0, WINDOW_WIDTH, WINDOW_HEIGHT);
     glfwSetFramebufferSizeCallback(window, framebufferSizeCallbackFunc);
+    glfwSetKeyCallback(window, onKeyEvent);
 
     auto context = Context::create();
+    if (!context)
+    {
+        SPDLOG_ERROR("failed to initialize context");
+        glfwTerminate();
+        return -1;
+    }
 
     SPDLOG_INFO("Start render loop");
     while (!glfwWindowShouldClose(window))
     {
-        processInput(window);
-
         context->render();
         glfwSwapBuffers(window);
         glfwPollEvents();
