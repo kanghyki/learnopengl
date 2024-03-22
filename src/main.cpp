@@ -1,5 +1,8 @@
 #include "Context.hpp"
 
+#include <imgui_impl_glfw.h>
+#include <imgui_impl_opengl3.h>
+
 void framebufferSizeCallbackFunc(GLFWwindow* window, int width, int height)
 {
     glViewport(0, 0, width, height);
@@ -8,6 +11,7 @@ void framebufferSizeCallbackFunc(GLFWwindow* window, int width, int height)
 
 void onKeyEvent(GLFWwindow* window, int key, int scancode, int action, int mods)
 {
+    ImGui_ImplGlfw_KeyCallback(window, key, scancode, action, mods);
     SPDLOG_INFO("key: {}, scancode: {}, action: {}, mods: {}{}{}",
         key, scancode,
         action == GLFW_PRESS ? "Pressed" :
@@ -21,6 +25,10 @@ void onKeyEvent(GLFWwindow* window, int key, int scancode, int action, int mods)
     }
 }
 
+void onCharEvent(GLFWwindow* window, unsigned int ch)
+{
+    ImGui_ImplGlfw_CharCallback(window, ch);
+}
 
 int main(int argc, char** argv)
 {
@@ -57,9 +65,17 @@ int main(int argc, char** argv)
         return -1;
     }
 
+    auto imguiContext = ImGui::CreateContext();
+    ImGui::SetCurrentContext(imguiContext);
+    ImGui_ImplGlfw_InitForOpenGL(window, false);
+    ImGui_ImplOpenGL3_Init();
+    ImGui_ImplOpenGL3_CreateFontsTexture();
+    ImGui_ImplOpenGL3_CreateDeviceObjects();
+
     glViewport(0, 0, WINDOW_WIDTH, WINDOW_HEIGHT);
     glfwSetFramebufferSizeCallback(window, framebufferSizeCallbackFunc);
     glfwSetKeyCallback(window, onKeyEvent);
+    glfwSetCharCallback(window, onCharEvent);
 
     auto context = Context::create();
     if (!context)
@@ -72,11 +88,23 @@ int main(int argc, char** argv)
     SPDLOG_INFO("Start render loop");
     while (!glfwWindowShouldClose(window))
     {
+        ImGui_ImplGlfw_NewFrame();
+        ImGui::NewFrame();
+
         context->render();
+        ImGui::Render();
+        ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+
         glfwSwapBuffers(window);
         glfwPollEvents();
     }
     context = nullptr;
+
+    ImGui_ImplOpenGL3_DestroyFontsTexture();
+    ImGui_ImplOpenGL3_DestroyDeviceObjects();
+    ImGui_ImplOpenGL3_Shutdown();
+    ImGui_ImplGlfw_Shutdown();
+    ImGui::DestroyContext(imguiContext);
 
     glfwTerminate();
     return 0;

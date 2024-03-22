@@ -1,6 +1,7 @@
 #include "Context.hpp"
+#include <imgui.h>
 
-Context::Context()
+Context::Context() : mVAO(nullptr), mVBO(nullptr), mEBO(nullptr), mIsActiveWireFrame(false)
 {}
 
 Context::~Context()
@@ -19,6 +20,23 @@ std::unique_ptr<Context> Context::create()
 
 void Context::render()
 {
+    if (ImGui::Begin("Hello, ImGui"))
+    {
+        ImGui::Text("Hello, text");
+        if (ImGui::Checkbox("WireFrame", &mIsActiveWireFrame))
+        {
+            if (mIsActiveWireFrame)
+            {
+                glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+            }
+            else
+            {
+                glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+            }
+        }
+    }
+    ImGui::End();
+
     glClear(GL_COLOR_BUFFER_BIT);
     mProgram->Use();
     glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
@@ -68,9 +86,6 @@ bool Context::init()
         return false;
     }
     SPDLOG_INFO("EBO id : {}", mEBO->get());
-
-    // wireframe
-    // glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 
     glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
 
