@@ -3,3 +3,4 @@ output
 .cache
 tags
 .vscode
+.DS_Store
