@@ -60,13 +60,19 @@ bool Context::init()
     }
     SPDLOG_INFO("program id: {}", mProgram->get());
 
-    float vertices[] = {
+    int nrAttributes;
+    glGetIntegerv(GL_MAX_VERTEX_ATTRIBS, &nrAttributes);
+    SPDLOG_INFO("Maximum nr of vertex attributes supported: {}", nrAttributes);
+
+    float vertices[] =
+    {
         0.5f,  0.5f, 0.0f,
         0.5f, -0.5f, 0.0f,
         -0.5f, -0.5f, 0.0f,
         -0.5f,  0.5f, 0.0f
     };
-    unsigned int indices[] = {
+    unsigned int indices[] =
+    {
         0, 1, 3,
         1, 2, 3
     };
