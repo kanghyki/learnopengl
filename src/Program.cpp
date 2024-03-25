@@ -3,6 +3,12 @@
 Program::Program() : mProgram(0)
 {}
 
+Program::~Program() {
+    if (mProgram) {
+        glDeleteProgram(mProgram);
+    }
+}
+
 std::unique_ptr<Program> Program::create(const std::vector<std::shared_ptr<Shader>>& shaders)
 {
     auto program = std::unique_ptr<Program>(new Program());
@@ -46,8 +52,10 @@ uint32_t Program::get() const
     return mProgram;
 }
 
-Program::~Program() {
-    if (mProgram) {
-        glDeleteProgram(mProgram);
-    }
+void Program::setUniformValue(const std::string& name, int value) const {
+    glUniform1i(glGetUniformLocation(mProgram, name.c_str()), value);
+}
+
+void Program::setUniformValue(const std::string& name, float value) const {
+    glUniform1f(glGetUniformLocation(mProgram, name.c_str()), value);
 }

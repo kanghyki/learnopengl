@@ -11,6 +11,8 @@ class Program
         static std::unique_ptr<Program> create(const std::vector<std::shared_ptr<Shader>>& shaders);
         uint32_t                        get() const;
         void                            use() const;
+        void                            setUniformValue(const std::string& name, int value) const;
+        void                            setUniformValue(const std::string& name, float value) const;
 
     private:
         Program();

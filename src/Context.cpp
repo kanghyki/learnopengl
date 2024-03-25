@@ -38,8 +38,7 @@ void Context::render()
     ImGui::End();
 
     float alpha = (sin(glfwGetTime()) / 2.0f) + 0.5f;
-    int vertexColorLocation = glGetUniformLocation(mProgram->get(), "alpha");
-    glUniform1f(vertexColorLocation, alpha);
+    mProgram->setUniformValue("alpha", alpha);
 
     glClear(GL_COLOR_BUFFER_BIT);
     mProgram->use();
