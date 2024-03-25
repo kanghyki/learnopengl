@@ -10,7 +10,7 @@ class Program
         ~Program();
         static std::unique_ptr<Program> create(const std::vector<std::shared_ptr<Shader>>& shaders);
         uint32_t                        get() const;
-        void                            Use() const;
+        void                            use() const;
 
     private:
         Program();

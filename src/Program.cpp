@@ -36,7 +36,7 @@ bool Program::link(const std::vector<std::shared_ptr<Shader>>& shaders)
     return success;
 }
 
-void Program::Use() const
+void Program::use() const
 {
     glUseProgram(mProgram);
 }

@@ -42,7 +42,7 @@ void Context::render()
     glUniform1f(vertexColorLocation, alpha);
 
     glClear(GL_COLOR_BUFFER_BIT);
-    mProgram->Use();
+    mProgram->use();
     glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
 }
 
