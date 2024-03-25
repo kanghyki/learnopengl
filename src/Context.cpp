@@ -47,8 +47,8 @@ void Context::render()
 
 bool Context::init()
 {
-    auto vertexShader = Shader::createFromFile("shader/vs.glsl", GL_VERTEX_SHADER);
-    auto fragmentShader = Shader::createFromFile("shader/fs.glsl", GL_FRAGMENT_SHADER);
+    auto vertexShader = Shader::createFromFile("shader/triangle.vs", GL_VERTEX_SHADER);
+    auto fragmentShader = Shader::createFromFile("shader/triangle.fs", GL_FRAGMENT_SHADER);
     if (!vertexShader || !fragmentShader)
     {
         return false;
