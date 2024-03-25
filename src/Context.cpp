@@ -37,10 +37,9 @@ void Context::render()
     }
     ImGui::End();
 
-    float timeValue = glfwGetTime();
-    float greenValue = (sin(timeValue) / 2.0f) + 0.5f;
-    int vertexColorLocation = glGetUniformLocation(mProgram->get(), "ourColor");
-    glUniform4f(vertexColorLocation, 0.0f, greenValue, 0.0f, 1.0f);
+    float alpha = (sin(glfwGetTime()) / 2.0f) + 0.5f;
+    int vertexColorLocation = glGetUniformLocation(mProgram->get(), "alpha");
+    glUniform1f(vertexColorLocation, alpha);
 
     glClear(GL_COLOR_BUFFER_BIT);
     mProgram->Use();
@@ -71,15 +70,14 @@ bool Context::init()
 
     float vertices[] =
     {
-        0.5f,  0.5f, 0.0f,
-        0.5f, -0.5f, 0.0f,
-        -0.5f, -0.5f, 0.0f,
-        -0.5f,  0.5f, 0.0f
+        // positions         // colors
+         0.5f, -0.5f, 0.0f,  1.0f, 0.0f, 0.0f,
+        -0.5f, -0.5f, 0.0f,  0.0f, 1.0f, 0.0f,
+         0.0f,  0.5f, 0.0f,  0.0f, 0.0f, 1.0f
     };
     unsigned int indices[] =
     {
-        0, 1, 3,
-        1, 2, 3
+        0, 1, 2,
     };
 
     mVAO = VertexArray::create();
@@ -89,7 +87,8 @@ bool Context::init()
         return false;
     }
     SPDLOG_INFO("VBO id : {}", mVBO->get());
-    mVAO->setAttrib(0, 3, GL_FLOAT, GL_FALSE, sizeof(float) * 3, 0);
+    mVAO->setAttrib(0, 3, GL_FLOAT, GL_FALSE, sizeof(float) * 6, 0);
+    mVAO->setAttrib(1, 3, GL_FLOAT, GL_FALSE, sizeof(float) * 6, sizeof(float) * 3);
 
     mEBO = Buffer::create(GL_ELEMENT_ARRAY_BUFFER, GL_STATIC_DRAW, indices, sizeof(indices));
     if (!mEBO)

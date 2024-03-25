@@ -21,8 +21,8 @@ std::unique_ptr<VertexArray> VertexArray::create()
 
 void VertexArray::setAttrib(uint32_t attribIndex, int count, uint32_t type, bool normalized, size_t stride, uint64_t offset) const
 {
-    glEnableVertexAttribArray(attribIndex);
     glVertexAttribPointer(attribIndex, count, type, normalized, (GLsizei)stride, (const void*)offset);
+    glEnableVertexAttribArray(attribIndex);
 }
 
 void VertexArray::init()
