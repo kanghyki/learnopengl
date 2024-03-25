@@ -20,9 +20,23 @@ std::unique_ptr<Context> Context::create()
 
 void Context::render()
 {
+    static float prevTime = 0;
+    static int frames = 0;
+    static float fps = 0.0f;
+    static int prevFrames = 0;
+
+    frames++;
+    float currTime = glfwGetTime();
+    if (currTime - prevTime >= 1.0)
+    {
+        prevFrames = frames;
+        fps = 1000.0f / frames;
+        prevTime = currTime;
+        frames = 0;
+    }
     if (ImGui::Begin("Hello, ImGui"))
     {
-        ImGui::Text("Hello, text");
+        ImGui::Text("%.3f ms/frame (%dfps)", fps, prevFrames);
         if (ImGui::Checkbox("WireFrame", &mIsActiveWireFrame))
         {
             if (mIsActiveWireFrame)
