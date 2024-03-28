@@ -1,7 +1,16 @@
 #include "Context.hpp"
+#include "Image.hpp"
 #include <imgui.h>
 
-Context::Context() : mVAO(nullptr), mVBO(nullptr), mEBO(nullptr), mIsActiveWireFrame(false)
+Context::Context() :
+    mFragType(0),
+    mIsActiveWireFrame(false),
+    mProgram(nullptr),
+    mVAO(nullptr),
+    mVBO(nullptr),
+    mEBO(nullptr),
+    mTexture(nullptr),
+    mTexture2(nullptr)
 {}
 
 Context::~Context()
@@ -48,10 +57,29 @@ void Context::render()
                 glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
             }
         }
+        if (ImGui::RadioButton("RGBA", &mFragType, 0))
+        {
+            mProgram->setUniformValue("type", mFragType);
+        }
+        ImGui::SameLine();
+        if (ImGui::RadioButton("Texture 1", &mFragType, 1))
+        {
+            mProgram->setUniformValue("type", mFragType);
+        }
+        ImGui::SameLine();
+        if (ImGui::RadioButton("Texture 2", &mFragType, 2))
+        {
+            mProgram->setUniformValue("type", mFragType);
+        }
+        ImGui::SameLine();
+        if (ImGui::RadioButton("Mix", &mFragType, 3))
+        {
+            mProgram->setUniformValue("type", mFragType);
+        }
     }
     ImGui::End();
 
-    float alpha = (sin(glfwGetTime()) / 2.0f) + 0.5f;
+    float alpha = static_cast<float>((sin(glfwGetTime()) / 2.0f) + 0.5f);
     mProgram->setUniformValue("alpha", alpha);
 
     glClear(GL_COLOR_BUFFER_BIT);
@@ -61,8 +89,8 @@ void Context::render()
 
 bool Context::init()
 {
-    auto vertexShader = Shader::createFromFile("shader/triangle.vs", GL_VERTEX_SHADER);
-    auto fragmentShader = Shader::createFromFile("shader/triangle.fs", GL_FRAGMENT_SHADER);
+    auto vertexShader = Shader::createFromFile("shader/my_shader.vs", GL_VERTEX_SHADER);
+    auto fragmentShader = Shader::createFromFile("shader/my_shader.fs", GL_FRAGMENT_SHADER);
     if (!vertexShader || !fragmentShader)
     {
         return false;
@@ -83,14 +111,16 @@ bool Context::init()
 
     float vertices[] =
     {
-        // positions         // colors
-         0.5f, -0.5f, 0.0f,  1.0f, 0.0f, 0.0f,
-        -0.5f, -0.5f, 0.0f,  0.0f, 1.0f, 0.0f,
-         0.0f,  0.5f, 0.0f,  0.0f, 0.0f, 1.0f
+        // positions        // colors         // st
+        -0.5f,  0.5f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f, 1.0f,
+         0.5f,  0.5f, 0.0f, 0.0f, 1.0f, 0.0f, 1.0f, 1.0f,
+         0.5f, -0.5f, 0.0f, 0.0f, 0.0f, 1.0f, 1.0f, 0.0f,
+        -0.5f, -0.5f, 0.0f, 1.0f, 1.0f, 1.0f, 0.0f, 0.0f
     };
     unsigned int indices[] =
     {
-        0, 1, 2,
+        0, 1, 3,
+        1, 2, 3
     };
 
     mVAO = VertexArray::create();
@@ -100,8 +130,9 @@ bool Context::init()
         return false;
     }
     SPDLOG_INFO("VBO id : {}", mVBO->get());
-    mVAO->setAttrib(0, 3, GL_FLOAT, GL_FALSE, sizeof(float) * 6, 0);
-    mVAO->setAttrib(1, 3, GL_FLOAT, GL_FALSE, sizeof(float) * 6, sizeof(float) * 3);
+    mVAO->setAttrib(0, 3, GL_FLOAT, GL_FALSE, sizeof(float) * 8, 0);
+    mVAO->setAttrib(1, 3, GL_FLOAT, GL_FALSE, sizeof(float) * 8, sizeof(float) * 3);
+    mVAO->setAttrib(2, 2, GL_FLOAT, GL_FALSE, sizeof(float) * 8, sizeof(float) * 6);
 
     mEBO = Buffer::create(GL_ELEMENT_ARRAY_BUFFER, GL_STATIC_DRAW, indices, sizeof(indices));
     if (!mEBO)
@@ -111,6 +142,30 @@ bool Context::init()
     SPDLOG_INFO("EBO id : {}", mEBO->get());
 
     glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
+
+    auto image = Image::load("./image/wall.jpg");
+    if (!image)
+    {
+        return false;
+    }
+    SPDLOG_INFO("image: {}x{}, {} channels", image->getWidth(), image->getHeight(), image->getChannelCount());
+    mTexture = Texture::createFromImage(image.get());
+
+    auto image2 = Image::load("./image/capture.png");
+    if (!image2)
+    {
+        return false;
+    }
+    SPDLOG_INFO("image2: {}x{}, {} channels", image2->getWidth(), image2->getHeight(), image2->getChannelCount());
+    mTexture2 = Texture::createFromImage(image2.get());
+
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D, mTexture->get());
+    glActiveTexture(GL_TEXTURE1);
+    glBindTexture(GL_TEXTURE_2D, mTexture2->get());
+    mProgram->use();
+    glUniform1i(glGetUniformLocation(mProgram->get(), "tex"), 0);
+    glUniform1i(glGetUniformLocation(mProgram->get(), "tex2"), 1);
 
     return true;
 }

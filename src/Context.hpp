@@ -5,6 +5,7 @@
 #include "Shader.hpp"
 #include "Program.hpp"
 #include "Buffer.hpp"
+#include "Texture.hpp"
 #include "VertexArray.hpp"
 
 class Context
@@ -18,10 +19,13 @@ class Context
         Context();
         bool init();
 
+        int                             mFragType;
         bool                            mIsActiveWireFrame;
         std::unique_ptr<Program>        mProgram;
         std::unique_ptr<Buffer>         mVBO, mEBO;
         std::unique_ptr<VertexArray>    mVAO;
+        std::unique_ptr<Texture>        mTexture;
+        std::unique_ptr<Texture>        mTexture2;
 };
 
 #endif

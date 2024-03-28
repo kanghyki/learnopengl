@@ -17,6 +17,8 @@ src/Program.cpp     src/Program.hpp
 src/Context.cpp     src/Context.hpp
 src/Buffer.cpp      src/Buffer.hpp
 src/VertexArray.cpp src/VertexArray.hpp
+src/Image.cpp       src/Image.hpp
+src/Texture.cpp     src/Texture.hpp
 )
 
 include(Dependency.cmake)
