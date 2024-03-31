@@ -97,6 +97,14 @@ void Context::render()
         ImGui::Separator();
         ImGui::Spacing();
 
+        ImGui::Text("Light");
+        ImGui::ColorEdit3("Light color", glm::value_ptr(m_lightColor));
+        ImGui::ColorEdit3("Object color", glm::value_ptr(m_objectColor));
+        ImGui::SliderFloat("Ambient strength", &m_ambientStrength, 0.0f, 1.0f);
+        ImGui::Spacing();
+        ImGui::Separator();
+        ImGui::Spacing();
+
         /*
          * Extra
          */
@@ -144,7 +152,10 @@ void Context::render()
     }
     ImGui::End();
     }
-
+    mProgram->use();
+    mProgram->setUniform("lightColor", m_lightColor);
+    mProgram->setUniform("objectColor", m_objectColor);
+    mProgram->setUniform("ambientStrength", m_ambientStrength);
 
     if (mIsEnableDepthBuffer)
     {
@@ -192,8 +203,8 @@ void Context::render()
 
 bool Context::init()
 {
-    auto vertexShader = Shader::createFromFile("shader/my_shader.vs", GL_VERTEX_SHADER);
-    auto fragmentShader = Shader::createFromFile("shader/my_shader.fs", GL_FRAGMENT_SHADER);
+    auto vertexShader = Shader::createFromFile("shader/lighting.vs", GL_VERTEX_SHADER);
+    auto fragmentShader = Shader::createFromFile("shader/lighting.fs", GL_FRAGMENT_SHADER);
     if (!vertexShader || !fragmentShader)
     {
         return false;
