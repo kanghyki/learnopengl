@@ -1,7 +1,7 @@
 #ifndef INCLUDED_VERTEX_ARRAY_HPP
 #define INCLUDED_VERTEX_ARRAY_HPP
 
-#include "Common.hpp"
+#include "common.hpp"
 
 class VertexArray
 {

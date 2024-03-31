@@ -1,7 +1,7 @@
 #ifndef INCLUDED_SHADER_HPP
 #define INCLUDED_SHADER_HPP
 
-#include "Common.hpp"
+#include "common.hpp"
 
 class Shader
 {

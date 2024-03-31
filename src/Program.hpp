@@ -1,7 +1,7 @@
 #ifndef INCLUDED_PROGRAM_HPP
 #define INCLUDED_PROGRAM_HPP
 
-#include "Common.hpp"
+#include "common.hpp"
 #include "Shader.hpp"
 
 class Program

@@ -1,7 +1,7 @@
 #ifndef INCLUDED_BUFFER_HPP
 #define INCLUDED_BUFFER_HPP
 
-#include "Common.hpp"
+#include "common.hpp"
 
 class Buffer
 {

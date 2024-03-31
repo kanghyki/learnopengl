@@ -1,7 +1,7 @@
 #ifndef INCLUDED_CAMERA_HPP
 #define INCLUDED_CAMERA_HPP
 
-#include "Common.hpp"
+#include "common.hpp"
 
 struct Camera
 {

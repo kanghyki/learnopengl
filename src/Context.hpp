@@ -1,7 +1,7 @@
 #ifndef INCLUDED_CONTEXT_HPP
 #define INCLUDED_CONTEXT_HPP
 
-#include "Common.hpp"
+#include "common.hpp"
 #include "Camera.hpp"
 #include "Shader.hpp"
 #include "Program.hpp"

@@ -1,7 +1,7 @@
 #ifndef INCLUDED_IMAGE_HPP
 #define INCLUDED_IMAGE_HPP
 
-#include "Common.hpp"
+#include "common.hpp"
 
 class Image
 {
