@@ -37,6 +37,8 @@ class Context
         struct Camera                   mCamera;
         glm::vec2                       mPrevMousePos;
         bool                            mCameraControl;
+
+        glm::vec4                       mClearColor;
 };
 
 #endif

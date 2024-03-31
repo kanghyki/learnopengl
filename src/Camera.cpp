@@ -8,3 +8,12 @@ glm::mat4 Camera::getViewMatrix()
 
     return glm::lookAt(pos, pos + target, up);
 }
+
+void Camera::reset()
+{
+    pitch = {0.0f};
+    yaw = {0.0f};
+    pos = {0.0f, 0.0f, 0.0f};
+    target = {0.0f, 0.0f, -1.0f};
+    up = {0.0f, 1.0f, 0.0f};
+}

@@ -16,7 +16,8 @@ Context::Context() :
     mTexture2(nullptr),
     mCamera(),
     mPrevMousePos(0.0f),
-    mCameraControl(false)
+    mCameraControl(false),
+    mClearColor(0.2f, 0.3f, 0.3f, 1.0f)
 {
     glEnable(GL_DEPTH_TEST);
 }
@@ -62,7 +63,18 @@ void Context::render()
     {
         ImGui::Text("%.3f ms/frame (%dfps)", fps, prevFrames);
         ImGui::Spacing();
+        ImGui::Separator();
+        ImGui::Spacing();
 
+        ImGui::Text("Background");
+        if (ImGui::ColorEdit4("color", glm::value_ptr(mClearColor)))
+        {
+            SPDLOG_INFO("color r: {} g : {} b : {} a : {}", mClearColor[0], mClearColor[1], mClearColor[2], mClearColor[3]);
+            glClearColor(mClearColor[0], mClearColor[1], mClearColor[2], mClearColor[3]);
+        }
+        ImGui::Spacing();
+        ImGui::Separator();
+        ImGui::Spacing();
         /*
          * Camera
          */
@@ -70,12 +82,19 @@ void Context::render()
         ImGui::SliderFloat3("Position", &mCamera.pos.x, -10.0f, 10.0f, "%.3f");
         ImGui::SliderFloat3("Target", &mCamera.target.x, -10.0f, 10.0f, "%.3f");
         ImGui::SliderFloat3("Up", &mCamera.up.x, -10.0f, 10.0f, "%.3f");
+        if (ImGui::Button("Reset camera"))
+        {
+            mCamera.reset();
+        }
+        ImGui::SameLine();
         if (ImGui::Button("Reset resolution (test)"))
         {
             mWidth = WINDOW_WIDTH;
             mHeight = WINDOW_HEIGHT;
             reshape(mHeight, mHeight);
         }
+        ImGui::Spacing();
+        ImGui::Separator();
         ImGui::Spacing();
 
         /*
@@ -105,6 +124,8 @@ void Context::render()
                 glDisable(GL_DEPTH_TEST);
             }
         }
+        ImGui::Spacing();
+        ImGui::Separator();
         ImGui::Spacing();
 
         /*
@@ -251,7 +272,7 @@ bool Context::init()
     }
     SPDLOG_INFO("EBO id : {}", mEBO->get());
 
-    glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
+    glClearColor(mClearColor[0], mClearColor[1], mClearColor[2], mClearColor[3]);
 
     auto image = Image::load("./image/1.png");
     if (!image)
@@ -302,7 +323,7 @@ void Context::processMouseMove(double x, double y)
     auto pos = glm::vec2((float)x, (float)y);
     auto deltaPos = pos - mPrevMousePos;
 
-    const float cameraRotSpeed = 0.8f;
+    const float cameraRotSpeed = 0.25f;
     mCamera.yaw -= deltaPos.x * cameraRotSpeed;
     mCamera.pitch -= deltaPos.y * cameraRotSpeed;
 

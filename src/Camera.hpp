@@ -5,7 +5,8 @@
 
 struct Camera
 {
-    glm::mat4 getViewMatrix();
+    glm::mat4   getViewMatrix();
+    void        reset();
 
     float       pitch   {0.0f};
     float       yaw     {0.0f};

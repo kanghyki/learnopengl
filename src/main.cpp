@@ -30,17 +30,24 @@ void onCharEvent(GLFWwindow* window, unsigned int ch)
     ImGui_ImplGlfw_CharCallback(window, ch);
 }
 
+void onScroll(GLFWwindow* window, double xoffset, double yoffset)
+{
+    ImGui_ImplGlfw_ScrollCallback(window, xoffset, yoffset);
+}
+
 void onCursorPos(GLFWwindow* window, double x, double y)
 {
     auto ptr = reinterpret_cast<Context*>(glfwGetWindowUserPointer(window));
     ptr->processMouseMove(x, y);
 }
 
-void onMouseButton(GLFWwindow* window, int button, int action, int modifier) {
-  auto context = (Context*)glfwGetWindowUserPointer(window);
-  double x, y;
-  glfwGetCursorPos(window, &x, &y);
-  context->processMouseButton(button, action, x, y);
+void onMouseButton(GLFWwindow* window, int button, int action, int modifier)
+{
+    ImGui_ImplGlfw_MouseButtonCallback(window, button, action, modifier);
+    auto context = (Context *)glfwGetWindowUserPointer(window);
+    double x, y;
+    glfwGetCursorPos(window, &x, &y);
+    context->processMouseButton(button, action, x, y);
 }
 
 int main(int argc, char** argv)
@@ -97,6 +104,7 @@ int main(int argc, char** argv)
     glfwSetCharCallback(window, onCharEvent);
     glfwSetCursorPosCallback(window, onCursorPos);
     glfwSetMouseButtonCallback(window, onMouseButton);
+    glfwSetScrollCallback(window, onScroll);
 
     auto context = Context::create();
     if (!context)
