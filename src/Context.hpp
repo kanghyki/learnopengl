@@ -20,6 +20,7 @@ class Context
         bool init();
 
         int                             mFragType;
+        bool                            mIsEnableDepthBuffer;
         bool                            mIsActiveWireFrame;
         std::unique_ptr<Program>        mProgram;
         std::unique_ptr<Buffer>         mVBO, mEBO;

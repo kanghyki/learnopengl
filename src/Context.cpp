@@ -5,6 +5,7 @@
 Context::Context() :
     mFragType(0),
     mIsActiveWireFrame(false),
+    mIsEnableDepthBuffer(false),
     mProgram(nullptr),
     mVAO(nullptr),
     mVBO(nullptr),
@@ -43,7 +44,8 @@ void Context::render()
         prevTime = currTime;
         frames = 0;
     }
-    if (ImGui::Begin("Hello, ImGui"))
+
+    if (ImGui::Begin("Settings"))
     {
         ImGui::Text("%.3f ms/frame (%dfps)", fps, prevFrames);
         if (ImGui::Checkbox("WireFrame", &mIsActiveWireFrame))
@@ -57,34 +59,73 @@ void Context::render()
                 glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
             }
         }
-        if (ImGui::RadioButton("RGBA", &mFragType, 0))
+        ImGui::SameLine();
+        if (ImGui::Checkbox("DepthBuffer", &mIsEnableDepthBuffer))
         {
-            mProgram->setUniformValue("type", mFragType);
+            if (mIsEnableDepthBuffer)
+            {
+                glEnable(GL_DEPTH_TEST);
+            }
+            else
+            {
+                glDisable(GL_DEPTH_TEST);
+            }
+        }
+        if (ImGui::RadioButton("texture 1", &mFragType, 0))
+        {
+            mProgram->setUniform("type", mFragType);
         }
         ImGui::SameLine();
-        if (ImGui::RadioButton("Texture 1", &mFragType, 1))
+        if (ImGui::RadioButton("Texture 2", &mFragType, 1))
         {
-            mProgram->setUniformValue("type", mFragType);
-        }
-        ImGui::SameLine();
-        if (ImGui::RadioButton("Texture 2", &mFragType, 2))
-        {
-            mProgram->setUniformValue("type", mFragType);
-        }
-        ImGui::SameLine();
-        if (ImGui::RadioButton("Mix", &mFragType, 3))
-        {
-            mProgram->setUniformValue("type", mFragType);
+            mProgram->setUniform("type", mFragType);
         }
     }
     ImGui::End();
 
-    float alpha = static_cast<float>((sin(glfwGetTime()) / 2.0f) + 0.5f);
-    mProgram->setUniformValue("alpha", alpha);
 
-    glClear(GL_COLOR_BUFFER_BIT);
-    mProgram->use();
-    glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+    if (mIsEnableDepthBuffer)
+    {
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    }
+    else
+    {
+        glClear(GL_COLOR_BUFFER_BIT);
+    }
+
+    std::vector<glm::vec3> cubePositions =
+    {
+        glm::vec3( 0.0f,  0.0f,  0.0f),
+        glm::vec3( 2.0f,  5.0f, -15.0f),
+        glm::vec3(-1.5f, -2.2f, -2.5f),
+        glm::vec3(-3.8f, -2.0f, -12.3f),
+        glm::vec3( 2.4f, -0.4f, -3.5f),
+        glm::vec3(-1.7f,  3.0f, -7.5f),
+        glm::vec3( 1.3f, -2.0f, -2.5f),
+        glm::vec3( 1.5f,  2.0f, -2.5f),
+        glm::vec3( 1.5f,  0.2f, -1.5f),
+        glm::vec3(-1.3f,  1.0f, -1.5f),
+    };
+
+    auto view = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 0.0f, -3.0f));
+    auto projection = glm::perspective(glm::radians(45.0f), (float)WINDOW_WIDTH / (float)WINDOW_HEIGHT, 0.01f, 10.0f);
+
+    for (size_t i = 0; i < cubePositions.size(); i++)
+    {
+        auto& pos = cubePositions[i];
+        auto model = glm::translate(glm::mat4(1.0f), pos);
+        model = glm::scale(
+                    glm::rotate(
+                        model,
+                        glm::radians((float)glfwGetTime() * 90.0f + 20.0f * (float)i),
+                        glm::vec3(1.0f, 0.5f, 0.0f)
+                        ),
+                    glm::vec3(0.6f, 0.6f, 0.6f)
+                    );
+        auto transform = projection * view * model;
+        mProgram->setUniform("transform", transform);
+        glDrawElements(GL_TRIANGLES, 36, GL_UNSIGNED_INT, 0);
+    }
 }
 
 bool Context::init()
@@ -111,16 +152,45 @@ bool Context::init()
 
     float vertices[] =
     {
-        // positions        // colors         // st
-        -0.5f,  0.5f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f, 1.0f,
-         0.5f,  0.5f, 0.0f, 0.0f, 1.0f, 0.0f, 1.0f, 1.0f,
-         0.5f, -0.5f, 0.0f, 0.0f, 0.0f, 1.0f, 1.0f, 0.0f,
-        -0.5f, -0.5f, 0.0f, 1.0f, 1.0f, 1.0f, 0.0f, 0.0f
+        -0.5f, -0.5f, -0.5f, 0.0f, 0.0f,
+        0.5f, -0.5f, -0.5f, 1.0f, 0.0f,
+        0.5f,  0.5f, -0.5f, 1.0f, 1.0f,
+        -0.5f,  0.5f, -0.5f, 0.0f, 1.0f,
+
+        -0.5f, -0.5f,  0.5f, 0.0f, 0.0f,
+        0.5f, -0.5f,  0.5f, 1.0f, 0.0f,
+        0.5f,  0.5f,  0.5f, 1.0f, 1.0f,
+        -0.5f,  0.5f,  0.5f, 0.0f, 1.0f,
+
+        -0.5f,  0.5f,  0.5f, 1.0f, 0.0f,
+        -0.5f,  0.5f, -0.5f, 1.0f, 1.0f,
+        -0.5f, -0.5f, -0.5f, 0.0f, 1.0f,
+        -0.5f, -0.5f,  0.5f, 0.0f, 0.0f,
+
+        0.5f,  0.5f,  0.5f, 1.0f, 0.0f,
+        0.5f,  0.5f, -0.5f, 1.0f, 1.0f,
+        0.5f, -0.5f, -0.5f, 0.0f, 1.0f,
+        0.5f, -0.5f,  0.5f, 0.0f, 0.0f,
+
+        -0.5f, -0.5f, -0.5f, 0.0f, 1.0f,
+        0.5f, -0.5f, -0.5f, 1.0f, 1.0f,
+        0.5f, -0.5f,  0.5f, 1.0f, 0.0f,
+        -0.5f, -0.5f,  0.5f, 0.0f, 0.0f,
+
+        -0.5f,  0.5f, -0.5f, 0.0f, 1.0f,
+        0.5f,  0.5f, -0.5f, 1.0f, 1.0f,
+        0.5f,  0.5f,  0.5f, 1.0f, 0.0f,
+        -0.5f,  0.5f,  0.5f, 0.0f, 0.0f,
     };
-    unsigned int indices[] =
+
+    uint32_t indices[] =
     {
-        0, 1, 3,
-        1, 2, 3
+        0,  2,  1,  2,  0,  3,
+        4,  5,  6,  6,  7,  4,
+        8,  9, 10, 10, 11,  8,
+        12, 14, 13, 14, 12, 15,
+        16, 17, 18, 18, 19, 16,
+        20, 22, 21, 22, 20, 23,
     };
 
     mVAO = VertexArray::create();
@@ -130,9 +200,8 @@ bool Context::init()
         return false;
     }
     SPDLOG_INFO("VBO id : {}", mVBO->get());
-    mVAO->setAttrib(0, 3, GL_FLOAT, GL_FALSE, sizeof(float) * 8, 0);
-    mVAO->setAttrib(1, 3, GL_FLOAT, GL_FALSE, sizeof(float) * 8, sizeof(float) * 3);
-    mVAO->setAttrib(2, 2, GL_FLOAT, GL_FALSE, sizeof(float) * 8, sizeof(float) * 6);
+    mVAO->setAttrib(0, 3, GL_FLOAT, GL_FALSE, sizeof(float) * 5, 0);
+    mVAO->setAttrib(1, 2, GL_FLOAT, GL_FALSE, sizeof(float) * 5, sizeof(float) * 3);
 
     mEBO = Buffer::create(GL_ELEMENT_ARRAY_BUFFER, GL_STATIC_DRAW, indices, sizeof(indices));
     if (!mEBO)
@@ -143,7 +212,7 @@ bool Context::init()
 
     glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
 
-    auto image = Image::load("./image/wall.jpg");
+    auto image = Image::load("./image/1.png");
     if (!image)
     {
         return false;
@@ -151,7 +220,7 @@ bool Context::init()
     SPDLOG_INFO("image: {}x{}, {} channels", image->getWidth(), image->getHeight(), image->getChannelCount());
     mTexture = Texture::createFromImage(image.get());
 
-    auto image2 = Image::load("./image/capture.png");
+    auto image2 = Image::load("./image/2.png");
     if (!image2)
     {
         return false;
