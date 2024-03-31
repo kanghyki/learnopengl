@@ -1,6 +1,14 @@
+#
 build
 output
-.cache
-tags
+
+#
 .vscode
+tags
+
+#
+imgui.ini
+
+# 
+.cache
 .DS_Store
