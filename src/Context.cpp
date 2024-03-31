@@ -16,7 +16,7 @@ Context::Context() :
     mTexture2(nullptr),
     mCamera(),
     mPrevMousePos(0.0f),
-    mCameraControl(false),
+    mCameraDirectionControl(false),
     mClearColor(0.2f, 0.3f, 0.3f, 1.0f)
 {
     glEnable(GL_DEPTH_TEST);
@@ -316,40 +316,52 @@ void Context::processKeyboardInput(GLFWwindow* window)
 
 void Context::processMouseMove(double x, double y)
 {
-    if (!mCameraControl)
+    if (mCameraDirectionControl)
     {
-        return;
+        auto pos = glm::vec2((float)x, (float)y);
+        auto deltaPos = pos - mPrevMousePos;
+
+        const float cameraRotSpeed = 0.25f;
+        mCamera.yaw -= deltaPos.x * cameraRotSpeed;
+        mCamera.pitch -= deltaPos.y * cameraRotSpeed;
+
+        if (mCamera.yaw < 0.0f)   mCamera.yaw += 360.0f;
+        if (mCamera.yaw > 360.0f) mCamera.yaw -= 360.0f;
+
+        if (mCamera.pitch > 89.0f)  mCamera.pitch = 89.0f;
+        if (mCamera.pitch < -89.0f) mCamera.pitch = -89.0f;
+
+        mPrevMousePos = pos;
     }
-    auto pos = glm::vec2((float)x, (float)y);
-    auto deltaPos = pos - mPrevMousePos;
-
-    const float cameraRotSpeed = 0.25f;
-    mCamera.yaw -= deltaPos.x * cameraRotSpeed;
-    mCamera.pitch -= deltaPos.y * cameraRotSpeed;
-
-    if (mCamera.yaw < 0.0f)   mCamera.yaw += 360.0f;
-    if (mCamera.yaw > 360.0f) mCamera.yaw -= 360.0f;
-
-    if (mCamera.pitch > 89.0f)  mCamera.pitch = 89.0f;
-    if (mCamera.pitch < -89.0f) mCamera.pitch = -89.0f;
-
-    mPrevMousePos = pos;
 }
 
 void Context::processMouseButton(int button, int action, double x, double y)
 {
+    mPrevMousePos = glm::vec2((float)x, (float)y);
     if (button == GLFW_MOUSE_BUTTON_RIGHT)
     {
         if (action == GLFW_PRESS)
         {
-            mPrevMousePos = glm::vec2((float)x, (float)y);
-            mCameraControl = true;
+            mCameraDirectionControl = true;
         }
         else if (action == GLFW_RELEASE)
         {
-            mCameraControl = false;
+            mCameraDirectionControl = false;
         }
     }
+}
+
+void Context::processMouseScroll(double xoffset, double yoffset)
+{
+    if (yoffset > 0)
+    {
+        mCamera.pos += mCamera.target * (float)abs(yoffset) * 0.6f;
+    }
+    else if (yoffset < 0)
+    {
+        mCamera.pos -= mCamera.target * (float)abs(yoffset) * 0.6f;
+    }
+
 }
 
 void Context::reshape(int width, int height)

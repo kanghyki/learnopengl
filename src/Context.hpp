@@ -18,6 +18,7 @@ class Context
         void                            processKeyboardInput(GLFWwindow* window);
         void                            processMouseMove(double x, double y);
         void                            processMouseButton(int button, int action, double x, double y);
+        void                            processMouseScroll(double xoffset, double yoffset);
         void                            reshape(int width, int height);
 
     private:
@@ -36,7 +37,7 @@ class Context
 
         struct Camera                   mCamera;
         glm::vec2                       mPrevMousePos;
-        bool                            mCameraControl;
+        bool                            mCameraDirectionControl;
 
         glm::vec4                       mClearColor;
 };

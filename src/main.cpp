@@ -33,6 +33,8 @@ void onCharEvent(GLFWwindow* window, unsigned int ch)
 void onScroll(GLFWwindow* window, double xoffset, double yoffset)
 {
     ImGui_ImplGlfw_ScrollCallback(window, xoffset, yoffset);
+    auto ptr = reinterpret_cast<Context*>(glfwGetWindowUserPointer(window));
+    ptr->processMouseScroll(xoffset, yoffset);
 }
 
 void onCursorPos(GLFWwindow* window, double x, double y)
