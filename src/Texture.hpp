@@ -19,7 +19,7 @@ class Texture
         void createTexture();
         void setTextureFromImage(const Image* image);
 
-        uint32_t mTexture;
+        uint32_t mTexture { 0 };
 };
 
 #endif

@@ -14,9 +14,9 @@ class Buffer
         Buffer();
         void init(uint32_t bufferType, uint32_t usage, const void *data, size_t dataSize);
 
-        uint32_t mBuffer;
-        uint32_t mBufferType;
-        uint32_t mUsage;
+        uint32_t mBuffer        { 0 };
+        uint32_t mBufferType    { 0 };
+        uint32_t mUsage         { 0 };
 };
 
 #endif

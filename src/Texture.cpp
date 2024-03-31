@@ -1,6 +1,6 @@
 #include "Texture.hpp"
 
-Texture::Texture() : mTexture(0)
+Texture::Texture()
 {}
 
 Texture::~Texture()

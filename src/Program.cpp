@@ -1,6 +1,6 @@
 #include "Program.hpp"
 
-Program::Program() : mProgram(0)
+Program::Program()
 {}
 
 Program::~Program() {

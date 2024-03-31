@@ -1,6 +1,6 @@
 #include "Shader.hpp"
 
-Shader::Shader() : mShader(0)
+Shader::Shader()
 {}
 
 Shader::~Shader()

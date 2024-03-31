@@ -1,6 +1,6 @@
 #include "VertexArray.hpp"
 
-VertexArray::VertexArray() : mVAO(0)
+VertexArray::VertexArray()
 {}
 
 VertexArray::~VertexArray()

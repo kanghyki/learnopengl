@@ -1,6 +1,6 @@
 #include "Buffer.hpp"
 
-Buffer::Buffer() : mBuffer(0), mBufferType(0), mUsage(0)
+Buffer::Buffer()
 {}
 
 Buffer::~Buffer()

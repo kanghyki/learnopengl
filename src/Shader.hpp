@@ -14,7 +14,7 @@ class Shader
         Shader();
         bool loadFile(const std::string& fileName, GLenum shaderType);
 
-        uint32_t mShader;
+        uint32_t mShader { 0 };
 };
 
 #endif

@@ -18,10 +18,10 @@ private:
     Image();
     bool loadFile(const std::string& filepath);
 
-    int         mWidth;
-    int         mHeight;
-    int         mChannelCount;
-    uint8_t*    mData;
+    int         mWidth          { 0 };
+    int         mHeight         { 0 };
+    int         mChannelCount   { 0 };
+    uint8_t*    mData           { nullptr };
 };
 
 #endif

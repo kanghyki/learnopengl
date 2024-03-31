@@ -2,7 +2,7 @@
 #define STB_IMAGE_IMPLEMENTATION
 #include <stb/stb_image.h>
 
-Image::Image() : mWidth(0), mHeight(0), mChannelCount(0), mData(nullptr)
+Image::Image()
 {}
 
 Image::~Image()

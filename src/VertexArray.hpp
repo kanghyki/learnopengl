@@ -17,7 +17,7 @@ class VertexArray
         VertexArray();
         void init();
 
-        uint32_t mVAO;
+        uint32_t mVAO { 0 };
 };
 
 #endif

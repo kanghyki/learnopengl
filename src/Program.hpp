@@ -22,7 +22,7 @@ class Program
         Program();
         bool link(const std::vector<std::shared_ptr<Shader>>& shaders);
 
-        uint32_t mProgram;
+        uint32_t mProgram { 0 };
 };
 
 #endif
