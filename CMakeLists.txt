@@ -20,6 +20,7 @@ src/VertexArray.cpp src/VertexArray.hpp
 src/Image.cpp       src/Image.hpp
 src/Texture.cpp     src/Texture.hpp
 src/Camera.cpp      src/Camera.hpp
+src/Light.hpp
 )
 
 include(Dependency.cmake)

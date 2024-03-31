@@ -6,7 +6,7 @@ void framebufferSizeCallbackFunc(GLFWwindow* window, int width, int height)
 {
     SPDLOG_INFO("frame buffer size w:{}, h:{}", width, height);
     auto ptr = reinterpret_cast<Context*>(glfwGetWindowUserPointer(window));
-    ptr->reshape(width, height);
+    ptr->updateWindowSize(width, height);
 }
 
 void onKeyEvent(GLFWwindow* window, int key, int scancode, int action, int mods)
@@ -125,7 +125,6 @@ int main(int argc, char** argv)
 
         context->processKeyboardInput(window);
         context->render();
-        ImGui::Render();
         ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 
         glfwSwapBuffers(window);

@@ -2,22 +2,7 @@
 #include "Image.hpp"
 #include <imgui.h>
 
-Context::Context() :
-    mWidth(WINDOW_WIDTH),
-    mHeight(WINDOW_HEIGHT),
-    mFragType(0),
-    mIsActiveWireFrame(false),
-    mIsEnableDepthBuffer(true),
-    mProgram(nullptr),
-    mVAO(nullptr),
-    mVBO(nullptr),
-    mEBO(nullptr),
-    mTexture(nullptr),
-    mTexture2(nullptr),
-    mCamera(),
-    mPrevMousePos(0.0f),
-    mCameraDirectionControl(false),
-    mClearColor(0.2f, 0.3f, 0.3f, 1.0f)
+Context::Context()
 {
     glEnable(GL_DEPTH_TEST);
 }
@@ -38,124 +23,24 @@ std::unique_ptr<Context> Context::create()
 
 void Context::render()
 {
-    /*
-     * *********
-     * * ImGui *
-     * *********
-     */
-    {
-    static float    prevTime = 0;
-    static int      frames = 0;
-    static float    fps = 0.0f;
-    static int      prevFrames = 0;
+    ImGui::Begin("Settings");
+    updateImGui();
 
-    frames++;
-    float currTime = glfwGetTime();
-    if (currTime - prevTime >= 1.0)
-    {
-        prevFrames = frames;
-        fps = 1000.0f / frames;
-        prevTime = currTime;
-        frames = 0;
-    }
+    ImVec2 pos = ImGui::GetWindowPos();
+    auto size = ImGui::GetWindowSize();
+    updateGUIwindow(pos.x, pos.y, size.x, size.y);
+    ImGui::SetWindowPos(ImVec2(0.0f, 0.0f));
+    ImGui::SetWindowSize(ImVec2(mGUIwidth, mHeight));
 
-    if (ImGui::Begin("Settings"))
-    {
-        ImGui::Text("%.3f ms/frame (%dfps)", fps, prevFrames);
-        ImGui::Spacing();
-        ImGui::Separator();
-        ImGui::Spacing();
-
-        ImGui::Text("Background");
-        if (ImGui::ColorEdit4("color", glm::value_ptr(mClearColor)))
-        {
-            SPDLOG_INFO("color r: {} g : {} b : {} a : {}", mClearColor[0], mClearColor[1], mClearColor[2], mClearColor[3]);
-            glClearColor(mClearColor[0], mClearColor[1], mClearColor[2], mClearColor[3]);
-        }
-        ImGui::Spacing();
-        ImGui::Separator();
-        ImGui::Spacing();
-        /*
-         * Camera
-         */
-        ImGui::Text("Camera");
-        ImGui::SliderFloat3("Position", &mCamera.pos.x, -10.0f, 10.0f, "%.3f");
-        ImGui::SliderFloat3("Target", &mCamera.target.x, -10.0f, 10.0f, "%.3f");
-        ImGui::SliderFloat3("Up", &mCamera.up.x, -10.0f, 10.0f, "%.3f");
-        if (ImGui::Button("Reset camera"))
-        {
-            mCamera.reset();
-        }
-        ImGui::SameLine();
-        if (ImGui::Button("Reset resolution (test)"))
-        {
-            mWidth = WINDOW_WIDTH;
-            mHeight = WINDOW_HEIGHT;
-            reshape(mHeight, mHeight);
-        }
-        ImGui::Spacing();
-        ImGui::Separator();
-        ImGui::Spacing();
-
-        ImGui::Text("Light");
-        ImGui::ColorEdit3("Light color", glm::value_ptr(m_lightColor));
-        ImGui::ColorEdit3("Object color", glm::value_ptr(m_objectColor));
-        ImGui::SliderFloat("Ambient strength", &m_ambientStrength, 0.0f, 1.0f);
-        ImGui::Spacing();
-        ImGui::Separator();
-        ImGui::Spacing();
-
-        /*
-         * Extra
-         */
-        ImGui::Text("Extras");
-        if (ImGui::Checkbox("WireFrame", &mIsActiveWireFrame))
-        {
-            if (mIsActiveWireFrame)
-            {
-                glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-            }
-            else
-            {
-                glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-            }
-        }
-        ImGui::SameLine();
-        if (ImGui::Checkbox("DepthBuffer", &mIsEnableDepthBuffer))
-        {
-            if (mIsEnableDepthBuffer)
-            {
-                glEnable(GL_DEPTH_TEST);
-            }
-            else
-            {
-                glDisable(GL_DEPTH_TEST);
-            }
-        }
-        ImGui::Spacing();
-        ImGui::Separator();
-        ImGui::Spacing();
-
-        /*
-         * Texture
-         */
-        ImGui::Text("Texture");
-        if (ImGui::RadioButton("1", &mFragType, 0))
-        {
-            mProgram->setUniform("type", mFragType);
-        }
-        ImGui::SameLine();
-        if (ImGui::RadioButton("2", &mFragType, 1))
-        {
-            mProgram->setUniform("type", mFragType);
-        }
-    }
     ImGui::End();
+    ImGui::Render();
+
+    if (mIsWindowUpdated)
+    {
+        SPDLOG_INFO("changed viewport");
+        glViewport(mGUIx + mGUIwidth, 0, mWidth - (mGUIx + mGUIwidth), mHeight);
+        mIsWindowUpdated = false;
     }
-    mProgram->use();
-    mProgram->setUniform("lightColor", m_lightColor);
-    mProgram->setUniform("objectColor", m_objectColor);
-    mProgram->setUniform("ambientStrength", m_ambientStrength);
 
     if (mIsEnableDepthBuffer)
     {
@@ -180,9 +65,34 @@ void Context::render()
         glm::vec3(-1.3f,  1.0f, -1.5f),
     };
 
-    auto projection = glm::perspective(glm::radians(45.0f), (float)mWidth / (float)mHeight, 0.01f, 30.0f);
+    auto projection = glm::perspective(glm::radians(45.0f), (float)(mWidth - (mGUIx + mGUIwidth)) / (float)mHeight, 0.01f, 30.0f);
     auto view = mCamera.getViewMatrix();
 
+    auto lightModelTransform = glm::translate(glm::mat4(1.0), mLight.position);
+    lightModelTransform *= glm::scale(glm::mat4(1.0), glm::vec3(0.1f));
+    mProgram->use();
+    mProgram->setUniform("light.position", mLight.position);
+    mProgram->setUniform("light.ambient", mLight.diffuse);
+    mProgram->setUniform("material.ambient", mLight.diffuse);
+    mProgram->setUniform("transform", projection * view * lightModelTransform);
+    mProgram->setUniform("modelTransform", lightModelTransform);
+    glDrawElements(GL_TRIANGLES, 36, GL_UNSIGNED_INT, 0);
+
+    mProgram->use();
+	mProgram->setUniform("viewPos", mCamera.pos);
+    mProgram->setUniform("light.position", mLight.position);
+    mProgram->setUniform("light.ambient", mLight.ambient);
+    mProgram->setUniform("light.diffuse", mLight.diffuse);
+    mProgram->setUniform("light.specular", mLight.specular);
+    mProgram->setUniform("material.ambient", mMaterial.ambient);
+    mProgram->setUniform("material.diffuse", mMaterial.diffuse);
+    mProgram->setUniform("material.specular", mMaterial.specular);
+    mProgram->setUniform("material.shininess", mMaterial.shininess);
+
+    if (mIsAnimationActive)
+    {
+        mAnimationTime = glfwGetTime();
+    }
     for (size_t i = 0; i < cubePositions.size(); i++)
     {
         auto& pos = cubePositions[i];
@@ -190,14 +100,131 @@ void Context::render()
         model = glm::scale(
                     glm::rotate(
                         model,
-                        glm::radians((float)glfwGetTime() * 90.0f + 20.0f * (float)i),
+                        glm::radians((float)mAnimationTime * 90.0f + 20.0f * (float)i),
                         glm::vec3(1.0f, 0.5f, 0.0f)
                         ),
                     glm::vec3(0.8f, 0.8f, 0.8f)
                     );
         auto transform = projection * view * model;
         mProgram->setUniform("transform", transform);
+        mProgram->setUniform("modelTransform", model);
         glDrawElements(GL_TRIANGLES, 36, GL_UNSIGNED_INT, 0);
+    }
+}
+
+void Context::updateImGui()
+{
+    static float    prevTime = 0;
+    static int      frames = 0;
+    static float    fps = 0.0f;
+    static int      prevFrames = 0;
+
+    frames++;
+    float currTime = glfwGetTime();
+    if (currTime - prevTime >= 1.0)
+    {
+        prevFrames = frames;
+        fps = 1000.0f / frames;
+        prevTime = currTime;
+        frames = 0;
+    }
+
+    ImGui::Text("%.3f ms/frame (%dfps)", fps, prevFrames);
+    ImGui::Spacing();
+    ImGui::Spacing();
+
+
+    if (ImGui::CollapsingHeader("Background", ImGuiTreeNodeFlags_DefaultOpen))
+    {
+        if (ImGui::ColorEdit4("color", glm::value_ptr(mClearColor)))
+        {
+            glClearColor(mClearColor[0], mClearColor[1], mClearColor[2], mClearColor[3]);
+        }
+    }
+    ImGui::Spacing();
+    ImGui::Spacing();
+    if (ImGui::CollapsingHeader("Camera", ImGuiTreeNodeFlags_DefaultOpen))
+    {
+        ImGui::Text("Camera");
+        ImGui::SliderFloat3("Position", &mCamera.pos.x, -10.0f, 10.0f, "%.3f");
+        ImGui::SliderFloat3("Target", &mCamera.target.x, -10.0f, 10.0f, "%.3f");
+        ImGui::SliderFloat3("Up", &mCamera.up.x, -10.0f, 10.0f, "%.3f");
+        if (ImGui::Button("Reset camera"))
+        {
+            mCamera.reset();
+        }
+    }
+    ImGui::Spacing();
+    ImGui::Spacing();
+    if (ImGui::CollapsingHeader("Light", ImGuiTreeNodeFlags_DefaultOpen))
+    {
+        ImGui::DragFloat3("position", glm::value_ptr(mLight.position), 0.01f);
+        ImGui::ColorEdit3("l.ambient", glm::value_ptr(mLight.ambient));
+        ImGui::ColorEdit3("l.diffuse", glm::value_ptr(mLight.diffuse));
+        ImGui::ColorEdit3("l.specular", glm::value_ptr(mLight.specular));
+        if (ImGui::ColorEdit3("l.All", glm::value_ptr(mLight.ambient)))
+        {
+            mLight.diffuse = mLight.ambient;
+            mLight.specular = mLight.ambient;
+        }
+    }
+    ImGui::Spacing();
+    ImGui::Spacing();
+    if (ImGui::CollapsingHeader("material", ImGuiTreeNodeFlags_DefaultOpen)) {
+        ImGui::ColorEdit3("m.ambient", glm::value_ptr(mMaterial.ambient));
+        ImGui::ColorEdit3("m.diffuse", glm::value_ptr(mMaterial.diffuse));
+        ImGui::ColorEdit3("m.specular", glm::value_ptr(mMaterial.specular));
+        if (ImGui::ColorEdit3("m.All", glm::value_ptr(mMaterial.ambient)))
+        {
+            mMaterial.diffuse = mMaterial.ambient;
+            mMaterial.specular = mMaterial.ambient;
+        }
+        ImGui::DragFloat("shininess", &mMaterial.shininess, 1.0f, 1.0f, 256.0f);
+    }
+    ImGui::Spacing();
+    ImGui::Spacing();
+    if (ImGui::CollapsingHeader("Texture", ImGuiTreeNodeFlags_DefaultOpen))
+    {
+        ImGui::Text("Texture");
+        if (ImGui::RadioButton("1", &mFragType, 0))
+        {
+            mProgram->setUniform("type", mFragType);
+        }
+        ImGui::SameLine();
+        if (ImGui::RadioButton("2", &mFragType, 1))
+        {
+            mProgram->setUniform("type", mFragType);
+        }
+    }
+    ImGui::Spacing();
+    ImGui::Spacing();
+    if (ImGui::CollapsingHeader("Extras", ImGuiTreeNodeFlags_DefaultOpen))
+    {
+        if (ImGui::Checkbox("WireFrame", &mIsWireframeActive))
+        {
+            if (mIsWireframeActive)
+            {
+                glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+            }
+            else
+            {
+                glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+            }
+        }
+        ImGui::SameLine();
+        ImGui::Checkbox("Animation", &mIsAnimationActive);
+        ImGui::SameLine();
+        if (ImGui::Checkbox("DepthBuffer", &mIsEnableDepthBuffer))
+        {
+            if (mIsEnableDepthBuffer)
+            {
+                glEnable(GL_DEPTH_TEST);
+            }
+            else
+            {
+                glDisable(GL_DEPTH_TEST);
+            }
+        }
     }
 }
 
@@ -225,35 +252,36 @@ bool Context::init()
 
     float vertices[] =
     {
-        -0.5f, -0.5f, -0.5f, 0.0f, 0.0f,
-        0.5f, -0.5f, -0.5f, 1.0f, 0.0f,
-        0.5f,  0.5f, -0.5f, 1.0f, 1.0f,
-        -0.5f,  0.5f, -0.5f, 0.0f, 1.0f,
+    // pos.xyz, normal.xyz, texcoord.uv
+        -0.5f, -0.5f, -0.5f,  0.0f,  0.0f, -1.0f, 0.0f, 0.0f,
+        0.5f, -0.5f, -0.5f,  0.0f,  0.0f, -1.0f, 1.0f, 0.0f,
+        0.5f,  0.5f, -0.5f,  0.0f,  0.0f, -1.0f, 1.0f, 1.0f,
+        -0.5f,  0.5f, -0.5f,  0.0f,  0.0f, -1.0f, 0.0f, 1.0f,
 
-        -0.5f, -0.5f,  0.5f, 0.0f, 0.0f,
-        0.5f, -0.5f,  0.5f, 1.0f, 0.0f,
-        0.5f,  0.5f,  0.5f, 1.0f, 1.0f,
-        -0.5f,  0.5f,  0.5f, 0.0f, 1.0f,
+        -0.5f, -0.5f,  0.5f,  0.0f,  0.0f,  1.0f, 0.0f, 0.0f,
+        0.5f, -0.5f,  0.5f,  0.0f,  0.0f,  1.0f, 1.0f, 0.0f,
+        0.5f,  0.5f,  0.5f,  0.0f,  0.0f,  1.0f, 1.0f, 1.0f,
+        -0.5f,  0.5f,  0.5f,  0.0f,  0.0f,  1.0f, 0.0f, 1.0f,
 
-        -0.5f,  0.5f,  0.5f, 1.0f, 0.0f,
-        -0.5f,  0.5f, -0.5f, 1.0f, 1.0f,
-        -0.5f, -0.5f, -0.5f, 0.0f, 1.0f,
-        -0.5f, -0.5f,  0.5f, 0.0f, 0.0f,
+        -0.5f,  0.5f,  0.5f, -1.0f,  0.0f,  0.0f, 1.0f, 0.0f,
+        -0.5f,  0.5f, -0.5f, -1.0f,  0.0f,  0.0f, 1.0f, 1.0f,
+        -0.5f, -0.5f, -0.5f, -1.0f,  0.0f,  0.0f, 0.0f, 1.0f,
+        -0.5f, -0.5f,  0.5f, -1.0f,  0.0f,  0.0f, 0.0f, 0.0f,
 
-        0.5f,  0.5f,  0.5f, 1.0f, 0.0f,
-        0.5f,  0.5f, -0.5f, 1.0f, 1.0f,
-        0.5f, -0.5f, -0.5f, 0.0f, 1.0f,
-        0.5f, -0.5f,  0.5f, 0.0f, 0.0f,
+        0.5f,  0.5f,  0.5f,  1.0f,  0.0f,  0.0f, 1.0f, 0.0f,
+        0.5f,  0.5f, -0.5f,  1.0f,  0.0f,  0.0f, 1.0f, 1.0f,
+        0.5f, -0.5f, -0.5f,  1.0f,  0.0f,  0.0f, 0.0f, 1.0f,
+        0.5f, -0.5f,  0.5f,  1.0f,  0.0f,  0.0f, 0.0f, 0.0f,
 
-        -0.5f, -0.5f, -0.5f, 0.0f, 1.0f,
-        0.5f, -0.5f, -0.5f, 1.0f, 1.0f,
-        0.5f, -0.5f,  0.5f, 1.0f, 0.0f,
-        -0.5f, -0.5f,  0.5f, 0.0f, 0.0f,
+        -0.5f, -0.5f, -0.5f,  0.0f, -1.0f,  0.0f, 0.0f, 1.0f,
+        0.5f, -0.5f, -0.5f,  0.0f, -1.0f,  0.0f, 1.0f, 1.0f,
+        0.5f, -0.5f,  0.5f,  0.0f, -1.0f,  0.0f, 1.0f, 0.0f,
+        -0.5f, -0.5f,  0.5f,  0.0f, -1.0f,  0.0f, 0.0f, 0.0f,
 
-        -0.5f,  0.5f, -0.5f, 0.0f, 1.0f,
-        0.5f,  0.5f, -0.5f, 1.0f, 1.0f,
-        0.5f,  0.5f,  0.5f, 1.0f, 0.0f,
-        -0.5f,  0.5f,  0.5f, 0.0f, 0.0f,
+        -0.5f,  0.5f, -0.5f,  0.0f,  1.0f,  0.0f, 0.0f, 1.0f,
+        0.5f,  0.5f, -0.5f,  0.0f,  1.0f,  0.0f, 1.0f, 1.0f,
+        0.5f,  0.5f,  0.5f,  0.0f,  1.0f,  0.0f, 1.0f, 0.0f,
+        -0.5f,  0.5f,  0.5f,  0.0f,  1.0f,  0.0f, 0.0f, 0.0f,
     };
 
     uint32_t indices[] =
@@ -273,8 +301,9 @@ bool Context::init()
         return false;
     }
     SPDLOG_INFO("VBO id : {}", mVBO->get());
-    mVAO->setAttrib(0, 3, GL_FLOAT, GL_FALSE, sizeof(float) * 5, 0);
-    mVAO->setAttrib(1, 2, GL_FLOAT, GL_FALSE, sizeof(float) * 5, sizeof(float) * 3);
+    mVAO->setAttrib(0, 3, GL_FLOAT, GL_FALSE, sizeof(float) * 8, 0);
+    mVAO->setAttrib(1, 3, GL_FLOAT, GL_FALSE, sizeof(float) * 8, sizeof(float) * 3);
+    mVAO->setAttrib(2, 2, GL_FLOAT, GL_FALSE, sizeof(float) * 8, sizeof(float) * 6);
 
     mEBO = Buffer::create(GL_ELEMENT_ARRAY_BUFFER, GL_STATIC_DRAW, indices, sizeof(indices));
     if (!mEBO)
@@ -375,9 +404,24 @@ void Context::processMouseScroll(double xoffset, double yoffset)
 
 }
 
-void Context::reshape(int width, int height)
+void Context::updateGUIwindow(int x, int y, int width, int height)
 {
+    if (mGUIx != x || mGUIy != y || mGUIwidth != width || mGUIheight != height)
+    {
+        mIsWindowUpdated = true;
+    }
+    mGUIx = x;
+    mGUIy = y;
+    mGUIwidth = width;
+    mGUIheight = height;
+}
+
+void Context::updateWindowSize(int width, int height)
+{
+    if (mWidth != width || mHeight != height)
+    {
+        mIsWindowUpdated = true;
+    }
     mWidth = width;
     mHeight = height;
-    glViewport(0, 0, mWidth, mHeight);
 }
