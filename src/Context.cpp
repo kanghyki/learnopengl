@@ -307,17 +307,7 @@ bool Context::init()
 
     glClearColor(mClearColor[0], mClearColor[1], mClearColor[2], mClearColor[3]);
 
-    // mTexture = Texture::create("./image/1.png");
-    // mTexture2 = Texture::create("./image/2.png");
-    // glActiveTexture(GL_TEXTURE0);
-    // glBindTexture(GL_TEXTURE_2D, mTexture->get());
-    // glActiveTexture(GL_TEXTURE1);
-    // glBindTexture(GL_TEXTURE_2D, mTexture2->get());
-    // mProgram->use();
-    // glUniform1i(glGetUniformLocation(mProgram->get(), "tex"), 0);
-    // glUniform1i(glGetUniformLocation(mProgram->get(), "tex2"), 1);
-
-    mMaterial.diffuse = Texture::create("./image/3.png");
+    mMaterial.diffuse = Texture::create("./image/box.png");
     mMaterial.specular = Texture::create("./image/box_spec.png");
 
     return true;
