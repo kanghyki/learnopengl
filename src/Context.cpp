@@ -3,16 +3,23 @@
 #include <imgui.h>
 
 Context::Context() :
+    mWidth(WINDOW_WIDTH),
+    mHeight(WINDOW_HEIGHT),
     mFragType(0),
     mIsActiveWireFrame(false),
-    mIsEnableDepthBuffer(false),
+    mIsEnableDepthBuffer(true),
     mProgram(nullptr),
     mVAO(nullptr),
     mVBO(nullptr),
     mEBO(nullptr),
     mTexture(nullptr),
-    mTexture2(nullptr)
-{}
+    mTexture2(nullptr),
+    mCamera(),
+    mPrevMousePos(0.0f),
+    mCameraControl(false)
+{
+    glEnable(GL_DEPTH_TEST);
+}
 
 Context::~Context()
 {}
@@ -30,10 +37,16 @@ std::unique_ptr<Context> Context::create()
 
 void Context::render()
 {
-    static float prevTime = 0;
-    static int frames = 0;
-    static float fps = 0.0f;
-    static int prevFrames = 0;
+    /*
+     * *********
+     * * ImGui *
+     * *********
+     */
+    {
+    static float    prevTime = 0;
+    static int      frames = 0;
+    static float    fps = 0.0f;
+    static int      prevFrames = 0;
 
     frames++;
     float currTime = glfwGetTime();
@@ -48,6 +61,27 @@ void Context::render()
     if (ImGui::Begin("Settings"))
     {
         ImGui::Text("%.3f ms/frame (%dfps)", fps, prevFrames);
+        ImGui::Spacing();
+
+        /*
+         * Camera
+         */
+        ImGui::Text("Camera");
+        ImGui::SliderFloat3("Position", &mCamera.pos.x, -10.0f, 10.0f, "%.3f");
+        ImGui::SliderFloat3("Target", &mCamera.target.x, -10.0f, 10.0f, "%.3f");
+        ImGui::SliderFloat3("Up", &mCamera.up.x, -10.0f, 10.0f, "%.3f");
+        if (ImGui::Button("Reset resolution (test)"))
+        {
+            mWidth = WINDOW_WIDTH;
+            mHeight = WINDOW_HEIGHT;
+            reshape(mHeight, mHeight);
+        }
+        ImGui::Spacing();
+
+        /*
+         * Extra
+         */
+        ImGui::Text("Extras");
         if (ImGui::Checkbox("WireFrame", &mIsActiveWireFrame))
         {
             if (mIsActiveWireFrame)
@@ -71,17 +105,24 @@ void Context::render()
                 glDisable(GL_DEPTH_TEST);
             }
         }
-        if (ImGui::RadioButton("texture 1", &mFragType, 0))
+        ImGui::Spacing();
+
+        /*
+         * Texture
+         */
+        ImGui::Text("Texture");
+        if (ImGui::RadioButton("1", &mFragType, 0))
         {
             mProgram->setUniform("type", mFragType);
         }
         ImGui::SameLine();
-        if (ImGui::RadioButton("Texture 2", &mFragType, 1))
+        if (ImGui::RadioButton("2", &mFragType, 1))
         {
             mProgram->setUniform("type", mFragType);
         }
     }
     ImGui::End();
+    }
 
 
     if (mIsEnableDepthBuffer)
@@ -92,22 +133,6 @@ void Context::render()
     {
         glClear(GL_COLOR_BUFFER_BIT);
     }
-    // camera
-    auto cameraPos = glm::vec3(0.0f, 0.0f, 3.0f);
-    auto cameraTarget = glm::vec3(0.0f, 0.0f, 0.0f);
-    auto cameraUp = glm::vec3(0.0f, 1.0f, 0.0f);
-
-//    auto cameraZ = glm::normalize(cameraPos - cameraTarget);
-//    auto cameraX = glm::normalize(glm::cross(cameraUp, cameraZ));
-//    auto cameraY = glm::cross(cameraZ, cameraX);
-//    auto cameraMat = glm::mat4(
-//            glm::vec4(cameraX, 0.0f),
-//            glm::vec4(cameraY, 0.0f),
-//            glm::vec4(cameraZ, 0.0f),
-//            glm::vec4(cameraPos, 1.0f));
-//    auto view = glm::inverse(cameraMat);
-
-    auto view = glm::lookAt(cameraPos, cameraTarget, cameraUp);
 
     std::vector<glm::vec3> cubePositions =
     {
@@ -123,7 +148,8 @@ void Context::render()
         glm::vec3(-1.3f,  1.0f, -1.5f),
     };
 
-    auto projection = glm::perspective(glm::radians(45.0f), (float)WINDOW_WIDTH / (float)WINDOW_HEIGHT, 0.01f, 10.0f);
+    auto projection = glm::perspective(glm::radians(45.0f), (float)mWidth / (float)mHeight, 0.01f, 30.0f);
+    auto view = mCamera.getViewMatrix();
 
     for (size_t i = 0; i < cubePositions.size(); i++)
     {
@@ -252,4 +278,62 @@ bool Context::init()
     glUniform1i(glGetUniformLocation(mProgram->get(), "tex2"), 1);
 
     return true;
+}
+
+void Context::processKeyboardInput(GLFWwindow* window)
+{
+    const float cameraSpeed = 0.05f;
+    if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS) mCamera.pos += cameraSpeed * mCamera.target;
+    if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS) mCamera.pos -= cameraSpeed * mCamera.target;
+    auto cameraRight = glm::normalize(glm::cross(mCamera.up, -mCamera.target));
+    if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS) mCamera.pos += cameraSpeed * cameraRight;
+    if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS) mCamera.pos -= cameraSpeed * cameraRight;
+    auto cameraUp = glm::cross(-mCamera.target, cameraRight);
+    if (glfwGetKey(window, GLFW_KEY_E) == GLFW_PRESS) mCamera.pos += cameraSpeed * cameraUp;
+    if (glfwGetKey(window, GLFW_KEY_Q) == GLFW_PRESS) mCamera.pos -= cameraSpeed * cameraUp;
+}
+
+void Context::processMouseMove(double x, double y)
+{
+    if (!mCameraControl)
+    {
+        return;
+    }
+    auto pos = glm::vec2((float)x, (float)y);
+    auto deltaPos = pos - mPrevMousePos;
+
+    const float cameraRotSpeed = 0.8f;
+    mCamera.yaw -= deltaPos.x * cameraRotSpeed;
+    mCamera.pitch -= deltaPos.y * cameraRotSpeed;
+
+    if (mCamera.yaw < 0.0f)   mCamera.yaw += 360.0f;
+    if (mCamera.yaw > 360.0f) mCamera.yaw -= 360.0f;
+
+    if (mCamera.pitch > 89.0f)  mCamera.pitch = 89.0f;
+    if (mCamera.pitch < -89.0f) mCamera.pitch = -89.0f;
+
+    mPrevMousePos = pos;
+}
+
+void Context::processMouseButton(int button, int action, double x, double y)
+{
+    if (button == GLFW_MOUSE_BUTTON_RIGHT)
+    {
+        if (action == GLFW_PRESS)
+        {
+            mPrevMousePos = glm::vec2((float)x, (float)y);
+            mCameraControl = true;
+        }
+        else if (action == GLFW_RELEASE)
+        {
+            mCameraControl = false;
+        }
+    }
+}
+
+void Context::reshape(int width, int height)
+{
+    mWidth = width;
+    mHeight = height;
+    glViewport(0, 0, mWidth, mHeight);
 }

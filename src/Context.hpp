@@ -2,6 +2,7 @@
 #define INCLUDED_CONTEXT_HPP
 
 #include "Common.hpp"
+#include "Camera.hpp"
 #include "Shader.hpp"
 #include "Program.hpp"
 #include "Buffer.hpp"
@@ -14,11 +15,16 @@ class Context
         ~Context();
         static std::unique_ptr<Context> create();
         void                            render();
+        void                            processKeyboardInput(GLFWwindow* window);
+        void                            processMouseMove(double x, double y);
+        void                            processMouseButton(int button, int action, double x, double y);
+        void                            reshape(int width, int height);
 
     private:
         Context();
         bool init();
 
+        int                             mWidth, mHeight;
         int                             mFragType;
         bool                            mIsEnableDepthBuffer;
         bool                            mIsActiveWireFrame;
@@ -27,6 +33,10 @@ class Context
         std::unique_ptr<VertexArray>    mVAO;
         std::unique_ptr<Texture>        mTexture;
         std::unique_ptr<Texture>        mTexture2;
+
+        struct Camera                   mCamera;
+        glm::vec2                       mPrevMousePos;
+        bool                            mCameraControl;
 };
 
 #endif

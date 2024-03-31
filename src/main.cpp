@@ -1,12 +1,12 @@
 #include "Context.hpp"
-
 #include <imgui_impl_glfw.h>
 #include <imgui_impl_opengl3.h>
 
 void framebufferSizeCallbackFunc(GLFWwindow* window, int width, int height)
 {
-    glViewport(0, 0, width, height);
     SPDLOG_INFO("frame buffer size w:{}, h:{}", width, height);
+    auto ptr = reinterpret_cast<Context*>(glfwGetWindowUserPointer(window));
+    ptr->reshape(width, height);
 }
 
 void onKeyEvent(GLFWwindow* window, int key, int scancode, int action, int mods)
@@ -28,6 +28,19 @@ void onKeyEvent(GLFWwindow* window, int key, int scancode, int action, int mods)
 void onCharEvent(GLFWwindow* window, unsigned int ch)
 {
     ImGui_ImplGlfw_CharCallback(window, ch);
+}
+
+void onCursorPos(GLFWwindow* window, double x, double y)
+{
+    auto ptr = reinterpret_cast<Context*>(glfwGetWindowUserPointer(window));
+    ptr->processMouseMove(x, y);
+}
+
+void onMouseButton(GLFWwindow* window, int button, int action, int modifier) {
+  auto context = (Context*)glfwGetWindowUserPointer(window);
+  double x, y;
+  glfwGetCursorPos(window, &x, &y);
+  context->processMouseButton(button, action, x, y);
 }
 
 int main(int argc, char** argv)
@@ -72,10 +85,18 @@ int main(int argc, char** argv)
     ImGui_ImplOpenGL3_CreateFontsTexture();
     ImGui_ImplOpenGL3_CreateDeviceObjects();
 
-    glViewport(0, 0, WINDOW_WIDTH, WINDOW_HEIGHT);
+    int width = WINDOW_WIDTH;
+    int height = WINDOW_HEIGHT;
+#ifndef __OSX__
+    glfwGetFramebufferSize(window, &width, &height);
+#endif
+    glViewport(0, 0, width, height);
+
     glfwSetFramebufferSizeCallback(window, framebufferSizeCallbackFunc);
     glfwSetKeyCallback(window, onKeyEvent);
     glfwSetCharCallback(window, onCharEvent);
+    glfwSetCursorPosCallback(window, onCursorPos);
+    glfwSetMouseButtonCallback(window, onMouseButton);
 
     auto context = Context::create();
     if (!context)
@@ -84,6 +105,7 @@ int main(int argc, char** argv)
         glfwTerminate();
         return -1;
     }
+    glfwSetWindowUserPointer(window, context.get());
 
     SPDLOG_INFO("Start render loop");
     while (!glfwWindowShouldClose(window))
@@ -91,6 +113,7 @@ int main(int argc, char** argv)
         ImGui_ImplGlfw_NewFrame();
         ImGui::NewFrame();
 
+        context->processKeyboardInput(window);
         context->render();
         ImGui::Render();
         ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());

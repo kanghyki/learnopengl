@@ -4,8 +4,8 @@ set(PROJECT_NAME output)
 set(CMAKE_CXX_STANDARD 17)
 
 set(WINDOW_NAME "Hello, OpenGL!")
-set(WINDOW_WIDTH 640)
-set(WINDOW_HEIGHT 480)
+set(WINDOW_WIDTH 1280)
+set(WINDOW_HEIGHT 720)
 set(CMAKE_EXPORT_COMPILE_COMMANDS 1)
 
 project(${PROJECT_NAME})
@@ -19,12 +19,13 @@ src/Buffer.cpp      src/Buffer.hpp
 src/VertexArray.cpp src/VertexArray.hpp
 src/Image.cpp       src/Image.hpp
 src/Texture.cpp     src/Texture.hpp
+src/Camera.cpp      src/Camera.hpp
 )
 
 include(Dependency.cmake)
 
 if (APPLE)
-    set(CMAKE_CXX_FLAGS "-framework Cocoa -framework IOKit -framework OpenGL")
+    set(CMAKE_CXX_FLAGS "-framework Cocoa -framework IOKit -framework OpenGL -g3")
 endif()
 
 target_include_directories(${PROJECT_NAME} PUBLIC ${DEP_INCLUDE_DIR})

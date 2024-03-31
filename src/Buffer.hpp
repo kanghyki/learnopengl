@@ -9,7 +9,7 @@ class Buffer
         ~Buffer();
         static std::unique_ptr<Buffer>  create(uint32_t bufferType, uint32_t usage, const void* data, size_t dataSize);
         uint32_t                        get() const;
-    
+
     private:
         Buffer();
         void init(uint32_t bufferType, uint32_t usage, const void *data, size_t dataSize);
