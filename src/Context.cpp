@@ -68,14 +68,12 @@ void Context::render()
     auto projection = glm::perspective(glm::radians(45.0f), (float)(mWidth - (mGUIx + mGUIwidth)) / (float)mHeight, 0.01f, 30.0f);
     auto view = mCamera.getViewMatrix();
 
-    auto lightModelTransform = glm::translate(glm::mat4(1.0), mLight.position);
-    lightModelTransform *= glm::scale(glm::mat4(1.0), glm::vec3(0.1f));
-    mProgram->use();
-    mProgram->setUniform("light.position", mLight.position);
-    mProgram->setUniform("light.ambient", mLight.diffuse);
-    mProgram->setUniform("material.ambient", mLight.diffuse);
-    mProgram->setUniform("transform", projection * view * lightModelTransform);
-    mProgram->setUniform("modelTransform", lightModelTransform);
+    auto lightModelTransform =
+        glm::translate(glm::mat4(1.0), mLight.position) *
+        glm::scale(glm::mat4(1.0), glm::vec3(0.1f));
+    mSimpleProgram->use();
+    mSimpleProgram->setUniform("color", glm::vec4(mLight.ambient + mLight.diffuse, 1.0f));
+    mSimpleProgram->setUniform("transform", projection * view * lightModelTransform);
     glDrawElements(GL_TRIANGLES, 36, GL_UNSIGNED_INT, 0);
 
     mProgram->use();
@@ -84,10 +82,15 @@ void Context::render()
     mProgram->setUniform("light.ambient", mLight.ambient);
     mProgram->setUniform("light.diffuse", mLight.diffuse);
     mProgram->setUniform("light.specular", mLight.specular);
-    mProgram->setUniform("material.ambient", mMaterial.ambient);
-    mProgram->setUniform("material.diffuse", mMaterial.diffuse);
-    mProgram->setUniform("material.specular", mMaterial.specular);
+    mProgram->setUniform("material.diffuse", 0);
+    mProgram->setUniform("material.specular", 1);
     mProgram->setUniform("material.shininess", mMaterial.shininess);
+
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D, mMaterial.diffuse->get());
+
+    glActiveTexture(GL_TEXTURE1);
+    glBindTexture(GL_TEXTURE_2D, mMaterial.specular->get());
 
     if (mIsAnimationActive)
     {
@@ -171,14 +174,6 @@ void Context::updateImGui()
     ImGui::Spacing();
     ImGui::Spacing();
     if (ImGui::CollapsingHeader("material", ImGuiTreeNodeFlags_DefaultOpen)) {
-        ImGui::ColorEdit3("m.ambient", glm::value_ptr(mMaterial.ambient));
-        ImGui::ColorEdit3("m.diffuse", glm::value_ptr(mMaterial.diffuse));
-        ImGui::ColorEdit3("m.specular", glm::value_ptr(mMaterial.specular));
-        if (ImGui::ColorEdit3("m.All", glm::value_ptr(mMaterial.ambient)))
-        {
-            mMaterial.diffuse = mMaterial.ambient;
-            mMaterial.specular = mMaterial.ambient;
-        }
         ImGui::DragFloat("shininess", &mMaterial.shininess, 1.0f, 1.0f, 256.0f);
     }
     ImGui::Spacing();
@@ -230,21 +225,19 @@ void Context::updateImGui()
 
 bool Context::init()
 {
-    auto vertexShader = Shader::createFromFile("shader/lighting.vs", GL_VERTEX_SHADER);
-    auto fragmentShader = Shader::createFromFile("shader/lighting.fs", GL_FRAGMENT_SHADER);
-    if (!vertexShader || !fragmentShader)
-    {
-        return false;
-    }
-    SPDLOG_INFO("vertex shader id : {}", vertexShader->get());
-    SPDLOG_INFO("fragment shader id : {}", fragmentShader->get());
-
-    mProgram = Program::create({vertexShader, fragmentShader});
+    mProgram = Program::create("shader/lighting.vs", "shader/lighting.fs");
     if (!mProgram)
     {
         return false;
     }
     SPDLOG_INFO("program id: {}", mProgram->get());
+
+    mSimpleProgram = Program::create("shader/simple.vs", "shader/simple.fs");
+    if (!mSimpleProgram)
+    {
+        return false;
+    }
+    SPDLOG_INFO("simple program id: {}", mSimpleProgram->get());
 
     int nrAttributes;
     glGetIntegerv(GL_MAX_VERTEX_ATTRIBS, &nrAttributes);
@@ -314,29 +307,18 @@ bool Context::init()
 
     glClearColor(mClearColor[0], mClearColor[1], mClearColor[2], mClearColor[3]);
 
-    auto image = Image::load("./image/1.png");
-    if (!image)
-    {
-        return false;
-    }
-    SPDLOG_INFO("image: {}x{}, {} channels", image->getWidth(), image->getHeight(), image->getChannelCount());
-    mTexture = Texture::createFromImage(image.get());
+    // mTexture = Texture::create("./image/1.png");
+    // mTexture2 = Texture::create("./image/2.png");
+    // glActiveTexture(GL_TEXTURE0);
+    // glBindTexture(GL_TEXTURE_2D, mTexture->get());
+    // glActiveTexture(GL_TEXTURE1);
+    // glBindTexture(GL_TEXTURE_2D, mTexture2->get());
+    // mProgram->use();
+    // glUniform1i(glGetUniformLocation(mProgram->get(), "tex"), 0);
+    // glUniform1i(glGetUniformLocation(mProgram->get(), "tex2"), 1);
 
-    auto image2 = Image::load("./image/2.png");
-    if (!image2)
-    {
-        return false;
-    }
-    SPDLOG_INFO("image2: {}x{}, {} channels", image2->getWidth(), image2->getHeight(), image2->getChannelCount());
-    mTexture2 = Texture::createFromImage(image2.get());
-
-    glActiveTexture(GL_TEXTURE0);
-    glBindTexture(GL_TEXTURE_2D, mTexture->get());
-    glActiveTexture(GL_TEXTURE1);
-    glBindTexture(GL_TEXTURE_2D, mTexture2->get());
-    mProgram->use();
-    glUniform1i(glGetUniformLocation(mProgram->get(), "tex"), 0);
-    glUniform1i(glGetUniformLocation(mProgram->get(), "tex2"), 1);
+    mMaterial.diffuse = Texture::create("./image/3.png");
+    mMaterial.specular = Texture::create("./image/box_spec.png");
 
     return true;
 }

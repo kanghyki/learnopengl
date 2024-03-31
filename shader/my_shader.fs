@@ -8,8 +8,7 @@ uniform int type;
 uniform sampler2D tex;
 uniform sampler2D tex2;
 
-void main()
-{
+void main() {
     if (type == 0) {
         FragColor = texture(tex, ourST);
     } else if (type == 1) {

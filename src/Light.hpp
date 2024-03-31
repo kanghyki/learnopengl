@@ -2,6 +2,7 @@
 #define INCLUDED_LIGHT_HPP
 
 #include "common.hpp"
+#include "Texture.hpp"
 
 struct Light
 {
@@ -13,10 +14,9 @@ struct Light
 
 struct Material
 {
-    glm::vec3 ambient   { glm::vec3(0.6f, 1.0f, 1.0f) };
-    glm::vec3 diffuse   { glm::vec3(0.7f, 1.0f, 1.0f) };
-    glm::vec3 specular  { glm::vec3(0.8f, 1.0f, 1.0f) };
-    float shininess     { 30.0f };
+    std::unique_ptr<Texture>    diffuse     { nullptr };
+    std::unique_ptr<Texture>    specular    { nullptr };
+    float                       shininess   { 30.0f };
 };
 
 #endif

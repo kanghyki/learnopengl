@@ -46,6 +46,7 @@ class Context
 
         // render
         std::unique_ptr<Program>        mProgram                { nullptr };
+        std::unique_ptr<Program>        mSimpleProgram          { nullptr };
         std::unique_ptr<Buffer>         mVBO, mEBO              { nullptr };
         std::unique_ptr<VertexArray>    mVAO                    { nullptr };
         std::unique_ptr<Texture>        mTexture                { nullptr };

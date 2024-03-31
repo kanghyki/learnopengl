@@ -9,7 +9,8 @@ Program::~Program() {
     }
 }
 
-std::unique_ptr<Program> Program::create(const std::vector<std::shared_ptr<Shader>>& shaders)
+std::unique_ptr<Program> Program::create(
+    const std::vector<std::shared_ptr<Shader>>& shaders)
 {
     auto program = std::unique_ptr<Program>(new Program());
     if (!program->link(shaders))
@@ -18,6 +19,21 @@ std::unique_ptr<Program> Program::create(const std::vector<std::shared_ptr<Shade
     }
 
     return std::move(program);
+}
+
+std::unique_ptr<Program> Program::create(
+    const std::string& vsFilename,
+    const std::string& fsFilename) {
+    std::shared_ptr<Shader> vs = Shader::createFromFile(vsFilename, GL_VERTEX_SHADER);
+    std::shared_ptr<Shader> fs = Shader::createFromFile(fsFilename, GL_FRAGMENT_SHADER);
+    if (!vs || !fs)
+    {
+        return nullptr;
+    }
+    SPDLOG_INFO("vertex shader id : {}", vs->get());
+    SPDLOG_INFO("fragment shader id : {}", vs->get());
+
+    return std::move(create({vs, fs}));
 }
 
 bool Program::link(const std::vector<std::shared_ptr<Shader>>& shaders)
@@ -70,6 +86,11 @@ void Program::setUniform(const std::string& name, float value) const
 void Program::setUniform(const std::string& name, const glm::vec3& value) const 
 {
     glUniform3fv(getUniformLocation(name), 1, glm::value_ptr(value));
+}
+
+void Program::setUniform(const std::string& name, const glm::vec4& value) const 
+{
+    glUniform4fv(getUniformLocation(name), 1, glm::value_ptr(value));
 }
 
 void Program::setUniform(const std::string& name, const glm::mat4& value) const 

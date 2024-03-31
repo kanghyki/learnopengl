@@ -11,11 +11,26 @@ Texture::~Texture()
     }
 }
 
-std::unique_ptr<Texture> Texture::createFromImage(const Image* image)
+std::unique_ptr<Texture> Texture::create(const Image* image)
 {
     auto texture = std::unique_ptr<Texture>(new Texture());
     texture->createTexture();
     texture->setTextureFromImage(image);
+
+    return std::move(texture);
+}
+
+std::unique_ptr<Texture> Texture::create(const std::string& filename)
+{
+    auto image = Image::load(filename);
+    if (!image)
+    {
+        return nullptr;
+    }
+    SPDLOG_INFO("image: {}x{}, {} channels", image->getWidth(), image->getHeight(), image->getChannelCount());
+    auto texture = std::unique_ptr<Texture>(new Texture());
+    texture->createTexture();
+    texture->setTextureFromImage(image.get());
 
     return std::move(texture);
 }

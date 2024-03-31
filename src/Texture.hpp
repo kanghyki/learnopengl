@@ -7,7 +7,8 @@ class Texture
 {
     public:
         ~Texture();
-        static std::unique_ptr<Texture> createFromImage(const Image* image);
+        static std::unique_ptr<Texture> create(const Image* image);
+        static std::unique_ptr<Texture> create(const std::string& filename);
 
         void            setFilter(uint32_t minFilter, uint32_t magFilter) const;
         void            setWrap(uint32_t sWrap, uint32_t tWrap) const;

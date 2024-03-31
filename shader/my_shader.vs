@@ -6,8 +6,7 @@ uniform mat4 transform;
 
 out vec2 ourST;
 
-void main()
-{
+void main() {
     gl_Position = transform * vec4(aPos.x, aPos.y, aPos.z, 1.0);
     ourST = aST;
 }
