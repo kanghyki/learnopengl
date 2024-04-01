@@ -23,7 +23,7 @@ struct Material {
 uniform Material material;
 
 void main() {
-    vec3 texColor = texture2D(material.diffuse, texCoord).xyz;
+    vec3 texColor = texture(material.diffuse, texCoord).xyz;
     vec3 ambient = texColor * light.ambient;
 
     vec3 lightDir = normalize(light.position - position);
@@ -31,7 +31,7 @@ void main() {
     float diff = max(dot(pixelNorm, lightDir), 0.0);
     vec3 diffuse = diff * texColor * light.diffuse;
 
-    vec3 specColor = texture2D(material.specular, texCoord).xyz;
+    vec3 specColor = texture(material.specular, texCoord).xyz;
     vec3 viewDir = normalize(viewPos - position);
     vec3 reflectDir = reflect(-lightDir, pixelNorm);
     float spec = pow(max(dot(viewDir, reflectDir), 0.0), material.shininess);
