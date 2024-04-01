@@ -16,6 +16,6 @@
 #include <fstream>
 #include <sstream>
 
-std::optional<std::string> loadTextFile(const std::string& fileName);
+std::optional<std::string>  loadTextFile(const std::string& filename);
 
 #endif

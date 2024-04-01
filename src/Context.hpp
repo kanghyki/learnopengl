@@ -39,29 +39,27 @@ class Context
         double                          mAnimationTime          { 0.0f };
 
         // ImGui
-        int                             mFragType               { 0 };
         bool                            mIsEnableDepthBuffer    { true };
         bool                            mIsWireframeActive      { false };
         bool                            mIsAnimationActive      { true };
+        int                             mLightType              { 0 };
 
         // render
         std::unique_ptr<Program>        mProgram                { nullptr };
         std::unique_ptr<Program>        mSimpleProgram          { nullptr };
         std::unique_ptr<Buffer>         mVBO, mEBO              { nullptr };
         std::unique_ptr<VertexArray>    mVAO                    { nullptr };
-        std::unique_ptr<Texture>        mTexture                { nullptr };
-        std::unique_ptr<Texture>        mTexture2               { nullptr };
 
         // camera
         struct Camera                   mCamera;
         glm::vec2                       mPrevMousePos           { 0.0f };
         bool                            mCameraDirectionControl { false };
-        
+
         // lighting
         struct Light                    mLight;
         struct Material                 mMaterial;
 
-        glm::vec4                       mClearColor             { 0.2f, 0.3f, 0.3f, 1.0f };
+        glm::vec4                       mClearColor             { 0.0f, 0.0f, 0.0f, 1.0f };
 };
 
 #endif

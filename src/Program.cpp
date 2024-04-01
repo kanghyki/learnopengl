@@ -83,6 +83,11 @@ void Program::setUniform(const std::string& name, float value) const
     glUniform1f(getUniformLocation(name), value);
 }
 
+void Program::setUniform(const std::string& name, const glm::vec2& value) const 
+{
+    glUniform2fv(getUniformLocation(name), 1, glm::value_ptr(value));
+}
+
 void Program::setUniform(const std::string& name, const glm::vec3& value) const 
 {
     glUniform3fv(getUniformLocation(name), 1, glm::value_ptr(value));

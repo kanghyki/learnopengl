@@ -77,8 +77,16 @@ void Context::render()
     glDrawElements(GL_TRIANGLES, 36, GL_UNSIGNED_INT, 0);
 
     mProgram->use();
-	mProgram->setUniform("viewPos", mCamera.pos);
+    mProgram->setUniform("lightType", mLightType);
+    mProgram->setUniform("viewPos", mCamera.pos);
     mProgram->setUniform("light.position", mLight.position);
+    mProgram->setUniform("light.direction", mLight.direction);
+    mProgram->setUniform("light.cutoff", glm::vec2(
+      cosf(glm::radians(mLight.cutoff[0])),
+      cosf(glm::radians(mLight.cutoff[0] + mLight.cutoff[1]))));
+    mProgram->setUniform("light.constant", mLight.constant);
+    mProgram->setUniform("light.linear", mLight.linear);
+    mProgram->setUniform("light.quadratic", mLight.quadratic);
     mProgram->setUniform("light.ambient", mLight.ambient);
     mProgram->setUniform("light.diffuse", mLight.diffuse);
     mProgram->setUniform("light.specular", mLight.specular);
@@ -161,35 +169,31 @@ void Context::updateImGui()
     ImGui::Spacing();
     if (ImGui::CollapsingHeader("Light", ImGuiTreeNodeFlags_DefaultOpen))
     {
-        ImGui::DragFloat3("position", glm::value_ptr(mLight.position), 0.01f);
-        ImGui::ColorEdit3("l.ambient", glm::value_ptr(mLight.ambient));
-        ImGui::ColorEdit3("l.diffuse", glm::value_ptr(mLight.diffuse));
-        ImGui::ColorEdit3("l.specular", glm::value_ptr(mLight.specular));
-        if (ImGui::ColorEdit3("l.All", glm::value_ptr(mLight.ambient)))
-        {
-            mLight.diffuse = mLight.ambient;
-            mLight.specular = mLight.ambient;
+        ImGui::RadioButton("Directional", &mLightType, 0);
+        ImGui::SameLine();
+        ImGui::RadioButton("Point", &mLightType, 1);
+        ImGui::SameLine();
+        ImGui::RadioButton("Spot", &mLightType, 2);
+        if (mLightType == 0) {
+            ImGui::DragFloat3("direction", glm::value_ptr(mLight.direction), 0.01f);
         }
+        else if (mLightType == 1) {
+            ImGui::DragFloat3("position", glm::value_ptr(mLight.position), 0.01f);
+        }
+        else if (mLightType == 2) {
+            ImGui::DragFloat3("direction", glm::value_ptr(mLight.direction), 0.01f);
+            ImGui::DragFloat3("position", glm::value_ptr(mLight.position), 0.01f);
+            ImGui::DragFloat2("cutoff", glm::value_ptr(mLight.cutoff), 0.5f, 0.0f, 180.0f);
+        }
+        ImGui::Text("All");
+        ImGui::ColorEdit3("ambient", glm::value_ptr(mLight.ambient));
+        ImGui::ColorEdit3("diffuse", glm::value_ptr(mLight.diffuse));
+        ImGui::ColorEdit3("specular", glm::value_ptr(mLight.specular));
     }
     ImGui::Spacing();
     ImGui::Spacing();
     if (ImGui::CollapsingHeader("material", ImGuiTreeNodeFlags_DefaultOpen)) {
         ImGui::DragFloat("shininess", &mMaterial.shininess, 1.0f, 1.0f, 256.0f);
-    }
-    ImGui::Spacing();
-    ImGui::Spacing();
-    if (ImGui::CollapsingHeader("Texture", ImGuiTreeNodeFlags_DefaultOpen))
-    {
-        ImGui::Text("Texture");
-        if (ImGui::RadioButton("1", &mFragType, 0))
-        {
-            mProgram->setUniform("type", mFragType);
-        }
-        ImGui::SameLine();
-        if (ImGui::RadioButton("2", &mFragType, 1))
-        {
-            mProgram->setUniform("type", mFragType);
-        }
     }
     ImGui::Spacing();
     ImGui::Spacing();
@@ -307,8 +311,8 @@ bool Context::init()
 
     glClearColor(mClearColor[0], mClearColor[1], mClearColor[2], mClearColor[3]);
 
-    mMaterial.diffuse = Texture::create("./image/box.png");
-    mMaterial.specular = Texture::create("./image/box_spec.png");
+    mMaterial.diffuse = Texture::create("./image/1.png");
+    mMaterial.specular = Texture::create("./image/2.png");
 
     return true;
 }
