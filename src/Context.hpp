@@ -8,6 +8,7 @@
 #include "Program.hpp"
 #include "Texture.hpp"
 #include "Mesh.hpp"
+#include "Model.hpp"
 
 class Context
 {
@@ -46,6 +47,7 @@ class Context
         std::unique_ptr<Program>        mSimpleProgram          { nullptr };
         std::unique_ptr<Mesh>           mMesh                   { nullptr };
         struct Material                 mMaterial;
+        std::unique_ptr<Model>          mModel                  { nullptr };
 
         struct Camera                   mCamera;
         glm::vec2                       mPrevMousePos           { 0.0f };

@@ -12,3 +12,7 @@ imgui.ini
 # 
 .cache
 .DS_Store
+
+#
+image
+model

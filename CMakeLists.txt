@@ -22,12 +22,15 @@ src/Texture.cpp     src/Texture.hpp
 src/Camera.cpp      src/Camera.hpp
 src/Light.hpp
 src/Mesh.cpp        src/Mesh.hpp
+src/Model.cpp       src/Model.hpp
 )
 
 include(Dependency.cmake)
 
+set_target_properties(${PROJECT_NAME} PROPERTIES VS_DEBUGGER_WORKING_DIRECTORY "C:\\Users\\tnehs\\Desktop\\learn-opengl")
+
 if (APPLE)
-    set(CMAKE_CXX_FLAGS "-framework Cocoa -framework IOKit -framework OpenGL -g3")
+    set(CMAKE_CXX_FLAGS "-framework Cocoa -framework IOKit -framework OpenGL")
 endif()
 
 target_include_directories(${PROJECT_NAME} PUBLIC ${DEP_INCLUDE_DIR})

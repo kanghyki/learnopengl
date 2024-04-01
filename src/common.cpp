@@ -13,3 +13,28 @@ std::optional<std::string> loadTextFile(const std::string& filename)
 
     return text.str();
 }
+
+std::vector<std::string> split(const std::string& s, const std::string& sep = " ") {
+    size_t pos = 0;
+    size_t npos = 0;
+    std::vector<std::string> ret;
+
+    if (sep.empty())
+    {
+        return ret;
+    }
+    while (pos < s.size())
+    {
+        if((npos = s.find(sep, pos)) == std::string::npos)
+        {
+            npos = s.size();
+        }
+        if (npos - pos > 0)
+        {
+            ret.push_back(s.substr(pos, npos - pos));
+        }
+        pos = npos + sep.size();
+    }
+
+    return ret;
+}

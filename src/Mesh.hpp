@@ -28,8 +28,6 @@ class Mesh
         std::shared_ptr<Buffer> getVertexBuffer() const;
         std::shared_ptr<Buffer> getIndexBuffer() const;
 
-        void setPrimitiveType(uint32_t type);
-
     private:
         Mesh();
         Mesh(const Mesh& mesh);

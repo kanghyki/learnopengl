@@ -54,15 +54,15 @@ void Context::render()
     std::vector<glm::vec3> cubePositions =
     {
         glm::vec3( 0.0f,  0.0f,  0.0f),
-        glm::vec3( 2.0f,  5.0f, -15.0f),
-        glm::vec3(-1.5f, -2.2f, -2.5f),
-        glm::vec3(-3.8f, -2.0f, -12.3f),
-        glm::vec3( 2.4f, -0.4f, -3.5f),
-        glm::vec3(-1.7f,  3.0f, -7.5f),
-        glm::vec3( 1.3f, -2.0f, -2.5f),
-        glm::vec3( 1.5f,  2.0f, -2.5f),
-        glm::vec3( 1.5f,  0.2f, -1.5f),
-        glm::vec3(-1.3f,  1.0f, -1.5f),
+        // glm::vec3( 2.0f,  5.0f, -15.0f),
+        // glm::vec3(-1.5f, -2.2f, -2.5f),
+        // glm::vec3(-3.8f, -2.0f, -12.3f),
+        // glm::vec3( 2.4f, -0.4f, -3.5f),
+        // glm::vec3(-1.7f,  3.0f, -7.5f),
+        // glm::vec3( 1.3f, -2.0f, -2.5f),
+        // glm::vec3( 1.5f,  2.0f, -2.5f),
+        // glm::vec3( 1.5f,  0.2f, -1.5f),
+        // glm::vec3(-1.3f,  1.0f, -1.5f),
     };
 
     auto projection = glm::perspective(glm::radians(45.0f), (float)(mWidth - (mGUIx + mGUIwidth)) / (float)mHeight, 0.01f, 30.0f);
@@ -75,6 +75,7 @@ void Context::render()
     mSimpleProgram->setUniform("color", glm::vec4(mLight.ambient + mLight.diffuse, 1.0f));
     mSimpleProgram->setUniform("transform", projection * view * lightModelTransform);
     mMesh->draw();
+
 
     mProgram->use();
     mProgram->setUniform("lightType", mLightType);
@@ -93,6 +94,7 @@ void Context::render()
     mProgram->setUniform("material.diffuse", 0);
     mProgram->setUniform("material.specular", 1);
     mProgram->setUniform("material.shininess", mMaterial.shininess);
+
 
     mMaterial.diffuse->active(0);
     mMaterial.diffuse->bind();
@@ -120,6 +122,12 @@ void Context::render()
         mProgram->setUniform("modelTransform", model);
         mMesh->draw();
     }
+    auto model2 = 
+        glm::translate(glm::mat4(1.0), glm::vec3(0.0f, 3.0f, 0.0f)) *
+        glm::scale(glm::mat4(1.0), glm::vec3(0.5f));
+    mProgram->setUniform("transform", projection * view * model2);
+    mProgram->setUniform("modelTransform", model2);
+    mModel->draw();
 }
 
 void Context::updateImGui()
@@ -156,9 +164,9 @@ void Context::updateImGui()
     if (ImGui::CollapsingHeader("Camera", ImGuiTreeNodeFlags_DefaultOpen))
     {
         ImGui::Text("Camera");
-        ImGui::SliderFloat3("Position", &mCamera.pos.x, -10.0f, 10.0f, "%.3f");
-        ImGui::SliderFloat3("Target", &mCamera.target.x, -10.0f, 10.0f, "%.3f");
-        ImGui::SliderFloat3("Up", &mCamera.up.x, -10.0f, 10.0f, "%.3f");
+        ImGui::DragFloat3("Position", glm::value_ptr(mCamera.pos), 0.01f);
+        ImGui::Text("Front : x(%.3f), y(%.3f), z(%.3f)", mCamera.front.x, mCamera.front.y, mCamera.front.z);
+        ImGui::Text("Up    : x(%.3f), y(%.3f), z(%.3f)", mCamera.up.x, mCamera.up.y, mCamera.up.z);
         if (ImGui::Button("Reset camera"))
         {
             mCamera.reset();
@@ -244,18 +252,20 @@ bool Context::init()
     mMaterial.diffuse = Texture::create("./image/box.png");
     mMaterial.specular = Texture::create("./image/box_spec.png");
 
+    mModel = Model::load("./model/resources/teapot.obj");
+
     return true;
 }
 
 void Context::processKeyboardInput(GLFWwindow* window)
 {
     const float cameraSpeed = 0.05f;
-    if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS) mCamera.pos += cameraSpeed * mCamera.target;
-    if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS) mCamera.pos -= cameraSpeed * mCamera.target;
-    auto cameraRight = glm::normalize(glm::cross(mCamera.up, -mCamera.target));
+    if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS) mCamera.pos += cameraSpeed * mCamera.front;
+    if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS) mCamera.pos -= cameraSpeed * mCamera.front;
+    auto cameraRight = glm::normalize(glm::cross(mCamera.up, -mCamera.front));
     if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS) mCamera.pos += cameraSpeed * cameraRight;
     if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS) mCamera.pos -= cameraSpeed * cameraRight;
-    auto cameraUp = glm::cross(-mCamera.target, cameraRight);
+    auto cameraUp = glm::cross(-mCamera.front, cameraRight);
     if (glfwGetKey(window, GLFW_KEY_E) == GLFW_PRESS) mCamera.pos += cameraSpeed * cameraUp;
     if (glfwGetKey(window, GLFW_KEY_Q) == GLFW_PRESS) mCamera.pos -= cameraSpeed * cameraUp;
 }
@@ -301,13 +311,12 @@ void Context::processMouseScroll(double xoffset, double yoffset)
 {
     if (yoffset > 0)
     {
-        mCamera.pos += mCamera.target * (float)abs(yoffset) * 0.6f;
+        mCamera.pos += mCamera.front * (float)abs(yoffset) * 0.6f;
     }
     else if (yoffset < 0)
     {
-        mCamera.pos -= mCamera.target * (float)abs(yoffset) * 0.6f;
+        mCamera.pos -= mCamera.front * (float)abs(yoffset) * 0.6f;
     }
-
 }
 
 void Context::updateGUIwindow(int x, int y, int width, int height)
