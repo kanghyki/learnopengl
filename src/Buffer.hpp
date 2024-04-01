@@ -7,16 +7,20 @@ class Buffer
 {
     public:
         ~Buffer();
-        static std::unique_ptr<Buffer>  create(uint32_t bufferType, uint32_t usage, const void* data, size_t dataSize);
+        static std::unique_ptr<Buffer>  create(uint32_t bufferType, uint32_t usage, const void* data, size_t stride, size_t count);
         uint32_t                        get() const;
+        size_t                          getStride() const;
+        size_t                          getCount() const;
 
     private:
         Buffer();
-        void init(uint32_t bufferType, uint32_t usage, const void *data, size_t dataSize);
+        void init(uint32_t bufferType, uint32_t usage, const void *data, size_t stride, size_t count);
 
-        uint32_t mBuffer        { 0 };
-        uint32_t mBufferType    { 0 };
-        uint32_t mUsage         { 0 };
+        uint32_t    mBuffer     { 0 };
+        uint32_t    mBufferType { 0 };
+        uint32_t    mUsage      { 0 };
+        size_t      mStride     { 0 };
+        size_t      mCount      { 0 };
 };
 
 #endif

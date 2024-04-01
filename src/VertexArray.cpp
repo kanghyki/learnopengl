@@ -28,11 +28,16 @@ void VertexArray::setAttrib(uint32_t attribIndex, int count, uint32_t type, bool
 void VertexArray::init()
 {
     glGenVertexArrays(1, &mVAO);
-    glBindVertexArray(mVAO);
+    bind();
 }
 
 
 uint32_t VertexArray::get() const
 {
     return mVAO;
+}
+
+void VertexArray::bind() const
+{
+    glBindVertexArray(mVAO);
 }

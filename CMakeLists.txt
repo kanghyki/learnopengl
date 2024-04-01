@@ -21,6 +21,7 @@ src/Image.cpp       src/Image.hpp
 src/Texture.cpp     src/Texture.hpp
 src/Camera.cpp      src/Camera.hpp
 src/Light.hpp
+src/Mesh.cpp        src/Mesh.hpp
 )
 
 include(Dependency.cmake)

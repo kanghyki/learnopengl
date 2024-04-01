@@ -1,0 +1,49 @@
+#ifndef INCLUDED_MESH_HPP
+#define INCLUDED_MESH_HPP
+
+#include "common.hpp"
+#include "Buffer.hpp"
+#include "VertexArray.hpp"
+
+struct Vertex
+{
+    glm::vec3 position;
+    glm::vec3 normal;
+    glm::vec2 texCoord;
+};
+
+class Mesh
+{
+    public:
+        ~Mesh();
+        static std::unique_ptr<Mesh> create(
+            const std::vector<Vertex>& vertices,
+            const std::vector<uint32_t>& indices,
+            uint32_t primitiveType);
+        static std::unique_ptr<Mesh> createBox();
+
+        void draw() const;
+
+        const VertexArray*      getVertexLayout() const;
+        std::shared_ptr<Buffer> getVertexBuffer() const;
+        std::shared_ptr<Buffer> getIndexBuffer() const;
+
+        void setPrimitiveType(uint32_t type);
+
+    private:
+        Mesh();
+        Mesh(const Mesh& mesh);
+        Mesh& operator=(const Mesh& mesh);
+
+        void init(
+            const std::vector<Vertex>& vertices,
+            const std::vector<uint32_t>& indices,
+            uint32_t primitiveType);
+
+        uint32_t                        mPrimitiveType { GL_TRIANGLES };
+        std::unique_ptr<VertexArray>    mVertexArray;
+        std::shared_ptr<Buffer>         mVertexBuffer;
+        std::shared_ptr<Buffer>         mIndexBuffer;
+};
+
+#endif

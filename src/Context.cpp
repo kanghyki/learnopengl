@@ -74,7 +74,7 @@ void Context::render()
     mSimpleProgram->use();
     mSimpleProgram->setUniform("color", glm::vec4(mLight.ambient + mLight.diffuse, 1.0f));
     mSimpleProgram->setUniform("transform", projection * view * lightModelTransform);
-    glDrawElements(GL_TRIANGLES, 36, GL_UNSIGNED_INT, 0);
+    mMesh->draw();
 
     mProgram->use();
     mProgram->setUniform("lightType", mLightType);
@@ -82,8 +82,8 @@ void Context::render()
     mProgram->setUniform("light.position", mLight.position);
     mProgram->setUniform("light.direction", mLight.direction);
     mProgram->setUniform("light.cutoff", glm::vec2(
-      cosf(glm::radians(mLight.cutoff[0])),
-      cosf(glm::radians(mLight.cutoff[0] + mLight.cutoff[1]))));
+        cosf(glm::radians(mLight.cutoff[0])),
+        cosf(glm::radians(mLight.cutoff[0] + mLight.cutoff[1]))));
     mProgram->setUniform("light.constant", mLight.constant);
     mProgram->setUniform("light.linear", mLight.linear);
     mProgram->setUniform("light.quadratic", mLight.quadratic);
@@ -94,11 +94,10 @@ void Context::render()
     mProgram->setUniform("material.specular", 1);
     mProgram->setUniform("material.shininess", mMaterial.shininess);
 
-    glActiveTexture(GL_TEXTURE0);
-    glBindTexture(GL_TEXTURE_2D, mMaterial.diffuse->get());
-
-    glActiveTexture(GL_TEXTURE1);
-    glBindTexture(GL_TEXTURE_2D, mMaterial.specular->get());
+    mMaterial.diffuse->active(0);
+    mMaterial.diffuse->bind();
+    mMaterial.specular->active(1);
+    mMaterial.specular->bind();
 
     if (mIsAnimationActive)
     {
@@ -119,7 +118,7 @@ void Context::render()
         auto transform = projection * view * model;
         mProgram->setUniform("transform", transform);
         mProgram->setUniform("modelTransform", model);
-        glDrawElements(GL_TRIANGLES, 36, GL_UNSIGNED_INT, 0);
+        mMesh->draw();
     }
 }
 
@@ -234,85 +233,16 @@ bool Context::init()
     {
         return false;
     }
-    SPDLOG_INFO("program id: {}", mProgram->get());
 
     mSimpleProgram = Program::create("shader/simple.vs", "shader/simple.fs");
     if (!mSimpleProgram)
     {
         return false;
     }
-    SPDLOG_INFO("simple program id: {}", mSimpleProgram->get());
-
-    int nrAttributes;
-    glGetIntegerv(GL_MAX_VERTEX_ATTRIBS, &nrAttributes);
-    SPDLOG_INFO("Maximum nr of vertex attributes supported: {}", nrAttributes);
-
-    float vertices[] =
-    {
-    // pos.xyz, normal.xyz, texcoord.uv
-        -0.5f, -0.5f, -0.5f,  0.0f,  0.0f, -1.0f, 0.0f, 0.0f,
-        0.5f, -0.5f, -0.5f,  0.0f,  0.0f, -1.0f, 1.0f, 0.0f,
-        0.5f,  0.5f, -0.5f,  0.0f,  0.0f, -1.0f, 1.0f, 1.0f,
-        -0.5f,  0.5f, -0.5f,  0.0f,  0.0f, -1.0f, 0.0f, 1.0f,
-
-        -0.5f, -0.5f,  0.5f,  0.0f,  0.0f,  1.0f, 0.0f, 0.0f,
-        0.5f, -0.5f,  0.5f,  0.0f,  0.0f,  1.0f, 1.0f, 0.0f,
-        0.5f,  0.5f,  0.5f,  0.0f,  0.0f,  1.0f, 1.0f, 1.0f,
-        -0.5f,  0.5f,  0.5f,  0.0f,  0.0f,  1.0f, 0.0f, 1.0f,
-
-        -0.5f,  0.5f,  0.5f, -1.0f,  0.0f,  0.0f, 1.0f, 0.0f,
-        -0.5f,  0.5f, -0.5f, -1.0f,  0.0f,  0.0f, 1.0f, 1.0f,
-        -0.5f, -0.5f, -0.5f, -1.0f,  0.0f,  0.0f, 0.0f, 1.0f,
-        -0.5f, -0.5f,  0.5f, -1.0f,  0.0f,  0.0f, 0.0f, 0.0f,
-
-        0.5f,  0.5f,  0.5f,  1.0f,  0.0f,  0.0f, 1.0f, 0.0f,
-        0.5f,  0.5f, -0.5f,  1.0f,  0.0f,  0.0f, 1.0f, 1.0f,
-        0.5f, -0.5f, -0.5f,  1.0f,  0.0f,  0.0f, 0.0f, 1.0f,
-        0.5f, -0.5f,  0.5f,  1.0f,  0.0f,  0.0f, 0.0f, 0.0f,
-
-        -0.5f, -0.5f, -0.5f,  0.0f, -1.0f,  0.0f, 0.0f, 1.0f,
-        0.5f, -0.5f, -0.5f,  0.0f, -1.0f,  0.0f, 1.0f, 1.0f,
-        0.5f, -0.5f,  0.5f,  0.0f, -1.0f,  0.0f, 1.0f, 0.0f,
-        -0.5f, -0.5f,  0.5f,  0.0f, -1.0f,  0.0f, 0.0f, 0.0f,
-
-        -0.5f,  0.5f, -0.5f,  0.0f,  1.0f,  0.0f, 0.0f, 1.0f,
-        0.5f,  0.5f, -0.5f,  0.0f,  1.0f,  0.0f, 1.0f, 1.0f,
-        0.5f,  0.5f,  0.5f,  0.0f,  1.0f,  0.0f, 1.0f, 0.0f,
-        -0.5f,  0.5f,  0.5f,  0.0f,  1.0f,  0.0f, 0.0f, 0.0f,
-    };
-
-    uint32_t indices[] =
-    {
-        0,  2,  1,  2,  0,  3,
-        4,  5,  6,  6,  7,  4,
-        8,  9, 10, 10, 11,  8,
-        12, 14, 13, 14, 12, 15,
-        16, 17, 18, 18, 19, 16,
-        20, 22, 21, 22, 20, 23,
-    };
-
-    mVAO = VertexArray::create();
-    mVBO = Buffer::create(GL_ARRAY_BUFFER, GL_STATIC_DRAW, vertices, sizeof(vertices));
-    if (!mVBO)
-    {
-        return false;
-    }
-    SPDLOG_INFO("VBO id : {}", mVBO->get());
-    mVAO->setAttrib(0, 3, GL_FLOAT, GL_FALSE, sizeof(float) * 8, 0);
-    mVAO->setAttrib(1, 3, GL_FLOAT, GL_FALSE, sizeof(float) * 8, sizeof(float) * 3);
-    mVAO->setAttrib(2, 2, GL_FLOAT, GL_FALSE, sizeof(float) * 8, sizeof(float) * 6);
-
-    mEBO = Buffer::create(GL_ELEMENT_ARRAY_BUFFER, GL_STATIC_DRAW, indices, sizeof(indices));
-    if (!mEBO)
-    {
-        return false;
-    }
-    SPDLOG_INFO("EBO id : {}", mEBO->get());
-
+    mMesh = Mesh::createBox();
     glClearColor(mClearColor[0], mClearColor[1], mClearColor[2], mClearColor[3]);
-
-    mMaterial.diffuse = Texture::create("./image/1.png");
-    mMaterial.specular = Texture::create("./image/2.png");
+    mMaterial.diffuse = Texture::create("./image/box.png");
+    mMaterial.specular = Texture::create("./image/box_spec.png");
 
     return true;
 }

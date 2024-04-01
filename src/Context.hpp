@@ -6,9 +6,8 @@
 #include "Light.hpp"
 #include "Shader.hpp"
 #include "Program.hpp"
-#include "Buffer.hpp"
 #include "Texture.hpp"
-#include "VertexArray.hpp"
+#include "Mesh.hpp"
 
 class Context
 {
@@ -28,7 +27,6 @@ class Context
         Context();
         bool init();
 
-        // window
         int                             mWidth                  { WINDOW_WIDTH };
         int                             mHeight                 { WINDOW_HEIGHT };
         int                             mGUIx                   { 0 };
@@ -38,26 +36,20 @@ class Context
         bool                            mIsWindowUpdated        { false };
         double                          mAnimationTime          { 0.0f };
 
-        // ImGui
         bool                            mIsEnableDepthBuffer    { true };
         bool                            mIsWireframeActive      { false };
         bool                            mIsAnimationActive      { true };
         int                             mLightType              { 0 };
 
-        // render
+        struct Light                    mLight;
         std::unique_ptr<Program>        mProgram                { nullptr };
         std::unique_ptr<Program>        mSimpleProgram          { nullptr };
-        std::unique_ptr<Buffer>         mVBO, mEBO              { nullptr };
-        std::unique_ptr<VertexArray>    mVAO                    { nullptr };
+        std::unique_ptr<Mesh>           mMesh                   { nullptr };
+        struct Material                 mMaterial;
 
-        // camera
         struct Camera                   mCamera;
         glm::vec2                       mPrevMousePos           { 0.0f };
         bool                            mCameraDirectionControl { false };
-
-        // lighting
-        struct Light                    mLight;
-        struct Material                 mMaterial;
 
         glm::vec4                       mClearColor             { 0.0f, 0.0f, 0.0f, 1.0f };
 };

@@ -7,7 +7,7 @@
 struct Light
 {
     // Point & Spot
-    glm::vec3   position    { glm::vec3(2.0f, 2.0f, 2.0f) };
+    glm::vec3   position    { glm::vec3(1.0f, 1.0f, 1.0f) };
     const float constant    { 1.0f };
     const float linear      { 0.09f };
     const float quadratic   { 0.032f };
@@ -16,7 +16,7 @@ struct Light
     glm::vec3   direction   { glm::vec3(-1.0f, -1.0f, -1.0f) };
 
     // Spot
-    glm::vec2   cutoff      { glm::vec2(20.0f, 5.0f) };
+    glm::vec2   cutoff      { glm::vec2(11.0f, 5.0f) };
 
     // All
     glm::vec3   ambient     { glm::vec3(0.3f, 0.3f, 0.3f) };
