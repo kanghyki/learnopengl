@@ -21,6 +21,7 @@ class Mesh
             const std::vector<uint32_t>& indices,
             uint32_t primitiveType);
         static std::unique_ptr<Mesh> createBox();
+        static std::unique_ptr<Mesh> createSphere(size_t slice, size_t stack);
 
         void draw() const;
 

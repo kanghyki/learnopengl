@@ -36,6 +36,21 @@ void Mesh::draw() const
     glDrawElements(mPrimitiveType, mIndexBuffer->getCount(), GL_UNSIGNED_INT, 0);
 }
 
+const VertexArray* Mesh::getVertexLayout() const
+{
+    return mVertexArray.get();
+}
+
+std::shared_ptr<Buffer> Mesh::getVertexBuffer() const
+{
+    return mVertexBuffer;
+}
+
+std::shared_ptr<Buffer> Mesh::getIndexBuffer() const
+{
+    return mIndexBuffer;
+}
+
 std::unique_ptr<Mesh> Mesh::createBox()
 {
     std::vector<Vertex> vertices = {
@@ -84,17 +99,49 @@ std::unique_ptr<Mesh> Mesh::createBox()
     return create(vertices, indices, GL_TRIANGLES);
 }
 
-const VertexArray* Mesh::getVertexLayout() const
+std::unique_ptr<Mesh> Mesh::createSphere(size_t slice, size_t stack)
 {
-    return mVertexArray.get();
-}
+    std::vector<Vertex>     vertices;
+    std::vector<uint32_t>   indices;
+    const float             radius = 1.0f;
+    const float             dTheta = -(glm::pi<float>() * 2) / static_cast<float>(slice);
+    const float             dPhi = -glm::pi<float>() / static_cast<float>(stack);
 
-std::shared_ptr<Buffer> Mesh::getVertexBuffer() const
-{
-    return mVertexBuffer;
-}
+    for (size_t i = 0; i < stack + 1; ++i)
+    {
+        glm::vec3 yPoint = glm::vec4(0.0f, -radius, 0.0f, 1.0f) *
+            glm::rotate(
+                glm::mat4(1.0f),
+                (dPhi * i),
+                glm::vec3(0.0f, 0.0f, -1.0f)
+            );
+        for (size_t j = 0; j < slice + 1; ++j)
+        {
+            Vertex v;
+            v.position = glm::vec4(yPoint, 1.0f) *
+                glm::rotate(
+                    glm::mat4(1.0f),
+                    (dTheta * j),
+                    glm::vec3(0.0f, -1.0f, 0.0f));
+            v.normal = glm::normalize(v.position);
+            v.texCoord = glm::vec2(static_cast<float>(j) / slice, 1.0f - static_cast<float>(i) / stack);
+            vertices.push_back(v);
+        }
+    }
 
-std::shared_ptr<Buffer> Mesh::getIndexBuffer() const
-{
-    return mIndexBuffer;
+    for (size_t i = 0; i < stack; ++i)
+    {
+        const size_t offset = (slice + 1) * i;
+        for (size_t j = 0; j < slice; ++j)
+        {
+            indices.push_back(offset + j);
+            indices.push_back(offset + j + slice + 1);
+            indices.push_back(offset + j + 1 + slice + 1);
+            indices.push_back(offset + j);
+            indices.push_back(offset + j + 1 + slice + 1);
+            indices.push_back(offset + j + 1);
+        }
+    }
+
+    return create(vertices, indices, GL_TRIANGLES);
 }

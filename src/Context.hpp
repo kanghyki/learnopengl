@@ -92,10 +92,12 @@ class Context
         std::unique_ptr<Program>        mCoordProgram           { nullptr };
         bool                            mIsCoord                { true };
 
+
         struct Light                    mLight;
         std::unique_ptr<Program>        mProgram                { nullptr };
         std::unique_ptr<Program>        mSimpleProgram          { nullptr };
-        std::unique_ptr<Mesh>           mMesh                   { nullptr };
+        std::unique_ptr<Mesh>           mBox                   { nullptr };
+        std::unique_ptr<Mesh>           mSphere                 { nullptr };
         struct Material                 mMaterial;
         std::unique_ptr<Model>          mModel                  { nullptr };
 
@@ -103,7 +105,7 @@ class Context
         glm::vec2                       mPrevMousePos           { 0.0f };
         bool                            mCameraDirectionControl { false };
 
-        glm::vec4                       mClearColor             { 0.0f, 0.0f, 0.0f, 1.0f };
+        glm::vec4                       mClearColor             { 0.3f, 0.3f, 0.3f, 1.0f };
 };
 
 #endif

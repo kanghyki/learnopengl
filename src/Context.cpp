@@ -84,7 +84,7 @@ void Context::render()
     mSimpleProgram->use();
     mSimpleProgram->setUniform("color", glm::vec4(mLight.ambient + mLight.diffuse, 1.0f));
     mSimpleProgram->setUniform("transform", projection * view * lightModelTransform);
-    mMesh->draw();
+    mBox->draw();
 
 
     mProgram->use();
@@ -115,7 +115,7 @@ void Context::render()
     {
         mAnimationTime = glfwGetTime();
     }
-    for (size_t i = 0; i < cubePositions.size(); i++)
+    for (size_t i = 0; i < cubePositions.size() / 2; i++)
     {
         auto& pos = cubePositions[i];
         auto model = glm::translate(glm::mat4(1.0f), pos);
@@ -125,12 +125,29 @@ void Context::render()
                         glm::radians((float)mAnimationTime * 90.0f + 20.0f * (float)i),
                         glm::vec3(1.0f, 0.5f, 0.0f)
                         ),
-                    glm::vec3(0.8f, 0.8f, 0.8f)
+                    glm::vec3(0.8f)
                     );
         auto transform = projection * view * model;
         mProgram->setUniform("transform", transform);
         mProgram->setUniform("modelTransform", model);
-        mMesh->draw();
+        mBox->draw();
+    }
+    for (size_t i = cubePositions.size() / 2; i < cubePositions.size(); i++)
+    {
+        auto& pos = cubePositions[i];
+        auto model = glm::translate(glm::mat4(1.0f), pos);
+        model = glm::scale(
+                    glm::rotate(
+                        model,
+                        glm::radians((float)mAnimationTime * 90.0f + 20.0f * (float)i),
+                        glm::vec3(1.0f, 0.5f, 0.0f)
+                        ),
+                    glm::vec3(0.3f)
+                    );
+        auto transform = projection * view * model;
+        mProgram->setUniform("transform", transform);
+        mProgram->setUniform("modelTransform", model);
+        mSphere->draw();
     }
     auto model2 = 
         glm::translate(glm::mat4(1.0), glm::vec3(0.0f, 3.0f, 0.0f)) *
@@ -279,7 +296,8 @@ bool Context::init()
         return false;
     }
 
-    mMesh = Mesh::createBox();
+    mBox = Mesh::createBox();
+    mSphere = Mesh::createSphere(15, 15);
     glClearColor(mClearColor[0], mClearColor[1], mClearColor[2], mClearColor[3]);
     mMaterial.diffuse = Texture::create("./image/box.png");
     mMaterial.specular = Texture::create("./image/box_spec.png");
