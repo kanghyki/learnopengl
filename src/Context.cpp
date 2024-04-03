@@ -54,19 +54,29 @@ void Context::render()
     std::vector<glm::vec3> cubePositions =
     {
         glm::vec3( 0.0f,  0.0f,  0.0f),
-        // glm::vec3( 2.0f,  5.0f, -15.0f),
-        // glm::vec3(-1.5f, -2.2f, -2.5f),
-        // glm::vec3(-3.8f, -2.0f, -12.3f),
-        // glm::vec3( 2.4f, -0.4f, -3.5f),
-        // glm::vec3(-1.7f,  3.0f, -7.5f),
-        // glm::vec3( 1.3f, -2.0f, -2.5f),
-        // glm::vec3( 1.5f,  2.0f, -2.5f),
-        // glm::vec3( 1.5f,  0.2f, -1.5f),
-        // glm::vec3(-1.3f,  1.0f, -1.5f),
+        glm::vec3( 2.0f,  5.0f, -15.0f),
+        glm::vec3(-1.5f, -2.2f, -2.5f),
+        glm::vec3(-3.8f, -2.0f, -12.3f),
+        glm::vec3( 2.4f, -0.4f, -3.5f),
+        glm::vec3(-1.7f,  3.0f, -7.5f),
+        glm::vec3( 1.3f, -2.0f, -2.5f),
+        glm::vec3( 1.5f,  2.0f, -2.5f),
+        glm::vec3( 1.5f,  0.2f, -1.5f),
+        glm::vec3(-1.3f,  1.0f, -1.5f),
     };
+
 
     auto projection = glm::perspective(glm::radians(45.0f), (float)(mWidth - (mGUIx + mGUIwidth)) / (float)mHeight, 0.01f, 30.0f);
     auto view = mCamera.getViewMatrix();
+
+    if (mIsCoord) {
+        auto coordModelTransform = glm::scale(glm::mat4(1.0), mCamera.pos - glm::vec3(30.0f));
+        mCoordProgram->use();
+        mCoordProgram->setUniform("projection", projection);
+        mCoordProgram->setUniform("view", view);
+        mCoordProgram->setUniform("model", coordModelTransform);
+        mCoord.draw();
+    }
 
     auto lightModelTransform =
         glm::translate(glm::mat4(1.0), mLight.position) *
@@ -245,6 +255,7 @@ void Context::updateImGui()
                 glDisable(GL_DEPTH_TEST);
             }
         }
+        ImGui::Checkbox("Coord", &mIsCoord);
     }
 }
 
@@ -261,6 +272,13 @@ bool Context::init()
     {
         return false;
     }
+
+    mCoordProgram = Program::create("shader/coord.vs", "shader/coord.fs");
+    if (!mCoordProgram)
+    {
+        return false;
+    }
+
     mMesh = Mesh::createBox();
     glClearColor(mClearColor[0], mClearColor[1], mClearColor[2], mClearColor[3]);
     mMaterial.diffuse = Texture::create("./image/box.png");
