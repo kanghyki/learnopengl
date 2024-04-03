@@ -171,6 +171,7 @@ void Context::updateImGui()
         {
             mCamera.reset();
         }
+        ImGui::SameLine();
     }
     ImGui::Spacing();
     ImGui::Spacing();
@@ -183,14 +184,27 @@ void Context::updateImGui()
         ImGui::RadioButton("Spot", &mLightType, 2);
         if (mLightType == 0) {
             ImGui::DragFloat3("direction", glm::value_ptr(mLight.direction), 0.01f);
+            if (ImGui::Button("Sync the camera"))
+            {
+                mLight.direction = mCamera.front;
+            }
         }
         else if (mLightType == 1) {
             ImGui::DragFloat3("position", glm::value_ptr(mLight.position), 0.01f);
+            if (ImGui::Button("Sync the camera"))
+            {
+                mLight.position = mCamera.pos - (mCamera.front * 0.2f);
+            }
         }
         else if (mLightType == 2) {
             ImGui::DragFloat3("direction", glm::value_ptr(mLight.direction), 0.01f);
             ImGui::DragFloat3("position", glm::value_ptr(mLight.position), 0.01f);
             ImGui::DragFloat2("cutoff", glm::value_ptr(mLight.cutoff), 0.5f, 0.0f, 180.0f);
+            if (ImGui::Button("Sync the camera"))
+            {
+                mLight.position = mCamera.pos - (mCamera.front * 0.2f);
+                mLight.direction = mCamera.front;
+            }
         }
         ImGui::Text("All");
         ImGui::ColorEdit3("ambient", glm::value_ptr(mLight.ambient));
