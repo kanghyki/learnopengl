@@ -6,9 +6,9 @@
 #include "Light.hpp"
 #include "Shader.hpp"
 #include "Program.hpp"
-#include "Texture.hpp"
 #include "Mesh.hpp"
 #include "Model.hpp"
+#include "Material.hpp"
 
 class Coord
 {
@@ -94,11 +94,11 @@ class Context
 
 
         struct Light                    mLight;
-        std::unique_ptr<Program>        mProgram                { nullptr };
         std::unique_ptr<Program>        mSimpleProgram          { nullptr };
-        std::unique_ptr<Mesh>           mBox                   { nullptr };
+
+        std::unique_ptr<Program>        mProgram                { nullptr };
+        std::unique_ptr<Mesh>           mBox                    { nullptr };
         std::unique_ptr<Mesh>           mSphere                 { nullptr };
-        struct Material                 mMaterial;
         std::unique_ptr<Model>          mModel                  { nullptr };
 
         struct Camera                   mCamera;

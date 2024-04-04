@@ -23,6 +23,7 @@ src/Camera.cpp      src/Camera.hpp
 src/Light.hpp
 src/Mesh.cpp        src/Mesh.hpp
 src/Model.cpp       src/Model.hpp
+src/Material.cpp    src/Material.hpp
 )
 
 include(Dependency.cmake)

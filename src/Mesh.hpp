@@ -4,6 +4,7 @@
 #include "common.hpp"
 #include "Buffer.hpp"
 #include "VertexArray.hpp"
+#include "Material.hpp"
 
 struct Vertex
 {
@@ -23,11 +24,14 @@ class Mesh
         static std::unique_ptr<Mesh> createBox();
         static std::unique_ptr<Mesh> createSphere(size_t slice, size_t stack);
 
-        void draw() const;
+        void draw(const Program* program) const;
 
-        const VertexArray*      getVertexLayout() const;
-        std::shared_ptr<Buffer> getVertexBuffer() const;
-        std::shared_ptr<Buffer> getIndexBuffer() const;
+        const VertexArray*          getVertexLayout() const;
+        std::shared_ptr<Buffer>     getVertexBuffer() const;
+        std::shared_ptr<Buffer>     getIndexBuffer() const;
+        std::shared_ptr<Material>   getMaterial() const;
+        void                        setMaterial(std::shared_ptr<Material> material);
+
 
     private:
         Mesh();
@@ -43,6 +47,7 @@ class Mesh
         std::unique_ptr<VertexArray>    mVertexArray;
         std::shared_ptr<Buffer>         mVertexBuffer;
         std::shared_ptr<Buffer>         mIndexBuffer;
+        std::shared_ptr<Material>       mMaterial;
 };
 
 #endif

@@ -24,11 +24,4 @@ struct Light
     glm::vec3   specular    { glm::vec3(1.0f, 1.0f, 1.0f) };
 };
 
-struct Material
-{
-    std::unique_ptr<Texture>    diffuse     { nullptr };
-    std::unique_ptr<Texture>    specular    { nullptr };
-    float                       shininess   { 30.0f };
-};
-
 #endif

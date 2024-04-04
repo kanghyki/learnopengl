@@ -16,7 +16,7 @@ class Model
     public:
         ~Model();
         static std::unique_ptr<Model> load(const std::string& filename);
-        void draw() const;
+        void draw(const Program* program) const;
 
     private:
         Model();
@@ -24,8 +24,9 @@ class Model
         Model& operator=(const Model& model);
 
         bool parseObjToMesh(const std::string& data);
+        bool loadMaterial();
 
-        std::unique_ptr<Mesh> mMeshes;
+        std::unique_ptr<Mesh>       mMesh;
 };
 
 #endif

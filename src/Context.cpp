@@ -65,7 +65,6 @@ void Context::render()
         glm::vec3(-1.3f,  1.0f, -1.5f),
     };
 
-
     auto projection = glm::perspective(glm::radians(45.0f), (float)(mWidth - (mGUIx + mGUIwidth)) / (float)mHeight, 0.01f, 30.0f);
     auto view = mCamera.getViewMatrix();
 
@@ -84,7 +83,7 @@ void Context::render()
     mSimpleProgram->use();
     mSimpleProgram->setUniform("color", glm::vec4(mLight.ambient + mLight.diffuse, 1.0f));
     mSimpleProgram->setUniform("transform", projection * view * lightModelTransform);
-    mBox->draw();
+    mBox->draw(mSimpleProgram.get());
 
 
     mProgram->use();
@@ -101,15 +100,6 @@ void Context::render()
     mProgram->setUniform("light.ambient", mLight.ambient);
     mProgram->setUniform("light.diffuse", mLight.diffuse);
     mProgram->setUniform("light.specular", mLight.specular);
-    mProgram->setUniform("material.diffuse", 0);
-    mProgram->setUniform("material.specular", 1);
-    mProgram->setUniform("material.shininess", mMaterial.shininess);
-
-
-    glActiveTexture(GL_TEXTURE0);
-    mMaterial.diffuse->bind();
-    glActiveTexture(GL_TEXTURE1);
-    mMaterial.specular->bind();
 
     if (mIsAnimationActive)
     {
@@ -130,7 +120,7 @@ void Context::render()
         auto transform = projection * view * model;
         mProgram->setUniform("transform", transform);
         mProgram->setUniform("modelTransform", model);
-        mBox->draw();
+        mBox->draw(mProgram.get());
     }
     for (size_t i = cubePositions.size() / 2; i < cubePositions.size(); i++)
     {
@@ -147,14 +137,14 @@ void Context::render()
         auto transform = projection * view * model;
         mProgram->setUniform("transform", transform);
         mProgram->setUniform("modelTransform", model);
-        mSphere->draw();
+        mSphere->draw(mProgram.get());
     }
     auto model2 = 
-        glm::translate(glm::mat4(1.0), glm::vec3(0.0f, 3.0f, 0.0f)) *
+        glm::translate(glm::mat4(1.0), glm::vec3(0.0f, 2.0f, 0.0f)) *
         glm::scale(glm::mat4(1.0), glm::vec3(0.5f));
     mProgram->setUniform("transform", projection * view * model2);
     mProgram->setUniform("modelTransform", model2);
-    mModel->draw();
+    mModel->draw(mProgram.get());
 }
 
 void Context::updateImGui()
@@ -240,11 +230,6 @@ void Context::updateImGui()
     }
     ImGui::Spacing();
     ImGui::Spacing();
-    if (ImGui::CollapsingHeader("material", ImGuiTreeNodeFlags_DefaultOpen)) {
-        ImGui::DragFloat("shininess", &mMaterial.shininess, 1.0f, 1.0f, 256.0f);
-    }
-    ImGui::Spacing();
-    ImGui::Spacing();
     if (ImGui::CollapsingHeader("Extras", ImGuiTreeNodeFlags_DefaultOpen))
     {
         if (ImGui::Checkbox("WireFrame", &mIsWireframeActive))
@@ -296,11 +281,27 @@ bool Context::init()
         return false;
     }
 
-    mBox = Mesh::createBox();
-    mSphere = Mesh::createSphere(15, 15);
     glClearColor(mClearColor[0], mClearColor[1], mClearColor[2], mClearColor[3]);
-    mMaterial.diffuse = Texture::create("./image/box.png");
-    mMaterial.specular = Texture::create("./image/box_spec.png");
+
+    {
+        auto boxMaterial = Material::create();
+        boxMaterial->specular = Texture::create(
+            Image::createSingleColorImage(4, 4, glm::vec4(0.3f, 0.5f, 0.7f, 1.0f)).get());
+        boxMaterial->diffuse = Texture::create(
+            Image::createSingleColorImage(4, 4, glm::vec4(0.7f, 0.5f, 0.3f, 1.0f)).get());
+        mBox = Mesh::createBox();
+        mBox->setMaterial(boxMaterial);
+    }
+
+    {
+        auto sphereMaterial = Material::create();
+        sphereMaterial->specular = Texture::create(
+            Image::createSingleColorImage(4, 4, glm::vec4(0.7f, 0.5f, 0.3f, 1.0f)).get());
+        sphereMaterial->diffuse = Texture::create(
+            Image::createSingleColorImage(4, 4, glm::vec4(0.3f, 0.5f, 0.7f, 1.0f)).get());
+        mSphere = Mesh::createSphere(15, 15);
+        mSphere->setMaterial(sphereMaterial);
+    }
 
     mModel = Model::load("./model/resources/teapot.obj");
     if (!mModel)
@@ -363,14 +364,14 @@ void Context::processMouseButton(int button, int action, double x, double y)
 
 void Context::processMouseScroll(double xoffset, double yoffset)
 {
-    if (yoffset > 0)
-    {
-        mCamera.pos += mCamera.front * (float)abs(yoffset) * 0.6f;
-    }
-    else if (yoffset < 0)
-    {
-        mCamera.pos -= mCamera.front * (float)abs(yoffset) * 0.6f;
-    }
+    // if (yoffset > 0)
+    // {
+    //     mCamera.pos += mCamera.front * (float)abs(yoffset) * 0.6f;
+    // }
+    // else if (yoffset < 0)
+    // {
+    //     mCamera.pos -= mCamera.front * (float)abs(yoffset) * 0.6f;
+    // }
 }
 
 void Context::updateGUIwindow(int x, int y, int width, int height)

@@ -30,9 +30,13 @@ void Mesh::init(const std::vector<Vertex>& vertices, const std::vector<uint32_t>
     mVertexArray->setAttrib(2, 2, GL_FLOAT, false, sizeof(Vertex), offsetof(Vertex, texCoord));
 }
 
-void Mesh::draw() const
+void Mesh::draw(const Program* program) const
 {
     mVertexArray->bind();
+    if (mMaterial)
+    {
+        mMaterial->setToProgram(program);
+    }
     glDrawElements(mPrimitiveType, mIndexBuffer->getCount(), GL_UNSIGNED_INT, 0);
 }
 
@@ -49,6 +53,14 @@ std::shared_ptr<Buffer> Mesh::getVertexBuffer() const
 std::shared_ptr<Buffer> Mesh::getIndexBuffer() const
 {
     return mIndexBuffer;
+}
+
+std::shared_ptr<Material> Mesh::getMaterial() const {
+    return mMaterial;
+}
+
+void Mesh::setMaterial(std::shared_ptr<Material> material) {
+    mMaterial = material;
 }
 
 std::unique_ptr<Mesh> Mesh::createBox()

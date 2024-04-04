@@ -15,13 +15,17 @@ std::unique_ptr<Model> Model::load(const std::string& filename)
     {
         return nullptr;
     }
+    if (!model->parseObjToMesh(*data))
+    {
+        return nullptr;
+    }
 
     return std::move(model);
 }
 
-void Model::draw() const
+void Model::draw(const Program* program) const
 {
-    mMeshes->draw();
+    mMesh->draw(program);
 }
 
 bool Model::parseObjToMesh(const std::string& data)
@@ -114,7 +118,21 @@ bool Model::parseObjToMesh(const std::string& data)
         }
     }
 
-    mMeshes = Mesh::create(vertexes, indices, GL_TRIANGLES);
+    mMesh = Mesh::create(vertexes, indices, GL_TRIANGLES);
+    loadMaterial();
+
+    return true;
+}
+
+
+// TODO: load material
+bool Model::loadMaterial()
+{
+    auto material = Material::create();
+
+    material->specular = Texture::create(Image::createSingleColorImage(4, 4, glm::vec4(1.0f, 1.0f, 1.0f, 1.0f)).get());
+    material->diffuse = Texture::create(Image::createSingleColorImage(4, 4, glm::vec4(0.7f, 0.7f, 0.7f, 1.0f)).get());
+    mMesh->setMaterial(material);
 
     return true;
 }
