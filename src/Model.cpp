@@ -8,13 +8,13 @@ Model::~Model()
 
 std::unique_ptr<Model> Model::load(const std::string& filename)
 {
-    auto model = std::unique_ptr<Model>(new Model());
-    std::optional<std::string> data = loadTextFile(filename);
-    if (!data)
+    auto                        model = std::unique_ptr<Model>(new Model());
+    std::optional<std::string>  data = loadTextFile(filename);
+
+    if (!data || !model->parseObjToMesh(*data))
     {
         return nullptr;
     }
-    model->parseObjFormat(*data);
 
     return std::move(model);
 }
@@ -24,13 +24,14 @@ void Model::draw() const
     mMeshes->draw();
 }
 
-bool Model::parseObjFormat(const std::string& data)
+bool Model::parseObjToMesh(const std::string& data)
 {
-    std::vector<glm::vec3>   tempVertexes;
-    std::vector<glm::vec2>   tempTexCoords;
-    std::vector<glm::vec3>   tempNormals;
-
-    std::vector<std::string> lines = split(data, "\n");
+    std::vector<Vertex>         vertexes;
+    std::vector<uint32_t>       indices;
+    std::vector<glm::vec3>      tempVertexes;
+    std::vector<glm::vec2>      tempTexCoords;
+    std::vector<glm::vec3>      tempNormals;
+    std::vector<std::string>    lines = split(data, "\n");
 
     for (const auto& line : lines)
     {
@@ -44,26 +45,26 @@ bool Model::parseObjFormat(const std::string& data)
         }
         else if (prefix == "v")
         {
-            glm::vec3 tempvv;
-            tempvv.x = std::stof(word[0]);
-            tempvv.y = std::stof(word[1]);
-            tempvv.z = std::stof(word[2]);
-            tempVertexes.push_back(tempvv);
+            glm::vec3 temp;
+            temp.x = std::stof(word[0]);
+            temp.y = std::stof(word[1]);
+            temp.z = std::stof(word[2]);
+            tempVertexes.push_back(temp);
         }
         else if (prefix == "vt")
         {
-            glm::vec2 tempvv;
-            tempvv.x = std::stof(word[0]);
-            tempvv.y = std::stof(word[1]);
-            tempTexCoords.push_back(tempvv);
+            glm::vec2 temp;
+            temp.x = std::stof(word[0]);
+            temp.y = std::stof(word[1]);
+            tempTexCoords.push_back(temp);
         }
         else if (prefix == "vn")
         {
-            glm::vec3 tempvv;
-            tempvv.x = std::stof(word[0]);
-            tempvv.y = std::stof(word[1]);
-            tempvv.z = std::stof(word[2]);
-            tempNormals.push_back(tempvv);
+            glm::vec3 temp;
+            temp.x = std::stof(word[0]);
+            temp.y = std::stof(word[1]);
+            temp.z = std::stof(word[2]);
+            tempNormals.push_back(temp);
         }
         else if (prefix == "f")
         {
@@ -101,19 +102,19 @@ bool Model::parseObjFormat(const std::string& data)
                 }
             }
 
-            size_t beforeVertexSize = mVertexes.size();
+            size_t beforeVertexSize = vertexes.size();
             for (size_t i = 0; i < word.size() - 2; ++i)
             {
-                mIndices.push_back(beforeVertexSize);
-                mIndices.push_back(beforeVertexSize + i + 1);
-                mIndices.push_back(beforeVertexSize + i + 2);
+                indices.push_back(beforeVertexSize);
+                indices.push_back(beforeVertexSize + i + 1);
+                indices.push_back(beforeVertexSize + i + 2);
             }
 
-            mVertexes.insert(mVertexes.end(), tempV.begin(), tempV.end());
+            vertexes.insert(vertexes.end(), tempV.begin(), tempV.end());
         }
     }
 
-    mMeshes = Mesh::create(mVertexes, mIndices, GL_TRIANGLES);
+    mMeshes = Mesh::create(vertexes, indices, GL_TRIANGLES);
 
     return true;
 }

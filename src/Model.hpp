@@ -23,11 +23,9 @@ class Model
         Model(const Model& model);
         Model& operator=(const Model& model);
 
-        bool parseObjFormat(const std::string& data);
+        bool parseObjToMesh(const std::string& data);
 
-        std::unique_ptr<Mesh>   mMeshes;
-        std::vector<Vertex>     mVertexes;
-        std::vector<uint32_t>   mIndices;
+        std::unique_ptr<Mesh> mMeshes;
 };
 
 #endif

@@ -106,9 +106,9 @@ void Context::render()
     mProgram->setUniform("material.shininess", mMaterial.shininess);
 
 
-    mMaterial.diffuse->active(0);
+    glActiveTexture(GL_TEXTURE0);
     mMaterial.diffuse->bind();
-    mMaterial.specular->active(1);
+    glActiveTexture(GL_TEXTURE1);
     mMaterial.specular->bind();
 
     if (mIsAnimationActive)
@@ -303,6 +303,10 @@ bool Context::init()
     mMaterial.specular = Texture::create("./image/box_spec.png");
 
     mModel = Model::load("./model/resources/teapot.obj");
+    if (!mModel)
+    {
+        return false;
+    }
 
     return true;
 }
