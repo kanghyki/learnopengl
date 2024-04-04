@@ -157,3 +157,20 @@ std::unique_ptr<Mesh> Mesh::createSphere(size_t slice, size_t stack)
 
     return create(vertices, indices, GL_TRIANGLES);
 }
+
+std::unique_ptr<Mesh> Mesh::createPlane1x1()
+{
+    std::vector<Vertex> vertices = {
+        Vertex { glm::vec3(-0.5f, 0.0f, 0.5f), glm::vec3(0.0f, 1.0f, 0.0f), glm::vec2(0.0f, 0.0f) },
+        Vertex { glm::vec3( 0.5f, 0.0f, 0.5f), glm::vec3(0.0f, 1.0f, 0.0f), glm::vec2(0.0f, 1.0f) },
+        Vertex { glm::vec3( 0.5f, 0.0f, -0.5f), glm::vec3(0.0f, 1.0f, 0.0f), glm::vec2(1.0f, 1.0f) },
+        Vertex { glm::vec3(-0.5f, 0.0f, -0.5f), glm::vec3(0.0f, 1.0f, 0.0f), glm::vec2(1.0f, 0.0f) },
+    };
+
+    std::vector<uint32_t> indices = {
+        0, 1, 3,
+        1, 2, 3
+    };
+
+    return create(vertices, indices, GL_TRIANGLES);
+}

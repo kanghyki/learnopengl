@@ -28,9 +28,9 @@ void Context::render()
 
     ImVec2 pos = ImGui::GetWindowPos();
     auto size = ImGui::GetWindowSize();
-    updateGUIwindow(pos.x, pos.y, size.x, size.y);
+    updateGUIwindow((int)pos.x, (int)pos.y, (int)size.x, (int)size.y);
     ImGui::SetWindowPos(ImVec2(0.0f, 0.0f));
-    ImGui::SetWindowSize(ImVec2(mGUIwidth, mHeight));
+    ImGui::SetWindowSize(ImVec2((float)mGUIwidth, (float)mHeight));
 
     ImGui::End();
     ImGui::Render();
@@ -51,31 +51,8 @@ void Context::render()
         glClear(GL_COLOR_BUFFER_BIT);
     }
 
-    std::vector<glm::vec3> cubePositions =
-    {
-        glm::vec3( 0.0f,  0.0f,  0.0f),
-        glm::vec3( 2.0f,  5.0f, -15.0f),
-        glm::vec3(-1.5f, -2.2f, -2.5f),
-        glm::vec3(-3.8f, -2.0f, -12.3f),
-        glm::vec3( 2.4f, -0.4f, -3.5f),
-        glm::vec3(-1.7f,  3.0f, -7.5f),
-        glm::vec3( 1.3f, -2.0f, -2.5f),
-        glm::vec3( 1.5f,  2.0f, -2.5f),
-        glm::vec3( 1.5f,  0.2f, -1.5f),
-        glm::vec3(-1.3f,  1.0f, -1.5f),
-    };
-
-    auto projection = glm::perspective(glm::radians(45.0f), (float)(mWidth - (mGUIx + mGUIwidth)) / (float)mHeight, 0.01f, 30.0f);
+    auto projection = glm::perspective(glm::radians(45.0f), (float)(mWidth - (mGUIx + mGUIwidth)) / (float)mHeight, mNear, mFar);
     auto view = mCamera.getViewMatrix();
-
-    if (mIsCoord) {
-        auto coordModelTransform = glm::scale(glm::mat4(1.0), mCamera.pos - glm::vec3(30.0f));
-        mCoordProgram->use();
-        mCoordProgram->setUniform("projection", projection);
-        mCoordProgram->setUniform("view", view);
-        mCoordProgram->setUniform("model", coordModelTransform);
-        mCoord.draw();
-    }
 
     auto lightModelTransform =
         glm::translate(glm::mat4(1.0), mLight.position) *
@@ -84,7 +61,6 @@ void Context::render()
     mSimpleProgram->setUniform("color", glm::vec4(mLight.ambient + mLight.diffuse, 1.0f));
     mSimpleProgram->setUniform("transform", projection * view * lightModelTransform);
     mBox->draw(mSimpleProgram.get());
-
 
     mProgram->use();
     mProgram->setUniform("lightType", mLightType);
@@ -105,46 +81,47 @@ void Context::render()
     {
         mAnimationTime = glfwGetTime();
     }
-    for (size_t i = 0; i < cubePositions.size() / 2; i++)
+
     {
-        auto& pos = cubePositions[i];
-        auto model = glm::translate(glm::mat4(1.0f), pos);
-        model = glm::scale(
-                    glm::rotate(
-                        model,
-                        glm::radians((float)mAnimationTime * 90.0f + 20.0f * (float)i),
-                        glm::vec3(1.0f, 0.5f, 0.0f)
-                        ),
-                    glm::vec3(0.8f)
-                    );
-        auto transform = projection * view * model;
-        mProgram->setUniform("transform", transform);
-        mProgram->setUniform("modelTransform", model);
-        mBox->draw(mProgram.get());
+        auto genModel = [this](glm::mat4 mat) -> glm::mat4 {
+            return glm::scale(
+                        glm::rotate(
+                            mat,
+                            glm::radians(static_cast<float>(mAnimationTime) * 90.0f),
+                            glm::vec3(1.0f, 0.5f, 0.0f)
+                            ),
+                        glm::vec3(0.3f));
+        };
+
+        {
+            auto pos = glm::vec3(-1.7f, 3.0f, -7.5f);
+            auto model = genModel(glm::translate(glm::mat4(1.0f), pos));
+            mProgram->setUniform("transform", projection * view * model);
+            mProgram->setUniform("modelTransform", model);
+            mBox->draw(mProgram.get());
+        }
+        {
+            auto pos = glm::vec3(1.5f, 2.0f, -2.5f);
+            auto model = genModel(glm::translate(glm::mat4(1.0f), pos));
+            mProgram->setUniform("transform", projection * view * model);
+            mProgram->setUniform("modelTransform", model);
+            mSphere->draw(mProgram.get());
+        }
     }
-    for (size_t i = cubePositions.size() / 2; i < cubePositions.size(); i++)
     {
-        auto& pos = cubePositions[i];
-        auto model = glm::translate(glm::mat4(1.0f), pos);
-        model = glm::scale(
-                    glm::rotate(
-                        model,
-                        glm::radians((float)mAnimationTime * 90.0f + 20.0f * (float)i),
-                        glm::vec3(1.0f, 0.5f, 0.0f)
-                        ),
-                    glm::vec3(0.3f)
-                    );
-        auto transform = projection * view * model;
-        mProgram->setUniform("transform", transform);
-        mProgram->setUniform("modelTransform", model);
-        mSphere->draw(mProgram.get());
+        auto floorModel = glm::scale(glm::mat4(1.0), glm::vec3(mFar) - mCamera.pos);
+        mProgram->setUniform("transform", projection * view * floorModel);
+        mProgram->setUniform("modelTransform", floorModel);
+        mFloor->draw(mProgram.get());
     }
-    auto model2 = 
-        glm::translate(glm::mat4(1.0), glm::vec3(0.0f, 2.0f, 0.0f)) *
-        glm::scale(glm::mat4(1.0), glm::vec3(0.5f));
-    mProgram->setUniform("transform", projection * view * model2);
-    mProgram->setUniform("modelTransform", model2);
-    mModel->draw(mProgram.get());
+    {
+        auto model = 
+            glm::translate(glm::mat4(1.0), glm::vec3(0.0f, 0.5f, 0.0f)) *
+            glm::scale(glm::mat4(1.0), glm::vec3(0.5f));
+        mProgram->setUniform("transform", projection * view * model);
+        mProgram->setUniform("modelTransform", model);
+        mModel->draw(mProgram.get());
+    }
 }
 
 void Context::updateImGui()
@@ -155,7 +132,7 @@ void Context::updateImGui()
     static int      prevFrames = 0;
 
     frames++;
-    float currTime = glfwGetTime();
+    float currTime = (float)glfwGetTime();
     if (currTime - prevTime >= 1.0)
     {
         prevFrames = frames;
@@ -232,7 +209,7 @@ void Context::updateImGui()
     ImGui::Spacing();
     if (ImGui::CollapsingHeader("Extras", ImGuiTreeNodeFlags_DefaultOpen))
     {
-        if (ImGui::Checkbox("WireFrame", &mIsWireframeActive))
+        if (ImGui::Checkbox("Active wireFrame", &mIsWireframeActive))
         {
             if (mIsWireframeActive)
             {
@@ -243,10 +220,8 @@ void Context::updateImGui()
                 glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
             }
         }
-        ImGui::SameLine();
-        ImGui::Checkbox("Animation", &mIsAnimationActive);
-        ImGui::SameLine();
-        if (ImGui::Checkbox("DepthBuffer", &mIsEnableDepthBuffer))
+        ImGui::Checkbox("Active animation", &mIsAnimationActive);
+        if (ImGui::Checkbox("Enable depth test", &mIsEnableDepthBuffer))
         {
             if (mIsEnableDepthBuffer)
             {
@@ -257,7 +232,6 @@ void Context::updateImGui()
                 glDisable(GL_DEPTH_TEST);
             }
         }
-        ImGui::Checkbox("Coord", &mIsCoord);
     }
 }
 
@@ -275,32 +249,34 @@ bool Context::init()
         return false;
     }
 
-    mCoordProgram = Program::create("shader/coord.vs", "shader/coord.fs");
-    if (!mCoordProgram)
-    {
-        return false;
-    }
-
     glClearColor(mClearColor[0], mClearColor[1], mClearColor[2], mClearColor[3]);
 
     {
-        auto boxMaterial = Material::create();
-        boxMaterial->specular = Texture::create(
-            Image::createSingleColorImage(4, 4, glm::vec4(0.3f, 0.5f, 0.7f, 1.0f)).get());
-        boxMaterial->diffuse = Texture::create(
-            Image::createSingleColorImage(4, 4, glm::vec4(0.7f, 0.5f, 0.3f, 1.0f)).get());
+        auto mat = Material::create();
+        mat->specular = Texture::create(Image::createSingleColorImage(4, 4, glm::vec4(1.0f, 1.0f, 1.0f, 1.0f)).get());
+        mat->diffuse = Texture::create(Image::createSingleColorImage(4, 4, glm::vec4(0.7f, 0.7f, 0.7f, 1.0f)).get());
         mBox = Mesh::createBox();
-        mBox->setMaterial(boxMaterial);
+        mBox->setMaterial(std::move(mat));
     }
 
     {
-        auto sphereMaterial = Material::create();
-        sphereMaterial->specular = Texture::create(
-            Image::createSingleColorImage(4, 4, glm::vec4(0.7f, 0.5f, 0.3f, 1.0f)).get());
-        sphereMaterial->diffuse = Texture::create(
-            Image::createSingleColorImage(4, 4, glm::vec4(0.3f, 0.5f, 0.7f, 1.0f)).get());
+        auto mat = Material::create();
+        mat->specular = Texture::create(
+            Image::createSingleColorImage(4, 4, glm::vec4(1.0f, 1.0f, 1.0f, 1.0f)).get());
+        mat->diffuse = Texture::create(
+            Image::createSingleColorImage(4, 4, glm::vec4(0.7f, 0.7f, 0.7f, 1.0f)).get());
         mSphere = Mesh::createSphere(15, 15);
-        mSphere->setMaterial(sphereMaterial);
+        mSphere->setMaterial(std::move(mat));
+    }
+
+    {
+        auto mat = Material::create();
+        mat->specular = Texture::create(
+            Image::createSingleColorImage(4, 4, glm::vec4(0.2f, 0.2f, 0.2f, 1.0f)).get());
+        mat->diffuse = Texture::create(
+            Image::createSingleColorImage(4, 4, glm::vec4(0.5f, 0.5f, 0.5f, 1.0f)).get());
+        mFloor = Mesh::createPlane1x1();
+        mFloor->setMaterial(std::move(mat));
     }
 
     mModel = Model::load("./model/resources/teapot.obj");

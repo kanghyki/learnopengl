@@ -23,6 +23,7 @@ class Mesh
             uint32_t primitiveType);
         static std::unique_ptr<Mesh> createBox();
         static std::unique_ptr<Mesh> createSphere(size_t slice, size_t stack);
+        static std::unique_ptr<Mesh> createPlane1x1();
 
         void draw(const Program* program) const;
 
