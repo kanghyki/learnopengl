@@ -43,13 +43,20 @@ class Context
         int                             mLightType              { 0 };
 
         struct Light                    mLight;
-        std::unique_ptr<Program>        mSimpleProgram          { nullptr };
 
         std::unique_ptr<Program>        mProgram                { nullptr };
+        std::unique_ptr<Program>        mSimpleProgram          { nullptr };
+
         std::unique_ptr<Mesh>           mBox                    { nullptr };
         std::unique_ptr<Mesh>           mSphere                 { nullptr };
         std::unique_ptr<Mesh>           mFloor                  { nullptr };
+
+        std::unique_ptr<Mesh>           mWindow                 { nullptr };
+        std::unique_ptr<Program>        mWindowProgram          { nullptr };
+        std::unique_ptr<Texture>        mTexture                { nullptr };
+
         std::unique_ptr<Model>          mModel                  { nullptr };
+
 
         struct Camera                   mCamera;
         glm::vec2                       mPrevMousePos           { 0.0f };

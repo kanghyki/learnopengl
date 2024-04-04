@@ -44,11 +44,11 @@ class Mesh
             const std::vector<uint32_t>& indices,
             uint32_t primitiveType);
 
-        uint32_t                        mPrimitiveType { GL_TRIANGLES };
-        std::unique_ptr<VertexArray>    mVertexArray;
-        std::shared_ptr<Buffer>         mVertexBuffer;
-        std::shared_ptr<Buffer>         mIndexBuffer;
-        std::shared_ptr<Material>       mMaterial;
+        uint32_t                        mPrimitiveType  { GL_TRIANGLES };
+        std::unique_ptr<VertexArray>    mVertexArray    { nullptr };
+        std::shared_ptr<Buffer>         mVertexBuffer   { nullptr };
+        std::shared_ptr<Buffer>         mIndexBuffer    { nullptr };
+        std::shared_ptr<Material>       mMaterial       { nullptr };
 };
 
 #endif

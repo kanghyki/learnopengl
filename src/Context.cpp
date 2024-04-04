@@ -109,9 +109,9 @@ void Context::render()
         }
     }
     {
-        auto floorModel = glm::scale(glm::mat4(1.0), glm::vec3(mFar) - mCamera.pos);
-        mProgram->setUniform("transform", projection * view * floorModel);
-        mProgram->setUniform("modelTransform", floorModel);
+        auto model = glm::scale(glm::mat4(1.0), glm::vec3(mFar) - mCamera.pos);
+        mProgram->setUniform("transform", projection * view * model);
+        mProgram->setUniform("modelTransform", model);
         mFloor->draw(mProgram.get());
     }
     {
@@ -121,6 +121,42 @@ void Context::render()
         mProgram->setUniform("transform", projection * view * model);
         mProgram->setUniform("modelTransform", model);
         mModel->draw(mProgram.get());
+    }
+    {
+        glEnable(GL_BLEND);
+        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
+        mWindowProgram->use();
+        glActiveTexture(GL_TEXTURE0);
+        mTexture->bind();
+        mWindowProgram->setUniform("tex", 0);
+
+        auto model = glm::translate(glm::mat4(1.0), glm::vec3(0.0f, 1.5f, 3.0f));
+        model = glm::rotate(
+            model,
+            glm::radians(90.0f),
+            glm::vec3(1.0f, 0.0f, 0.0f)
+        );
+        mWindowProgram->setUniform("transform", projection * view * model);
+        mWindow->draw(mWindowProgram.get());
+
+        model = glm::translate(glm::mat4(1.0), glm::vec3(0.0f, 1.5f, 3.5f));
+        model = glm::rotate(
+            model,
+            glm::radians(90.0f),
+            glm::vec3(1.0f, 0.0f, 0.0f)
+        );
+        mWindowProgram->setUniform("transform", projection * view * model);
+        mWindow->draw(mWindowProgram.get());
+
+        model = glm::translate(glm::mat4(1.0), glm::vec3(0.0f, 1.5f, 4.0f));
+        model = glm::rotate(
+            model,
+            glm::radians(90.0f),
+            glm::vec3(1.0f, 0.0f, 0.0f)
+        );
+        mWindowProgram->setUniform("transform", projection * view * model);
+        mWindow->draw(mWindowProgram.get());
     }
 }
 
@@ -277,6 +313,21 @@ bool Context::init()
             Image::createSingleColorImage(4, 4, glm::vec4(0.5f, 0.5f, 0.5f, 1.0f)).get());
         mFloor = Mesh::createPlane1x1();
         mFloor->setMaterial(std::move(mat));
+    }
+
+    {
+        mWindowProgram = Program::create("shader/texture.vs", "shader/texture.fs");
+        if (!mWindowProgram)
+        {
+            return nullptr;
+        }
+        // mTexture = Texture::create(Image::createSingleColorImage(4, 4, glm::vec4(0.1f, 0.4f, 0.1f, 0.5f)).get());
+        mTexture = Texture::create("image/window.png");
+        if (!mTexture)
+        {
+            return nullptr;
+        }
+        mWindow = Mesh::createPlane1x1();
     }
 
     mModel = Model::load("./model/resources/teapot.obj");
