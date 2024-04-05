@@ -34,6 +34,8 @@ void Context::render()
     ImGui::Image((ImTextureID)mFramebuffer->getColorAttachment()->getId(),
         ImVec2(200 * ((float)mWidth / (float)mHeight), 200),
         ImVec2(0, 1), ImVec2(1, 0));
+    ImGui::DragFloat("gamma", &mGamma, 0.01f, 0.0f, 2.0f);
+
     ImGui::Spacing();
     ImGui::Spacing();
     ImGui::End();
@@ -145,16 +147,12 @@ void Context::render()
         mPlaneProgram->setUniform("transform", projection * view * model);
         mPlane->draw(mPlaneProgram.get());
 
-        model = glm::mat4(1.0);
-        model = 
-            glm::scale(
-                glm::rotate(
-                    model,
-                    glm::radians(90.0f),
-                    glm::vec3(1.0f, 0.0f, 0.0f)
-                ),
-                glm::vec3(0.0f, 1.5f, 4.0f)
-            );
+        model = glm::translate(glm::mat4(1.0), glm::vec3(0.0f, 1.5f, 4.0f));
+        model = glm::rotate(
+            model,
+            glm::radians(90.0f),
+            glm::vec3(1.0f, 0.0f, 0.0f)
+        );
         mPlaneProgram->setUniform("transform", projection * view * model);
         mPlane->draw(mPlaneProgram.get());
     }
@@ -174,6 +172,7 @@ void Context::render()
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
         mPostProgram->use();
         mPostProgram->setUniform("transform", model);
+        mPostProgram->setUniform("gamma", mGamma);
         glActiveTexture(GL_TEXTURE0);
         mFramebuffer->getColorAttachment()->bind();
         mPostProgram->setUniform("tex", 0);
@@ -312,7 +311,7 @@ bool Context::init()
         return false;
     }
 
-    mPostProgram = Program::create("shader/texture.vs", "shader/invert.fs");
+    mPostProgram = Program::create("shader/texture.vs", "shader/gamma.fs");
     if (!mPostProgram)
     {
         return false;

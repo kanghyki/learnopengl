@@ -52,7 +52,7 @@ class Context
         std::unique_ptr<Mesh>           mPlane                  { nullptr };
 
         std::unique_ptr<Model>          mModel                  { nullptr };
-
+        float                           mGamma                  { 1.0f };
 
         struct Camera                   mCamera;
         glm::vec2                       mPrevMousePos           { 0.0f };
