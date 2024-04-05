@@ -24,6 +24,7 @@ src/Light.hpp
 src/Mesh.cpp        src/Mesh.hpp
 src/Model.cpp       src/Model.hpp
 src/Material.cpp    src/Material.hpp
+src/Framebuffer.cpp src/Framebuffer.hpp
 )
 
 include(Dependency.cmake)

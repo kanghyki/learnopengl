@@ -5,9 +5,9 @@ VertexArray::VertexArray()
 
 VertexArray::~VertexArray()
 {
-    if (mVAO)
+    if (mId)
     {
-        glDeleteVertexArrays(1, &mVAO);
+        glDeleteVertexArrays(1, &mId);
     }
 }
 
@@ -27,17 +27,17 @@ void VertexArray::setAttrib(uint32_t attribIndex, int count, uint32_t type, bool
 
 void VertexArray::init()
 {
-    glGenVertexArrays(1, &mVAO);
+    glGenVertexArrays(1, &mId);
     bind();
 }
 
 
-uint32_t VertexArray::get() const
+uint32_t VertexArray::getId() const
 {
-    return mVAO;
+    return mId;
 }
 
 void VertexArray::bind() const
 {
-    glBindVertexArray(mVAO);
+    glBindVertexArray(mId);
 }

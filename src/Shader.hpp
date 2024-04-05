@@ -8,13 +8,13 @@ class Shader
     public:
         ~Shader();
         static std::shared_ptr<Shader>  createFromFile(const std::string& fileName, GLenum shaderType);
-        uint32_t                        get() const;
+        uint32_t                        getId() const;
 
       private:
         Shader();
         bool loadFile(const std::string& fileName, GLenum shaderType);
 
-        uint32_t mShader { 0 };
+        uint32_t mId { 0 };
 };
 
 #endif

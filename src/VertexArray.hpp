@@ -9,16 +9,17 @@ class VertexArray
         ~VertexArray();
         static std::unique_ptr<VertexArray> create();
 
-        uint32_t    get() const;
-        void        bind() const;
+        void bind() const;
+
+        uint32_t    getId() const;
         void        setAttrib(uint32_t attribIndex, int count, uint32_t type, bool normalized, size_t stride, uint64_t offset) const;
-        void        disableAttrib(int attribIndex) const;
 
     private:
         VertexArray();
+
         void init();
 
-        uint32_t mVAO { 0 };
+        uint32_t mId { 0 };
 };
 
 #endif

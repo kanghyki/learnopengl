@@ -5,9 +5,9 @@ Texture::Texture()
 
 Texture::~Texture()
 {
-    if (mTexture)
+    if (mId)
     {
-        glDeleteTextures(1, &mTexture);
+        glDeleteTextures(1, &mId);
     }
 }
 
@@ -35,9 +35,18 @@ std::unique_ptr<Texture> Texture::create(const std::string& filename)
     return std::move(texture);
 }
 
+std::unique_ptr<Texture> Texture::create(int width, int height, uint32_t format) {
+    auto texture = std::unique_ptr<Texture>(new Texture());
+    texture->createTexture();
+    texture->setTextureFormat(width, height, format);
+    texture->setFilter(GL_LINEAR, GL_LINEAR);
+
+    return std::move(texture);
+}
+
 void Texture::bind()
 {
-    glBindTexture(GL_TEXTURE_2D, mTexture);
+    glBindTexture(GL_TEXTURE_2D, mId);
 }
 
 void Texture::setFilter(uint32_t minFilter, uint32_t magFilter) const
@@ -52,14 +61,9 @@ void Texture::setWrap(uint32_t sWrap, uint32_t tWrap) const
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, tWrap);
 }
 
-const uint32_t Texture::get() const
-{
-    return mTexture;
-}
-
 void Texture::createTexture() {
-    glGenTextures(1, &mTexture);
-    glBindTexture(GL_TEXTURE_2D, mTexture);
+    glGenTextures(1, &mId);
+    glBindTexture(GL_TEXTURE_2D, mId);
     setFilter(GL_LINEAR_MIPMAP_LINEAR, GL_LINEAR);
     setWrap(GL_CLAMP_TO_EDGE, GL_CLAMP_TO_EDGE);
 }
@@ -81,10 +85,45 @@ void Texture::setTextureFromImage(const Image* image) {
         default:
             break;
     }
-    
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA,
-        image->getWidth(), image->getHeight(), 0,
+
+    m_width = image->getWidth();
+    m_height = image->getHeight();
+    m_format = format;
+
+    glTexImage2D(GL_TEXTURE_2D, 0, m_format,
+        m_width, m_height, 0,
         format, GL_UNSIGNED_BYTE,
         image->getData());
     glGenerateMipmap(GL_TEXTURE_2D);
+}
+
+void Texture::setTextureFormat(int width, int height, uint32_t format) {
+m_width = width;
+m_height = height;
+m_format = format;
+
+glTexImage2D(GL_TEXTURE_2D, 0, m_format,
+    m_width, m_height, 0,
+    m_format, GL_UNSIGNED_BYTE,
+    nullptr);
+}
+
+const uint32_t Texture::getId() const
+{
+    return mId;
+}
+
+int Texture::getWidth() const
+{
+    return m_width;
+}
+
+int Texture::getHeight() const
+{
+    return m_height;
+}
+
+uint32_t Texture::getFormat() const
+{
+    return m_format;
 }

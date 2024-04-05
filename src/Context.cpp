@@ -27,33 +27,27 @@ void Context::render()
 {
     ImGui::Begin("Settings");
     updateImGui();
-
     ImVec2 pos = ImGui::GetWindowPos();
     auto size = ImGui::GetWindowSize();
-    updateGUIwindow((int)pos.x, (int)pos.y, (int)size.x, (int)size.y);
-    ImGui::SetWindowPos(ImVec2(0.0f, 0.0f));
-    ImGui::SetWindowSize(ImVec2((float)mGUIwidth, (float)mHeight));
-
+    ImGui::End();
+    ImGui::Begin("Framebuffer");
+    ImGui::Image((ImTextureID)mFramebuffer->getColorAttachment()->getId(),
+        ImVec2(200 * ((float)mWidth / (float)mHeight), 200),
+        ImVec2(0, 1), ImVec2(1, 0));
+    ImGui::Spacing();
+    ImGui::Spacing();
     ImGui::End();
     ImGui::Render();
 
-    if (mIsWindowUpdated)
-    {
-        SPDLOG_INFO("changed viewport");
-        glViewport(mGUIx + mGUIwidth, 0, mWidth - (mGUIx + mGUIwidth), mHeight);
-        mIsWindowUpdated = false;
-    }
-
+    mFramebuffer->bind();
+    uint32_t bit = GL_COLOR_BUFFER_BIT | GL_STENCIL_BUFFER_BIT;
     if (mIsEnableDepthBuffer)
     {
-        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+        bit |= GL_DEPTH_BUFFER_BIT;
     }
-    else
-    {
-        glClear(GL_COLOR_BUFFER_BIT);
-    }
+    glClear(bit);
 
-    auto projection = glm::perspective(glm::radians(45.0f), (float)(mWidth - (mGUIx + mGUIwidth)) / (float)mHeight, mNear, mFar);
+    auto projection = glm::perspective(glm::radians(45.0f), (float)(mWidth) / (float)mHeight, mNear, mFar);
     auto view = mCamera.getViewMatrix();
 
     auto lightModelTransform =
@@ -128,10 +122,10 @@ void Context::render()
         glEnable(GL_BLEND);
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
-        mWindowProgram->use();
+        mPlaneProgram->use();
         glActiveTexture(GL_TEXTURE0);
         mTexture->bind();
-        mWindowProgram->setUniform("tex", 0);
+        mPlaneProgram->setUniform("tex", 0);
 
         auto model = glm::translate(glm::mat4(1.0), glm::vec3(0.0f, 1.5f, 3.0f));
         model = glm::rotate(
@@ -139,8 +133,8 @@ void Context::render()
             glm::radians(90.0f),
             glm::vec3(1.0f, 0.0f, 0.0f)
         );
-        mWindowProgram->setUniform("transform", projection * view * model);
-        mWindow->draw(mWindowProgram.get());
+        mPlaneProgram->setUniform("transform", projection * view * model);
+        mPlane->draw(mPlaneProgram.get());
 
         model = glm::translate(glm::mat4(1.0), glm::vec3(0.0f, 1.5f, 3.5f));
         model = glm::rotate(
@@ -148,17 +142,42 @@ void Context::render()
             glm::radians(90.0f),
             glm::vec3(1.0f, 0.0f, 0.0f)
         );
-        mWindowProgram->setUniform("transform", projection * view * model);
-        mWindow->draw(mWindowProgram.get());
+        mPlaneProgram->setUniform("transform", projection * view * model);
+        mPlane->draw(mPlaneProgram.get());
 
-        model = glm::translate(glm::mat4(1.0), glm::vec3(0.0f, 1.5f, 4.0f));
-        model = glm::rotate(
-            model,
-            glm::radians(90.0f),
-            glm::vec3(1.0f, 0.0f, 0.0f)
+        model = glm::mat4(1.0);
+        model = 
+            glm::scale(
+                glm::rotate(
+                    model,
+                    glm::radians(90.0f),
+                    glm::vec3(1.0f, 0.0f, 0.0f)
+                ),
+                glm::vec3(0.0f, 1.5f, 4.0f)
+            );
+        mPlaneProgram->setUniform("transform", projection * view * model);
+        mPlane->draw(mPlaneProgram.get());
+    }
+
+    {
+        auto model = glm::mat4(1.0f);
+        model = 
+        glm::scale(
+            glm::rotate(
+                model,
+                glm::radians(90.0f),
+                glm::vec3(-1.0f, 0.0f, 0.0f)
+            ),
+            glm::vec3(2.0f, 2.0f, 2.0f)
         );
-        mWindowProgram->setUniform("transform", projection * view * model);
-        mWindow->draw(mWindowProgram.get());
+        Framebuffer::bindToDefault();
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
+        mPostProgram->use();
+        mPostProgram->setUniform("transform", model);
+        glActiveTexture(GL_TEXTURE0);
+        mFramebuffer->getColorAttachment()->bind();
+        mPostProgram->setUniform("tex", 0);
+        mPlane->draw(mPostProgram.get()); 
     }
 }
 
@@ -275,6 +294,12 @@ void Context::updateImGui()
 
 bool Context::init()
 {
+    mFramebuffer = Framebuffer::create(Texture::create(mWidth, mHeight, GL_RGBA));
+    if (!mFramebuffer)
+    {
+        return false;
+    }
+
     mProgram = Program::create("shader/lighting.vs", "shader/lighting.fs");
     if (!mProgram)
     {
@@ -283,6 +308,12 @@ bool Context::init()
 
     mSimpleProgram = Program::create("shader/simple.vs", "shader/simple.fs");
     if (!mSimpleProgram)
+    {
+        return false;
+    }
+
+    mPostProgram = Program::create("shader/texture.vs", "shader/invert.fs");
+    if (!mPostProgram)
     {
         return false;
     }
@@ -313,13 +344,13 @@ bool Context::init()
             Image::createSingleColorImage(4, 4, glm::vec4(0.2f, 0.2f, 0.2f, 1.0f)).get());
         mat->diffuse = Texture::create(
             Image::createSingleColorImage(4, 4, glm::vec4(0.5f, 0.5f, 0.5f, 1.0f)).get());
-        mFloor = Mesh::createPlane1x1();
+        mFloor = Mesh::createPlane();
         mFloor->setMaterial(std::move(mat));
     }
 
     {
-        mWindowProgram = Program::create("shader/texture.vs", "shader/texture.fs");
-        if (!mWindowProgram)
+        mPlaneProgram = Program::create("shader/texture.vs", "shader/texture.fs");
+        if (!mPlaneProgram)
         {
             return nullptr;
         }
@@ -329,10 +360,10 @@ bool Context::init()
         {
             return nullptr;
         }
-        mWindow = Mesh::createPlane1x1();
+        mPlane = Mesh::createPlane();
     }
 
-    mModel = Model::load("./model/resources/teapot.obj");
+    mModel = Model::load("model/resources/teapot.obj");
     if (!mModel)
     {
         return false;
@@ -403,24 +434,11 @@ void Context::processMouseScroll(double xoffset, double yoffset)
     // }
 }
 
-void Context::updateGUIwindow(int x, int y, int width, int height)
+void Context::reshapeViewport(int width, int height)
 {
-    if (mGUIx != x || mGUIy != y || mGUIwidth != width || mGUIheight != height)
-    {
-        mIsWindowUpdated = true;
-    }
-    mGUIx = x;
-    mGUIy = y;
-    mGUIwidth = width;
-    mGUIheight = height;
-}
-
-void Context::updateWindowSize(int width, int height)
-{
-    if (mWidth != width || mHeight != height)
-    {
-        mIsWindowUpdated = true;
-    }
     mWidth = width;
     mHeight = height;
+    glViewport(0, 0, mWidth, mHeight);
+    mFramebuffer = Framebuffer::create(
+        Texture::create(mWidth, mHeight, GL_RGBA));
 }

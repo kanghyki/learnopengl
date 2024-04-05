@@ -12,7 +12,7 @@ class Program
             const std::vector<std::shared_ptr<Shader>>& shaders);
         static std::unique_ptr<Program> create(
             const std::string& vsFilename, const std::string& fsFilename);
-        uint32_t                        get() const;
+        uint32_t                        getId() const;
         void                            use() const;
 
         void        setUniform(const std::string& name, int value) const;
@@ -27,7 +27,7 @@ class Program
         Program();
         bool link(const std::vector<std::shared_ptr<Shader>>& shaders);
 
-        uint32_t mProgram { 0 };
+        uint32_t mId { 0 };
 };
 
 #endif

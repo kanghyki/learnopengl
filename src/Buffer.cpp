@@ -5,9 +5,9 @@ Buffer::Buffer()
 
 Buffer::~Buffer()
 {
-    if (mBuffer)
+    if (mId)
     {
-        glDeleteBuffers(1, &mBuffer);
+        glDeleteBuffers(1, &mId);
     }
 }
 
@@ -25,14 +25,14 @@ void Buffer::init(uint32_t bufferType, uint32_t usage, const void *data, size_t 
     mUsage = usage;
     mStride = stride;
     mCount = count;
-    glGenBuffers(1, &mBuffer);
-    glBindBuffer(mBufferType, mBuffer);
+    glGenBuffers(1, &mId);
+    glBindBuffer(mBufferType, mId);
     glBufferData(mBufferType, mStride * mCount, data, usage);
 }
 
-uint32_t Buffer::get() const
+uint32_t Buffer::getId() const
 {
-    return mBuffer;
+    return mId;
 }
 
 size_t Buffer::getStride() const

@@ -6,7 +6,7 @@ void framebufferSizeCallbackFunc(GLFWwindow* window, int width, int height)
 {
     SPDLOG_INFO("frame buffer size w:{}, h:{}", width, height);
     auto ptr = reinterpret_cast<Context*>(glfwGetWindowUserPointer(window));
-    ptr->updateWindowSize(width, height);
+    ptr->reshapeViewport(width, height);
 }
 
 void onKeyEvent(GLFWwindow* window, int key, int scancode, int action, int mods)

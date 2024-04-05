@@ -4,8 +4,8 @@ Program::Program()
 {}
 
 Program::~Program() {
-    if (mProgram) {
-        glDeleteProgram(mProgram);
+    if (mId) {
+        glDeleteProgram(mId);
     }
 }
 
@@ -30,27 +30,27 @@ std::unique_ptr<Program> Program::create(
     {
         return nullptr;
     }
-    SPDLOG_INFO("vertex shader id : {}", vs->get());
-    SPDLOG_INFO("fragment shader id : {}", vs->get());
+    SPDLOG_INFO("vertex shader id : {}", vs->getId());
+    SPDLOG_INFO("fragment shader id : {}", vs->getId());
 
     return std::move(create({vs, fs}));
 }
 
 bool Program::link(const std::vector<std::shared_ptr<Shader>>& shaders)
 {
-    mProgram = glCreateProgram();
+    mId = glCreateProgram();
     for (auto& shader: shaders)
     {
-        glAttachShader(mProgram, shader->get());
+        glAttachShader(mId, shader->getId());
     }
-    glLinkProgram(mProgram);
+    glLinkProgram(mId);
 
     int success = 0;
-    glGetProgramiv(mProgram, GL_LINK_STATUS, &success);
+    glGetProgramiv(mId, GL_LINK_STATUS, &success);
     if (!success)
     {
         char infoLog[512];
-        glGetProgramInfoLog(mProgram, 512, nullptr, infoLog);
+        glGetProgramInfoLog(mId, 512, nullptr, infoLog);
         SPDLOG_ERROR("ERROR::PROGRAM::LINKING_FAILED");
         SPDLOG_ERROR("{}", infoLog);
     }
@@ -60,17 +60,17 @@ bool Program::link(const std::vector<std::shared_ptr<Shader>>& shaders)
 
 void Program::use() const
 {
-    glUseProgram(mProgram);
+    glUseProgram(mId);
 }
 
-uint32_t Program::get() const
+uint32_t Program::getId() const
 {
-    return mProgram;
+    return mId;
 }
 
 uint32_t Program::getUniformLocation(const std::string& name) const
 {
-    return glGetUniformLocation(mProgram, name.c_str());
+    return glGetUniformLocation(mId, name.c_str());
 }
 
 void Program::setUniform(const std::string& name, int value) const
