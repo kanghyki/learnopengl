@@ -33,7 +33,7 @@ std::unique_ptr<Program> Program::create(
     SPDLOG_INFO("vertex shader id : {}", vs->getId());
     SPDLOG_INFO("fragment shader id : {}", vs->getId());
 
-    return std::move(create({vs, fs}));
+    return create({vs, fs});
 }
 
 bool Program::link(const std::vector<std::shared_ptr<Shader>>& shaders)
