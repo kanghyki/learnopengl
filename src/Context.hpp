@@ -36,6 +36,7 @@ class Context
         bool                            mIsAnimationActive      { true };
         int                             mLightType              { 0 };
         double                          mAnimationTime          { 0.0f };
+        int                             mImGuiImageSize         { 300 };
 
         struct Light                    mLight;
         std::unique_ptr<Program>        mSimpleProgram          { nullptr };
@@ -44,6 +45,8 @@ class Context
 
         std::unique_ptr<Program>        mPlaneProgram           { nullptr };
         std::unique_ptr<Texture>        mPlaneTexture           { nullptr };
+
+        std::unique_ptr<Program>        mEnvMapProgram          { nullptr };
 
         std::unique_ptr<Mesh>           mBox                    { nullptr };
         std::unique_ptr<Mesh>           mSphere                 { nullptr };

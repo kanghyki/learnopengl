@@ -4,6 +4,7 @@
 
 Context::Context()
 {
+    glClearColor(mClearColor[0], mClearColor[1], mClearColor[2], mClearColor[3]);
     glEnable(GL_DEPTH_TEST);
     // glEnable(GL_CULL_FACE);
     // glCullFace(GL_BACK);
@@ -25,34 +26,37 @@ std::unique_ptr<Context> Context::create()
 
 void Context::render()
 {
-    ImGui::Begin("Settings");
-    updateImGui();
-    ImVec2 pos = ImGui::GetWindowPos();
-    auto size = ImGui::GetWindowSize();
-    ImGui::End();
-    ImGui::Begin("Framebuffer");
-    ImGui::Image((ImTextureID)mFramebuffer->getColorAttachment()->getId(),
-        ImVec2(200 * ((float)mWidth / (float)mHeight), 200),
-        ImVec2(0, 1), ImVec2(1, 0));
-    ImGui::DragFloat("gamma", &mGamma, 0.01f, 0.0f, 2.0f);
-
-    ImGui::Spacing();
-    ImGui::Spacing();
-    ImGui::End();
-    ImGui::Render();
-
-    mFramebuffer->bind();
-    uint32_t bit = GL_COLOR_BUFFER_BIT | GL_STENCIL_BUFFER_BIT;
-    if (mIsEnableDepthBuffer)
-    {
-        bit |= GL_DEPTH_BUFFER_BIT;
+    { // ImGui
+        ImGui::Begin("Settings");
+        updateImGui();
+        ImGui::End();
+        ImGui::Begin("Framebuffer");
+        ImGui::Image((ImTextureID)mFramebuffer->getColorAttachment()->getId(),
+            ImVec2(mImGuiImageSize * ((float)mWidth / (float)mHeight), mImGuiImageSize),
+            ImVec2(0, 1), ImVec2(1, 0));
+        ImGui::DragFloat("Gamma", &mGamma, 0.01f, 0.0f, 2.0f);
+        ImGui::InputInt("Size", &mImGuiImageSize);
+        ImGui::Spacing();
+        ImGui::Spacing();
+        ImGui::End();
+        ImGui::Render();
     }
-    glClear(bit);
-
+    if (mIsAnimationActive)
+    {
+        mAnimationTime = glfwGetTime();
+    }
+    { // clear
+        mFramebuffer->bind();
+        uint32_t bit = GL_COLOR_BUFFER_BIT | GL_STENCIL_BUFFER_BIT;
+        if (mIsEnableDepthBuffer)
+        {
+            bit |= GL_DEPTH_BUFFER_BIT;
+        }
+        glClear(bit);
+    }
     auto projection = glm::perspective(glm::radians(45.0f), (float)(mWidth) / (float)mHeight, mNear, mFar);
     auto view = mCamera.getViewMatrix();
-
-    {
+    { // cube map
         auto model =
             glm::translate(glm::mat4(1.0), mCamera.pos) *
             glm::scale(glm::mat4(1.0), glm::vec3(mFar / 2));
@@ -61,37 +65,33 @@ void Context::render()
         mCubeTexture->bind();
         mCubeProgram->setUniform("cube", 0);
         mCubeProgram->setUniform("transform", projection * view * model);
-        mBox->draw(mCubeProgram.get());
+        mSphere->draw(mCubeProgram.get());
     }
-
-    auto lightModelTransform =
-        glm::translate(glm::mat4(1.0), mLight.position) *
-        glm::scale(glm::mat4(1.0), glm::vec3(0.1f));
-    mSimpleProgram->use();
-    mSimpleProgram->setUniform("color", glm::vec4(mLight.ambient + mLight.diffuse, 1.0f));
-    mSimpleProgram->setUniform("transform", projection * view * lightModelTransform);
-    mBox->draw(mSimpleProgram.get());
-
-    mLightingProgram->use();
-    mLightingProgram->setUniform("lightType", mLightType);
-    mLightingProgram->setUniform("viewPos", mCamera.pos);
-    mLightingProgram->setUniform("light.position", mLight.position);
-    mLightingProgram->setUniform("light.direction", mLight.direction);
-    mLightingProgram->setUniform("light.cutoff", glm::vec2(
-        cosf(glm::radians(mLight.cutoff[0])),
-        cosf(glm::radians(mLight.cutoff[0] + mLight.cutoff[1]))));
-    mLightingProgram->setUniform("light.constant", mLight.constant);
-    mLightingProgram->setUniform("light.linear", mLight.linear);
-    mLightingProgram->setUniform("light.quadratic", mLight.quadratic);
-    mLightingProgram->setUniform("light.ambient", mLight.ambient);
-    mLightingProgram->setUniform("light.diffuse", mLight.diffuse);
-    mLightingProgram->setUniform("light.specular", mLight.specular);
-
-    if (mIsAnimationActive)
-    {
-        mAnimationTime = glfwGetTime();
+    { // light
+        auto lightModelTransform =
+            glm::translate(glm::mat4(1.0), mLight.position) *
+            glm::scale(glm::mat4(1.0), glm::vec3(0.1f));
+        mSimpleProgram->use();
+        mSimpleProgram->setUniform("color", glm::vec4(mLight.ambient + mLight.diffuse, 1.0f));
+        mSimpleProgram->setUniform("transform", projection * view * lightModelTransform);
+        mBox->draw(mSimpleProgram.get());
     }
-
+    { // lightingProgram
+        mLightingProgram->use();
+        mLightingProgram->setUniform("lightType", mLightType);
+        mLightingProgram->setUniform("viewPos", mCamera.pos);
+        mLightingProgram->setUniform("light.position", mLight.position);
+        mLightingProgram->setUniform("light.direction", mLight.direction);
+        mLightingProgram->setUniform("light.cutoff", glm::vec2(
+            cosf(glm::radians(mLight.cutoff[0])),
+            cosf(glm::radians(mLight.cutoff[0] + mLight.cutoff[1]))));
+        mLightingProgram->setUniform("light.constant", mLight.constant);
+        mLightingProgram->setUniform("light.linear", mLight.linear);
+        mLightingProgram->setUniform("light.quadratic", mLight.quadratic);
+        mLightingProgram->setUniform("light.ambient", mLight.ambient);
+        mLightingProgram->setUniform("light.diffuse", mLight.diffuse);
+        mLightingProgram->setUniform("light.specular", mLight.specular);
+    }
     { // box / sphere
         auto genModel = [this](glm::mat4 mat) -> glm::mat4 {
             return glm::scale(
@@ -117,6 +117,19 @@ void Context::render()
             mLightingProgram->setUniform("modelTransform", model);
             mSphere->draw(mLightingProgram.get());
         }
+    }
+    { // env map
+        auto transform =
+            glm::translate(glm::mat4(1.0f), glm::vec3(-3.5f, 1.5f, -1.0f)) *
+            glm::scale(glm::mat4(1.0f), glm::vec3(1.0f, 1.0f, 1.0f));
+        mEnvMapProgram->use();
+        mEnvMapProgram->setUniform("model", transform);
+        mEnvMapProgram->setUniform("view", view);
+        mEnvMapProgram->setUniform("projection", projection);
+        mEnvMapProgram->setUniform("cameraPos", mCamera.pos);
+        mCubeTexture->bind();
+        mEnvMapProgram->setUniform("cube", 0);
+        mSphere->draw(mEnvMapProgram.get());
     }
     { // floor
         glEnable(GL_BLEND);
@@ -320,8 +333,13 @@ bool Context::init()
         {
             return nullptr;
         }
-    }
 
+        mEnvMapProgram = Program::create("shader/env_map.vs", "shader/env_map.fs");
+        if (!mEnvMapProgram)
+        {
+            return nullptr;
+        }
+    }
     { // box mesh
         auto mat = Material::create();
         mat->specular = Texture::create(Image::createSingleColorImage(4, 4, glm::vec4(1.0f, 1.0f, 1.0f, 1.0f)).get());
@@ -329,29 +347,26 @@ bool Context::init()
         mBox = Mesh::createBox();
         mBox->setMaterial(std::move(mat));
     }
-
     { // sphere mesh
         auto mat = Material::create();
         mat->specular = Texture::create(
             Image::createSingleColorImage(4, 4, glm::vec4(1.0f, 1.0f, 1.0f, 1.0f)).get());
         mat->diffuse = Texture::create(
             Image::createSingleColorImage(4, 4, glm::vec4(0.7f, 0.7f, 0.7f, 1.0f)).get());
-        mSphere = Mesh::createSphere(15, 15);
+        mSphere = Mesh::createSphere(35, 35);
         mSphere->setMaterial(std::move(mat));
     }
-
     { // plane mesh
         mPlaneTexture = Texture::create(Image::createSingleColorImage(4, 4, glm::vec4(0.4f, 0.4f, 0.4f, 0.5f)).get());
         mPlane = Mesh::createPlane();
     }
-
     { // cube texture
-        auto cubeRight = Image::load("./image/cube_texture/right.jpg", false);
-        auto cubeLeft = Image::load("./image/cube_texture/left.jpg", false);
-        auto cubeTop = Image::load("./image/cube_texture/top.jpg", false);
+        auto cubeRight  = Image::load("./image/cube_texture/right.jpg", false);
+        auto cubeLeft   = Image::load("./image/cube_texture/left.jpg", false);
+        auto cubeTop    = Image::load("./image/cube_texture/top.jpg", false);
         auto cubeBottom = Image::load("./image/cube_texture/bottom.jpg", false);
-        auto cubeFront = Image::load("./image/cube_texture/front.jpg", false);
-        auto cubeBack = Image::load("./image/cube_texture/back.jpg", false);
+        auto cubeFront  = Image::load("./image/cube_texture/front.jpg", false);
+        auto cubeBack   = Image::load("./image/cube_texture/back.jpg", false);
         mCubeTexture = CubeTexture::create({
             cubeRight.get(),
             cubeLeft.get(),
@@ -361,7 +376,6 @@ bool Context::init()
             cubeBack.get(),
         });
     }
-    
     { // model
         mModel = Model::load("model/resources/teapot.obj");
         if (!mModel)
@@ -369,8 +383,6 @@ bool Context::init()
             return false;
         }
     }
-
-    glClearColor(mClearColor[0], mClearColor[1], mClearColor[2], mClearColor[3]);
 
     return true;
 }
