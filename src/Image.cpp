@@ -13,10 +13,10 @@ Image::~Image()
     }
 }
 
-std::unique_ptr<Image> Image::load(const std::string& filepath)
+std::unique_ptr<Image> Image::load(const std::string& filepath, bool flipVertical)
 {
     auto image = std::unique_ptr<Image>(new Image());
-    if (!image->loadFile(filepath))
+    if (!image->loadFile(filepath, flipVertical))
     {
         return nullptr;
     }
@@ -66,9 +66,9 @@ std::unique_ptr<Image> Image::createSingleColorImage(int width, int height, cons
     return std::move(image);
 }
 
-bool Image::loadFile(const std::string& filepath)
+bool Image::loadFile(const std::string& filepath, bool flipVertical)
 {
-    stbi_set_flip_vertically_on_load(true);
+    stbi_set_flip_vertically_on_load(flipVertical);
     mData = stbi_load(filepath.c_str(), &mWidth, &mHeight, &mChannelCount, 0);
     if (!mData)
     {

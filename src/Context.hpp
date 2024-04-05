@@ -38,28 +38,30 @@ class Context
         double                          mAnimationTime          { 0.0f };
 
         struct Light                    mLight;
-
-        std::unique_ptr<Texture>        mTexture                { nullptr };
-
-        std::unique_ptr<Program>        mProgram                { nullptr };
         std::unique_ptr<Program>        mSimpleProgram          { nullptr };
+
+        std::unique_ptr<Program>        mLightingProgram        { nullptr };
+
         std::unique_ptr<Program>        mPlaneProgram           { nullptr };
-        std::unique_ptr<Program>        mPostProgram            { nullptr };
+        std::unique_ptr<Texture>        mPlaneTexture           { nullptr };
 
         std::unique_ptr<Mesh>           mBox                    { nullptr };
         std::unique_ptr<Mesh>           mSphere                 { nullptr };
-        std::unique_ptr<Mesh>           mFloor                  { nullptr };
         std::unique_ptr<Mesh>           mPlane                  { nullptr };
-
         std::unique_ptr<Model>          mModel                  { nullptr };
-        float                           mGamma                  { 1.0f };
+
+        std::unique_ptr<CubeTexture>    mCubeTexture            { nullptr };
+        std::unique_ptr<Program>        mCubeProgram            { nullptr };
 
         struct Camera                   mCamera;
         glm::vec2                       mPrevMousePos           { 0.0f };
         bool                            mCameraDirectionControl { false };
         float                           mNear                   { 0.1f };
-        float                           mFar                    { 30.0f };
+        float                           mFar                    { 100.0f };
+
         std::unique_ptr<Framebuffer>    mFramebuffer            { nullptr };
+        std::unique_ptr<Program>        mPostProgram            { nullptr };
+        float                           mGamma                  { 1.0f };
 
         glm::vec4                       mClearColor             { 0.3f, 0.3f, 0.3f, 1.0f };
 };

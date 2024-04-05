@@ -34,4 +34,21 @@ class Texture
         uint32_t    m_format    { GL_RGBA };
 };
 
+class CubeTexture
+{
+    public:
+        ~CubeTexture();
+
+        static std::unique_ptr<CubeTexture> create(const std::vector<Image*>& images);
+
+        const uint32_t  getId() const;
+        void            bind() const;
+    private:
+        CubeTexture();
+
+        bool initFromImages(const std::vector<Image*>& images);
+
+        uint32_t mId { 0 };
+};
+
 #endif

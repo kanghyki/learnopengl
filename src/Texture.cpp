@@ -127,3 +127,78 @@ uint32_t Texture::getFormat() const
 {
     return m_format;
 }
+
+/*
+ * CubeTexture
+ */
+
+CubeTexture::CubeTexture()
+{}
+
+CubeTexture::~CubeTexture()
+{
+    if (mId)
+    {
+        glDeleteTextures(1, &mId);
+    }
+}
+
+std::unique_ptr<CubeTexture> CubeTexture::create(const std::vector<Image*>& images)
+{
+    auto texture = std::unique_ptr<CubeTexture>(new CubeTexture());
+    if (!texture->initFromImages(images))
+    {
+        return nullptr;
+    }
+
+    return std::move(texture);
+}
+
+void CubeTexture::bind() const
+{
+    glBindTexture(GL_TEXTURE_CUBE_MAP, mId);    
+}
+
+bool CubeTexture::initFromImages(const std::vector<Image*>& images)
+{
+    glGenTextures(1, &mId);
+    bind();
+
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
+
+    for (uint32_t i = 0; i < (uint32_t)images.size(); i++)
+    {
+        auto image = images[i];
+        GLenum format = GL_RGBA;
+        switch (image->getChannelCount())
+        {
+            case 1:
+                format = GL_RED;
+                break;
+            case 2:
+                format = GL_RG;
+                break;
+            case 3:
+                format = GL_RGB;
+                break;
+            default:
+                break;
+        }
+
+        glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, 0, GL_RGB,
+        image->getWidth(), image->getHeight(), 0,
+        format, GL_UNSIGNED_BYTE,
+        image->getData());
+    }
+
+    return true;
+}
+
+const uint32_t CubeTexture::getId() const
+{
+    return mId;
+}
