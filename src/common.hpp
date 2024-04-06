@@ -1,22 +1,24 @@
 #ifndef INCLUDED_COMMON_HPP
 #define INCLUDED_COMMON_HPP
 
-#include <spdlog/spdlog.h>
+// clang-format off
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
+#include <spdlog/spdlog.h>
+// clang-format on
 
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
 
-#include <stdint.h>
-#include <string>
+#include <fstream>
 #include <memory>
 #include <optional>
-#include <fstream>
 #include <sstream>
+#include <stdint.h>
+#include <string>
 
-std::optional<std::string>  loadTextFile(const std::string& filename);
-std::vector<std::string>    split(const std::string& s, const std::string& sep);
+std::optional<std::string> loadTextFile(const std::string &filename);
+std::vector<std::string> split(const std::string &s, const std::string &sep);
 
 #endif

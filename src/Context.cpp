@@ -2,454 +2,404 @@
 #include "Image.hpp"
 #include <imgui.h>
 
-Context::Context()
-{
-    mClearBit = GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT;
-    glClearColor(mClearColor[0], mClearColor[1], mClearColor[2], mClearColor[3]);
+Context::Context() {
+  mClearBit = GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT;
+  glClearColor(mClearColor[0], mClearColor[1], mClearColor[2], mClearColor[3]);
 }
 
-Context::~Context()
-{}
+Context::~Context() {}
 
-std::unique_ptr<Context> Context::create()
-{
-    auto context = std::unique_ptr<Context>(new Context());
-    if (!context->init())
+std::unique_ptr<Context> Context::create() {
+  auto context = std::unique_ptr<Context>(new Context());
+  if (!context->init()) {
+    return nullptr;
+  }
+
+  return std::move(context);
+}
+
+bool Context::init() {
+  mFramebuffer = Framebuffer::create(Texture::create(mWidth, mHeight, GL_RGBA));
+  if (!mFramebuffer) {
+    return false;
+  }
+
+  mLightingProgram =
+      Program::create("shader/lighting.vs", "shader/lighting.fs");
+  if (!mLightingProgram) {
+    return false;
+  }
+
+  mSimpleProgram = Program::create("shader/simple.vs", "shader/simple.fs");
+  if (!mSimpleProgram) {
+    return false;
+  }
+
+  mPostProgram = Program::create("shader/texture.vs", "shader/gamma.fs");
+  if (!mPostProgram) {
+    return false;
+  }
+
+  mCubeProgram =
+      Program::create("shader/cube_texture.vs", "shader/cube_texture.fs");
+  if (!mCubeProgram) {
+    return false;
+  }
+
+  mPlaneProgram = Program::create("shader/texture.vs", "shader/texture.fs");
+  if (!mPlaneProgram) {
+    return nullptr;
+  }
+
+  mEnvMapProgram = Program::create("shader/env_map.vs", "shader/env_map.fs");
+  if (!mEnvMapProgram) {
+    return nullptr;
+  }
+  { // box mesh
+    auto mat = Material::create();
+    mat->specular = Texture::create(
+        Image::createSingleColorImage(4, 4, glm::vec4(1.0f, 1.0f, 1.0f, 1.0f))
+            .get());
+    mat->diffuse = Texture::create(
+        Image::createSingleColorImage(4, 4, glm::vec4(0.7f, 0.7f, 0.7f, 1.0f))
+            .get());
+    mBox = Mesh::createBox();
+    mBox->setMaterial(std::move(mat));
+  }
+  { // sphere mesh
+    auto mat = Material::create();
+    mat->specular = Texture::create(
+        Image::createSingleColorImage(4, 4, glm::vec4(1.0f, 1.0f, 1.0f, 1.0f))
+            .get());
+    mat->diffuse = Texture::create(
+        Image::createSingleColorImage(4, 4, glm::vec4(0.7f, 0.7f, 0.7f, 1.0f))
+            .get());
+    mSphere = Mesh::createSphere(35, 35);
+    mSphere->setMaterial(std::move(mat));
+  }
+  { // plane mesh
+    mPlaneTexture = Texture::create(
+        Image::createSingleColorImage(4, 4, glm::vec4(0.4f, 0.4f, 0.4f, 0.5f))
+            .get());
+    mPlane = Mesh::createPlane();
+  }
+  { // cube texture
+    auto cubeRight = Image::load("./image/cube_texture/right.jpg", false);
+    auto cubeLeft = Image::load("./image/cube_texture/left.jpg", false);
+    auto cubeTop = Image::load("./image/cube_texture/top.jpg", false);
+    auto cubeBottom = Image::load("./image/cube_texture/bottom.jpg", false);
+    auto cubeFront = Image::load("./image/cube_texture/front.jpg", false);
+    auto cubeBack = Image::load("./image/cube_texture/back.jpg", false);
+    mCubeTexture = CubeTexture::create({
+        cubeRight.get(),
+        cubeLeft.get(),
+        cubeTop.get(),
+        cubeBottom.get(),
+        cubeFront.get(),
+        cubeBack.get(),
+    });
+  }
+  { // model
+    mModel = Model::load("model/resources/teapot.obj");
+    if (!mModel) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
+void Context::render() {
+  renderImGui();
+  mFramebuffer->bind();
+  glEnable(GL_DEPTH_TEST);
+  glClear(mClearBit);
+  auto projection = getPerspectiveMatrix();
+  auto view = mCamera.getViewMatrix();
+
+  { // cube program
+    glActiveTexture(GL_TEXTURE0);
+    mCubeTexture->bind();
+
+    auto model = glm::translate(glm::mat4(1.0), mCamera.pos) *
+                 glm::scale(glm::mat4(1.0), glm::vec3(mFar / 2));
+    mCubeProgram->use();
+    mCubeProgram->setUniform("cube", 0);
+    mCubeProgram->setUniform("transform", projection * view * model);
+    mSphere->draw(mCubeProgram.get());
+  }
+  { // simple program
+    auto lightModelTransform = glm::translate(glm::mat4(1.0), mLight.position) *
+                               glm::scale(glm::mat4(1.0), glm::vec3(0.1f));
+    mSimpleProgram->use();
+    mSimpleProgram->setUniform(
+        "color", glm::vec4(mLight.ambient + mLight.diffuse, 1.0f));
+    mSimpleProgram->setUniform("transform",
+                               projection * view * lightModelTransform);
+    mBox->draw(mSimpleProgram.get());
+  }
+  { // lighting program
+    mLightingProgram->use();
+    mLightingProgram->setUniform("lightType", mLightType);
+    mLightingProgram->setUniform("viewPos", mCamera.pos);
+    mLightingProgram->setUniform("light.position", mLight.position);
+    mLightingProgram->setUniform("light.direction", mLight.direction);
+    mLightingProgram->setUniform(
+        "light.cutoff",
+        glm::vec2(cosf(glm::radians(mLight.cutoff[0])),
+                  cosf(glm::radians(mLight.cutoff[0] + mLight.cutoff[1]))));
+    mLightingProgram->setUniform("light.constant", mLight.constant);
+    mLightingProgram->setUniform("light.linear", mLight.linear);
+    mLightingProgram->setUniform("light.quadratic", mLight.quadratic);
+    mLightingProgram->setUniform("light.ambient", mLight.ambient);
+    mLightingProgram->setUniform("light.diffuse", mLight.diffuse);
+    mLightingProgram->setUniform("light.specular", mLight.specular);
+    auto genModel = [this](glm::mat4 mat) -> glm::mat4 {
+      return glm::scale(
+          glm::rotate(
+              mat,
+              glm::radians((mIsAnimationActive ? (float)glfwGetTime() : 0) *
+                           90.0f),
+              glm::vec3(1.0f, 0.5f, 0.0f)),
+          glm::vec3(0.3f));
+    };
+
     {
-        return nullptr;
+      auto pos = glm::vec3(-1.7f, 3.0f, -7.5f);
+      auto model = genModel(glm::translate(glm::mat4(1.0f), pos));
+      mLightingProgram->setUniform("transform", projection * view * model);
+      mLightingProgram->setUniform("modelTransform", model);
+      mBox->draw(mLightingProgram.get());
     }
-
-    return std::move(context);
-}
-
-bool Context::init()
-{
-    { // program
-        mFramebuffer = Framebuffer::create(Texture::create(mWidth, mHeight, GL_RGBA));
-        if (!mFramebuffer)
-        {
-            return false;
-        }
-
-        mLightingProgram = Program::create("shader/lighting.vs", "shader/lighting.fs");
-        if (!mLightingProgram)
-        {
-            return false;
-        }
-
-        mSimpleProgram = Program::create("shader/simple.vs", "shader/simple.fs");
-        if (!mSimpleProgram)
-        {
-            return false;
-        }
-
-        mPostProgram = Program::create("shader/texture.vs", "shader/gamma.fs");
-        if (!mPostProgram)
-        {
-            return false;
-        }
-
-        mCubeProgram = Program::create("shader/cube_texture.vs", "shader/cube_texture.fs");
-        if (!mCubeProgram)
-        {
-            return false;
-        }
-
-        mPlaneProgram = Program::create("shader/texture.vs", "shader/texture.fs");
-        if (!mPlaneProgram)
-        {
-            return nullptr;
-        }
-
-        mEnvMapProgram = Program::create("shader/env_map.vs", "shader/env_map.fs");
-        if (!mEnvMapProgram)
-        {
-            return nullptr;
-        }
-
-        mTestProgram = Program::create("shader/test.vs", "shader/test.fs");
-        if (!mTestProgram)
-        {
-            return nullptr;
-        }
-    }
-    { // box mesh
-        auto mat = Material::create();
-        mat->specular = Texture::create(Image::createSingleColorImage(4, 4, glm::vec4(1.0f, 1.0f, 1.0f, 1.0f)).get());
-        mat->diffuse = Texture::create(Image::createSingleColorImage(4, 4, glm::vec4(0.7f, 0.7f, 0.7f, 1.0f)).get());
-        mBox = Mesh::createBox();
-        mBox->setMaterial(std::move(mat));
-    }
-    { // sphere mesh
-        auto mat = Material::create();
-        mat->specular = Texture::create(
-            Image::createSingleColorImage(4, 4, glm::vec4(1.0f, 1.0f, 1.0f, 1.0f)).get());
-        mat->diffuse = Texture::create(
-            Image::createSingleColorImage(4, 4, glm::vec4(0.7f, 0.7f, 0.7f, 1.0f)).get());
-        mSphere = Mesh::createSphere(35, 35);
-        mSphere->setMaterial(std::move(mat));
-    }
-    { // plane mesh
-        mPlaneTexture = Texture::create(Image::createSingleColorImage(4, 4, glm::vec4(0.4f, 0.4f, 0.4f, 0.5f)).get());
-        mPlane = Mesh::createPlane();
-    }
-    { // cube texture
-        auto cubeRight  = Image::load("./image/cube_texture/right.jpg", false);
-        auto cubeLeft   = Image::load("./image/cube_texture/left.jpg", false);
-        auto cubeTop    = Image::load("./image/cube_texture/top.jpg", false);
-        auto cubeBottom = Image::load("./image/cube_texture/bottom.jpg", false);
-        auto cubeFront  = Image::load("./image/cube_texture/front.jpg", false);
-        auto cubeBack   = Image::load("./image/cube_texture/back.jpg", false);
-        mCubeTexture = CubeTexture::create({
-            cubeRight.get(),
-            cubeLeft.get(),
-            cubeTop.get(),
-            cubeBottom.get(),
-            cubeFront.get(),
-            cubeBack.get(),
-        });
-    }
-    { // model
-        mModel = Model::load("model/resources/teapot.obj");
-        if (!mModel)
-        {
-            return false;
-        }
-    }
-
-    return true;
-}
-
-void Context::render()
-{
-    renderImGui();
-    mFramebuffer->bind();
-    glEnable(GL_DEPTH_TEST);
-    glClear(mClearBit);
-    auto projection = getPerspectiveMatrix();
-    auto view = mCamera.getViewMatrix();
-
-    { // cube program
-        glActiveTexture(GL_TEXTURE0);
-        mCubeTexture->bind();
-
-        auto model =
-            glm::translate(glm::mat4(1.0), mCamera.pos) *
-            glm::scale(glm::mat4(1.0), glm::vec3(mFar / 2));
-        mCubeProgram->use();
-        mCubeProgram->setUniform("cube", 0);
-        mCubeProgram->setUniform("transform", projection * view * model);
-        mSphere->draw(mCubeProgram.get());
-    }
-    { // simple program
-        auto lightModelTransform =
-            glm::translate(glm::mat4(1.0), mLight.position) *
-            glm::scale(glm::mat4(1.0), glm::vec3(0.1f));
-        mSimpleProgram->use();
-        mSimpleProgram->setUniform("color", glm::vec4(mLight.ambient + mLight.diffuse, 1.0f));
-        mSimpleProgram->setUniform("transform", projection * view * lightModelTransform);
-        mBox->draw(mSimpleProgram.get());
-    }
-    { // lighting program
-        mLightingProgram->use();
-        mLightingProgram->setUniform("lightType", mLightType);
-        mLightingProgram->setUniform("viewPos", mCamera.pos);
-        mLightingProgram->setUniform("light.position", mLight.position);
-        mLightingProgram->setUniform("light.direction", mLight.direction);
-        mLightingProgram->setUniform("light.cutoff", glm::vec2(
-            cosf(glm::radians(mLight.cutoff[0])),
-            cosf(glm::radians(mLight.cutoff[0] + mLight.cutoff[1]))));
-        mLightingProgram->setUniform("light.constant", mLight.constant);
-        mLightingProgram->setUniform("light.linear", mLight.linear);
-        mLightingProgram->setUniform("light.quadratic", mLight.quadratic);
-        mLightingProgram->setUniform("light.ambient", mLight.ambient);
-        mLightingProgram->setUniform("light.diffuse", mLight.diffuse);
-        mLightingProgram->setUniform("light.specular", mLight.specular);
-        auto genModel = [this](glm::mat4 mat) -> glm::mat4 {
-            return glm::scale(
-                        glm::rotate(
-                            mat,
-                            glm::radians((mIsAnimationActive ? (float)glfwGetTime() : 0) * 90.0f),
-                            glm::vec3(1.0f, 0.5f, 0.0f)
-                            ),
-                        glm::vec3(0.3f));
-        };
-
-        {
-            auto pos = glm::vec3(-1.7f, 3.0f, -7.5f);
-            auto model = genModel(glm::translate(glm::mat4(1.0f), pos));
-            mLightingProgram->setUniform("transform", projection * view * model);
-            mLightingProgram->setUniform("modelTransform", model);
-            mBox->draw(mLightingProgram.get());
-        }
-        {
-            auto pos = glm::vec3(1.5f, 2.0f, -2.5f);
-            auto model = genModel(glm::translate(glm::mat4(1.0f), pos));
-            mLightingProgram->setUniform("transform", projection * view * model);
-            mLightingProgram->setUniform("modelTransform", model);
-            mSphere->draw(mLightingProgram.get());
-        }
-        {
-            auto model = glm::translate(glm::mat4(1.0), glm::vec3(0.0f, 1.5f, 0.0f));
-            model = glm::scale(
-                        glm::rotate(
-                            model,
-                            glm::radians(90.0f),
-                            glm::vec3(0.0f, -1.0f, 0.0f)
-                            ),
-                        glm::vec3(0.3f));
-
-            mLightingProgram->use();
-            mLightingProgram->setUniform("transform", projection * view * model);
-            mLightingProgram->setUniform("modelTransform", model);
-            mModel->draw(mLightingProgram.get());
-        }
-    }
-    { // env map program
-        auto transform =
-            glm::translate(glm::mat4(1.0f), glm::vec3(-3.5f, 1.5f, -1.0f)) *
-            glm::scale(glm::mat4(1.0f), glm::vec3(1.0f, 1.0f, 1.0f));
-        mEnvMapProgram->use();
-        mEnvMapProgram->setUniform("model", transform);
-        mEnvMapProgram->setUniform("view", view);
-        mEnvMapProgram->setUniform("projection", projection);
-        mEnvMapProgram->setUniform("cameraPos", mCamera.pos);
-        mCubeTexture->bind();
-        mEnvMapProgram->setUniform("cube", 0);
-        mSphere->draw(mEnvMapProgram.get());
-    }
-    { // plane program
-        glEnable(GL_BLEND);
-        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-
-        glActiveTexture(GL_TEXTURE0);
-        mPlaneTexture->bind();
-
-        auto model = glm::scale(
-            glm::rotate(
-                glm::mat4(1.0),
-                glm::radians(90.0f),
-                glm::vec3(1.0f, 0.0f, 0.0f)
-            )
-            , glm::vec3(10.0f));
-        mPlaneProgram->use();
-        mPlaneProgram->setUniform("tex", 0);
-        mPlaneProgram->setUniform("transform", projection * view * model);
-        mPlaneProgram->setUniform("modelTransform", model);
-        mPlane->draw(mPlaneProgram.get());
-        glDisable(GL_BLEND);
-    }
-    { // test
-        auto model = glm::translate(glm::mat4(1.0f), glm::vec3(5.0f, 2.0f, 0.0f));
-        model = glm::scale(
-            glm::rotate(
-                model,
-                glm::radians(90.0f),
-                glm::vec3(0.0f, 1.0f, 0.0f)
-            )
-            , glm::vec3(3.5f));
-        mTestProgram->use();
-        mTestProgram->setUniform("resolution", glm::vec2(1, 1));
-        mTestProgram->setUniform("time", (float)glfwGetTime());
-        mTestProgram->setUniform("mouse", glm::vec2(0.5, 0.5));
-        mTestProgram->setUniform("transform", projection * view * model);
-        mPlane->draw(mTestProgram.get());
-    }
-    Framebuffer::bindToDefault();
-    glDisable(GL_DEPTH_TEST);
-    glClear(mClearBit);
-    { // post program
-        auto model = glm::scale(glm::mat4(1.0f), glm::vec3(2.0f, 2.0f, 2.0f));
-        mPostProgram->use();
-        mPostProgram->setUniform("transform", model);
-        mPostProgram->setUniform("gamma", mGamma);
-        glActiveTexture(GL_TEXTURE0);
-        mFramebuffer->getColorAttachment()->bind();
-        mPostProgram->setUniform("tex", 0);
-        mPlane->draw(mPostProgram.get()); 
-    }
-}
-
-glm::mat4 Context::getPerspectiveMatrix() const
-{
-    float aspect = (float)(mWidth) / (float)mHeight;
-
-    return glm::perspective(glm::radians(45.0f), aspect, mNear, mFar);
-}
-
-void Context::processKeyboardInput(GLFWwindow* window)
-{
-    const float cameraSpeed = 0.05f;
-    if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS) mCamera.pos += cameraSpeed * mCamera.front;
-    if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS) mCamera.pos -= cameraSpeed * mCamera.front;
-    auto cameraRight = glm::normalize(glm::cross(mCamera.up, -mCamera.front));
-    if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS) mCamera.pos += cameraSpeed * cameraRight;
-    if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS) mCamera.pos -= cameraSpeed * cameraRight;
-    auto cameraUp = glm::cross(-mCamera.front, cameraRight);
-    if (glfwGetKey(window, GLFW_KEY_E) == GLFW_PRESS) mCamera.pos += cameraSpeed * cameraUp;
-    if (glfwGetKey(window, GLFW_KEY_Q) == GLFW_PRESS) mCamera.pos -= cameraSpeed * cameraUp;
-}
-
-void Context::processMouseMove(double x, double y)
-{
-    if (mCameraDirectionControl)
     {
-        auto pos = glm::vec2((float)x, (float)y);
-        auto deltaPos = pos - mPrevMousePos;
-
-        const float cameraRotSpeed = 0.25f;
-        mCamera.yaw -= deltaPos.x * cameraRotSpeed;
-        mCamera.pitch -= deltaPos.y * cameraRotSpeed;
-
-        if (mCamera.yaw < 0.0f)   mCamera.yaw += 360.0f;
-        if (mCamera.yaw > 360.0f) mCamera.yaw -= 360.0f;
-
-        if (mCamera.pitch > 89.0f)  mCamera.pitch = 89.0f;
-        if (mCamera.pitch < -89.0f) mCamera.pitch = -89.0f;
-
-        mPrevMousePos = pos;
+      auto pos = glm::vec3(1.5f, 2.0f, -2.5f);
+      auto model = genModel(glm::translate(glm::mat4(1.0f), pos));
+      mLightingProgram->setUniform("transform", projection * view * model);
+      mLightingProgram->setUniform("modelTransform", model);
+      mSphere->draw(mLightingProgram.get());
     }
-}
-
-void Context::processMouseButton(int button, int action, double x, double y)
-{
-    mPrevMousePos = glm::vec2((float)x, (float)y);
-    if (button == GLFW_MOUSE_BUTTON_RIGHT)
     {
-        if (action == GLFW_PRESS)
-        {
-            mCameraDirectionControl = true;
-        }
-        else if (action == GLFW_RELEASE)
-        {
-            mCameraDirectionControl = false;
-        }
+      auto model = glm::translate(glm::mat4(1.0), glm::vec3(0.0f, 1.5f, 0.0f));
+      model = glm::scale(
+          glm::rotate(model, glm::radians(90.0f), glm::vec3(0.0f, -1.0f, 0.0f)),
+          glm::vec3(0.3f));
+
+      mLightingProgram->use();
+      mLightingProgram->setUniform("transform", projection * view * model);
+      mLightingProgram->setUniform("modelTransform", model);
+      mModel->draw(mLightingProgram.get());
     }
+  }
+  { // env map program
+    auto transform =
+        glm::translate(glm::mat4(1.0f), glm::vec3(-3.5f, 1.5f, -1.0f)) *
+        glm::scale(glm::mat4(1.0f), glm::vec3(1.0f, 1.0f, 1.0f));
+    mEnvMapProgram->use();
+    mEnvMapProgram->setUniform("model", transform);
+    mEnvMapProgram->setUniform("view", view);
+    mEnvMapProgram->setUniform("projection", projection);
+    mEnvMapProgram->setUniform("cameraPos", mCamera.pos);
+    mCubeTexture->bind();
+    mEnvMapProgram->setUniform("cube", 0);
+    mSphere->draw(mEnvMapProgram.get());
+  }
+  { // plane program
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
+    glActiveTexture(GL_TEXTURE0);
+    mPlaneTexture->bind();
+
+    auto model = glm::scale(glm::rotate(glm::mat4(1.0), glm::radians(90.0f),
+                                        glm::vec3(1.0f, 0.0f, 0.0f)),
+                            glm::vec3(10.0f));
+    mPlaneProgram->use();
+    mPlaneProgram->setUniform("tex", 0);
+    mPlaneProgram->setUniform("transform", projection * view * model);
+    mPlaneProgram->setUniform("modelTransform", model);
+    mPlane->draw(mPlaneProgram.get());
+    glDisable(GL_BLEND);
+  }
+  Framebuffer::bindToDefault();
+  glDisable(GL_DEPTH_TEST);
+  glClear(mClearBit);
+  { // post program
+    auto model = glm::scale(glm::mat4(1.0f), glm::vec3(2.0f, 2.0f, 2.0f));
+    mPostProgram->use();
+    mPostProgram->setUniform("transform", model);
+    mPostProgram->setUniform("gamma", mGamma);
+    glActiveTexture(GL_TEXTURE0);
+    mFramebuffer->getColorAttachment()->bind();
+    mPostProgram->setUniform("tex", 0);
+    mPlane->draw(mPostProgram.get());
+  }
 }
 
-void Context::processMouseScroll(double xoffset, double yoffset)
-{}
+glm::mat4 Context::getPerspectiveMatrix() const {
+  float aspect = (float)(mWidth) / (float)mHeight;
 
-void Context::reshapeViewport(int width, int height)
-{
-    mWidth = width;
-    mHeight = height;
-    glViewport(0, 0, mWidth, mHeight);
-    mFramebuffer = Framebuffer::create(
-        Texture::create(mWidth, mHeight, GL_RGBA));
+  return glm::perspective(glm::radians(45.0f), aspect, mNear, mFar);
 }
 
-void Context::renderImGui()
-{
-    { // settings
+void Context::processKeyboardInput(GLFWwindow *window) {
+  const float cameraSpeed = 0.05f;
+  if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
+    mCamera.pos += cameraSpeed * mCamera.front;
+  if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
+    mCamera.pos -= cameraSpeed * mCamera.front;
+  auto cameraRight = glm::normalize(glm::cross(mCamera.up, -mCamera.front));
+  if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
+    mCamera.pos += cameraSpeed * cameraRight;
+  if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
+    mCamera.pos -= cameraSpeed * cameraRight;
+  auto cameraUp = glm::cross(-mCamera.front, cameraRight);
+  if (glfwGetKey(window, GLFW_KEY_E) == GLFW_PRESS)
+    mCamera.pos += cameraSpeed * cameraUp;
+  if (glfwGetKey(window, GLFW_KEY_Q) == GLFW_PRESS)
+    mCamera.pos -= cameraSpeed * cameraUp;
+}
+
+void Context::processMouseMove(double x, double y) {
+  if (mCameraDirectionControl) {
+    auto pos = glm::vec2((float)x, (float)y);
+    auto deltaPos = pos - mPrevMousePos;
+
+    const float cameraRotSpeed = 0.25f;
+    mCamera.yaw -= deltaPos.x * cameraRotSpeed;
+    mCamera.pitch -= deltaPos.y * cameraRotSpeed;
+
+    if (mCamera.yaw < 0.0f)
+      mCamera.yaw += 360.0f;
+    if (mCamera.yaw > 360.0f)
+      mCamera.yaw -= 360.0f;
+
+    if (mCamera.pitch > 89.0f)
+      mCamera.pitch = 89.0f;
+    if (mCamera.pitch < -89.0f)
+      mCamera.pitch = -89.0f;
+
+    mPrevMousePos = pos;
+  }
+}
+
+void Context::processMouseButton(int button, int action, double x, double y) {
+  mPrevMousePos = glm::vec2((float)x, (float)y);
+  if (button == GLFW_MOUSE_BUTTON_RIGHT) {
+    if (action == GLFW_PRESS) {
+      mCameraDirectionControl = true;
+    } else if (action == GLFW_RELEASE) {
+      mCameraDirectionControl = false;
+    }
+  }
+}
+
+void Context::processMouseScroll(double xoffset, double yoffset) {}
+
+void Context::reshapeViewport(int width, int height) {
+  mWidth = width;
+  mHeight = height;
+  glViewport(0, 0, mWidth, mHeight);
+  mFramebuffer = Framebuffer::create(Texture::create(mWidth, mHeight, GL_RGBA));
+}
+
+void Context::renderImGui() {
+  { // settings
     ImGui::Begin("Settings");
-    static float    prevTime = 0;
-    static int      frames = 0;
-    static float    fps = 0.0f;
-    static int      prevFrames = 0;
+    static float prevTime = 0;
+    static int frames = 0;
+    static float fps = 0.0f;
+    static int prevFrames = 0;
 
     frames++;
     float currTime = (float)glfwGetTime();
-    if (currTime - prevTime >= 1.0)
-    {
-        prevFrames = frames;
-        fps = 1000.0f / frames;
-        prevTime = currTime;
-        frames = 0;
+    if (currTime - prevTime >= 1.0) {
+      prevFrames = frames;
+      fps = 1000.0f / frames;
+      prevTime = currTime;
+      frames = 0;
     }
 
     ImGui::Text("%.3f ms/frame (%dfps)", fps, prevFrames);
     ImGui::Spacing();
     ImGui::Spacing();
 
-
-    if (ImGui::CollapsingHeader("Background", ImGuiTreeNodeFlags_DefaultOpen))
-    {
-        if (ImGui::ColorEdit4("color", glm::value_ptr(mClearColor)))
-        {
-            glClearColor(mClearColor[0], mClearColor[1], mClearColor[2], mClearColor[3]);
-        }
+    if (ImGui::CollapsingHeader("Background", ImGuiTreeNodeFlags_DefaultOpen)) {
+      if (ImGui::ColorEdit4("color", glm::value_ptr(mClearColor))) {
+        glClearColor(mClearColor[0], mClearColor[1], mClearColor[2],
+                     mClearColor[3]);
+      }
     }
     ImGui::Spacing();
     ImGui::Spacing();
-    if (ImGui::CollapsingHeader("Camera", ImGuiTreeNodeFlags_DefaultOpen))
-    {
-        ImGui::Text("Camera");
-        ImGui::DragFloat3("Position", glm::value_ptr(mCamera.pos), 0.01f);
-        ImGui::Text("Front : x(%.3f), y(%.3f), z(%.3f)", mCamera.front.x, mCamera.front.y, mCamera.front.z);
-        ImGui::Text("Up    : x(%.3f), y(%.3f), z(%.3f)", mCamera.up.x, mCamera.up.y, mCamera.up.z);
-        if (ImGui::Button("Reset camera"))
-        {
-            mCamera.reset();
-        }
-        ImGui::SameLine();
+    if (ImGui::CollapsingHeader("Camera", ImGuiTreeNodeFlags_DefaultOpen)) {
+      ImGui::Text("Camera");
+      ImGui::DragFloat3("Position", glm::value_ptr(mCamera.pos), 0.01f);
+      ImGui::Text("Front : x(%.3f), y(%.3f), z(%.3f)", mCamera.front.x,
+                  mCamera.front.y, mCamera.front.z);
+      ImGui::Text("Up    : x(%.3f), y(%.3f), z(%.3f)", mCamera.up.x,
+                  mCamera.up.y, mCamera.up.z);
+      if (ImGui::Button("Reset camera")) {
+        mCamera.reset();
+      }
+      ImGui::SameLine();
     }
     ImGui::Spacing();
     ImGui::Spacing();
-    if (ImGui::CollapsingHeader("Light", ImGuiTreeNodeFlags_DefaultOpen))
-    {
-        ImGui::RadioButton("Directional", &mLightType, 0);
-        ImGui::SameLine();
-        ImGui::RadioButton("Point", &mLightType, 1);
-        ImGui::SameLine();
-        ImGui::RadioButton("Spot", &mLightType, 2);
-        if (mLightType == 0) {
-            ImGui::DragFloat3("direction", glm::value_ptr(mLight.direction), 0.01f);
-            if (ImGui::Button("Sync the camera"))
-            {
-                mLight.direction = mCamera.front;
-            }
+    if (ImGui::CollapsingHeader("Light", ImGuiTreeNodeFlags_DefaultOpen)) {
+      ImGui::RadioButton("Directional", &mLightType, 0);
+      ImGui::SameLine();
+      ImGui::RadioButton("Point", &mLightType, 1);
+      ImGui::SameLine();
+      ImGui::RadioButton("Spot", &mLightType, 2);
+      if (mLightType == 0) {
+        ImGui::DragFloat3("direction", glm::value_ptr(mLight.direction), 0.01f);
+        if (ImGui::Button("Sync the camera")) {
+          mLight.direction = mCamera.front;
         }
-        else if (mLightType == 1) {
-            ImGui::DragFloat3("position", glm::value_ptr(mLight.position), 0.01f);
-            if (ImGui::Button("Sync the camera"))
-            {
-                mLight.position = mCamera.pos - (mCamera.front * 0.2f);
-            }
+      } else if (mLightType == 1) {
+        ImGui::DragFloat3("position", glm::value_ptr(mLight.position), 0.01f);
+        if (ImGui::Button("Sync the camera")) {
+          mLight.position = mCamera.pos - (mCamera.front * 0.2f);
         }
-        else if (mLightType == 2) {
-            ImGui::DragFloat3("direction", glm::value_ptr(mLight.direction), 0.01f);
-            ImGui::DragFloat3("position", glm::value_ptr(mLight.position), 0.01f);
-            ImGui::DragFloat2("cutoff", glm::value_ptr(mLight.cutoff), 0.5f, 0.0f, 180.0f);
-            if (ImGui::Button("Sync the camera"))
-            {
-                mLight.position = mCamera.pos - (mCamera.front * 0.2f);
-                mLight.direction = mCamera.front;
-            }
+      } else if (mLightType == 2) {
+        ImGui::DragFloat3("direction", glm::value_ptr(mLight.direction), 0.01f);
+        ImGui::DragFloat3("position", glm::value_ptr(mLight.position), 0.01f);
+        ImGui::DragFloat2("cutoff", glm::value_ptr(mLight.cutoff), 0.5f, 0.0f,
+                          180.0f);
+        if (ImGui::Button("Sync the camera")) {
+          mLight.position = mCamera.pos - (mCamera.front * 0.2f);
+          mLight.direction = mCamera.front;
         }
-        ImGui::Text("All");
-        ImGui::ColorEdit3("ambient", glm::value_ptr(mLight.ambient));
-        ImGui::ColorEdit3("diffuse", glm::value_ptr(mLight.diffuse));
-        ImGui::ColorEdit3("specular", glm::value_ptr(mLight.specular));
+      }
+      ImGui::Text("All");
+      ImGui::ColorEdit3("ambient", glm::value_ptr(mLight.ambient));
+      ImGui::ColorEdit3("diffuse", glm::value_ptr(mLight.diffuse));
+      ImGui::ColorEdit3("specular", glm::value_ptr(mLight.specular));
     }
     ImGui::Spacing();
     ImGui::Spacing();
-    if (ImGui::CollapsingHeader("Extras", ImGuiTreeNodeFlags_DefaultOpen))
-    {
-        if (ImGui::Checkbox("Active wireFrame", &mIsWireframeActive))
-        {
-            if (mIsWireframeActive)
-            {
-                glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-            }
-            else
-            {
-                glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-            }
+    if (ImGui::CollapsingHeader("Extras", ImGuiTreeNodeFlags_DefaultOpen)) {
+      if (ImGui::Checkbox("Active wireFrame", &mIsWireframeActive)) {
+        if (mIsWireframeActive) {
+          glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+        } else {
+          glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
         }
-        ImGui::Checkbox("Active animation", &mIsAnimationActive);
+      }
+      ImGui::Checkbox("Active animation", &mIsAnimationActive);
     }
 
     ImGui::End();
-    }
-    { // framebuffer
+  }
+  { // framebuffer
     ImGui::Begin("Framebuffer");
     ImGui::Image((ImTextureID)mFramebuffer->getColorAttachment()->getId(),
-        ImVec2(mImGuiImageSize * ((float)mWidth / (float)mHeight), (float)mImGuiImageSize),
-        ImVec2(0, 1), ImVec2(1, 0));
+                 ImVec2(mImGuiImageSize * ((float)mWidth / (float)mHeight),
+                        (float)mImGuiImageSize),
+                 ImVec2(0, 1), ImVec2(1, 0));
     ImGui::DragFloat("Gamma", &mGamma, 0.01f, 0.0f, 2.0f);
     ImGui::InputInt("Size", &mImGuiImageSize);
-    }
-    ImGui::End();
-    ImGui::Render();
+  }
+  ImGui::End();
+  ImGui::Render();
 }
