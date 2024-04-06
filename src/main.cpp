@@ -19,6 +19,8 @@ void onKeyEvent(GLFWwindow *window, int key, int scancode, int action,
               mods & GLFW_MOD_CONTROL ? "C" : "-",
               mods & GLFW_MOD_SHIFT ? "S" : "-",
               mods & GLFW_MOD_ALT ? "A" : "-");
+  auto ptr = reinterpret_cast<Context *>(glfwGetWindowUserPointer(window));
+  ptr->processKeyboardInput(window);
   if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS) {
     glfwSetWindowShouldClose(window, true);
   }
@@ -113,7 +115,7 @@ int main(int argc, char **argv) {
     ImGui_ImplGlfw_NewFrame();
     ImGui::NewFrame();
 
-    context->processKeyboardInput(window);
+    context->update();
     context->render();
     ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 

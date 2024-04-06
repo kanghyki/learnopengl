@@ -109,6 +109,8 @@ bool Context::init() {
   return true;
 }
 
+void Context::update() { mCamera.move(); }
+
 void Context::render() {
   renderImGui();
   mFramebuffer->bind();
@@ -237,22 +239,40 @@ void Context::render() {
 
 void Context::processKeyboardInput(GLFWwindow *window) {
   if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS) {
-    mCamera.move(FRONT);
+    mCamera.setMove(FRONT);
+  }
+  if (glfwGetKey(window, GLFW_KEY_W) == GLFW_RELEASE) {
+    mCamera.unsetMove(FRONT);
   }
   if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS) {
-    mCamera.move(BACK);
+    mCamera.setMove(BACK);
+  }
+  if (glfwGetKey(window, GLFW_KEY_S) == GLFW_RELEASE) {
+    mCamera.unsetMove(BACK);
   }
   if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS) {
-    mCamera.move(RIGHT);
+    mCamera.setMove(RIGHT);
+  }
+  if (glfwGetKey(window, GLFW_KEY_D) == GLFW_RELEASE) {
+    mCamera.unsetMove(RIGHT);
   }
   if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS) {
-    mCamera.move(LEFT);
+    mCamera.setMove(LEFT);
+  }
+  if (glfwGetKey(window, GLFW_KEY_A) == GLFW_RELEASE) {
+    mCamera.unsetMove(LEFT);
   }
   if (glfwGetKey(window, GLFW_KEY_E) == GLFW_PRESS) {
-    mCamera.move(UP);
+    mCamera.setMove(UP);
+  }
+  if (glfwGetKey(window, GLFW_KEY_E) == GLFW_RELEASE) {
+    mCamera.unsetMove(UP);
   }
   if (glfwGetKey(window, GLFW_KEY_Q) == GLFW_PRESS) {
-    mCamera.move(DOWN);
+    mCamera.setMove(DOWN);
+  }
+  if (glfwGetKey(window, GLFW_KEY_Q) == GLFW_RELEASE) {
+    mCamera.unsetMove(DOWN);
   }
   if (glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS) {
     mCamera.setMoveSpeed(0.15f);

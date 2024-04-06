@@ -15,6 +15,7 @@ class Context {
 public:
   ~Context();
   static std::unique_ptr<Context> create();
+  void update();
   void render();
   void renderImGui();
   void processKeyboardInput(GLFWwindow *window);

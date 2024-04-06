@@ -4,12 +4,12 @@
 #include "common.hpp"
 
 enum eCameraMove {
-  FRONT,
-  BACK,
-  LEFT,
-  RIGHT,
-  UP,
-  DOWN,
+  FRONT = 1 << 1,
+  BACK = 1 << 2,
+  LEFT = 1 << 3,
+  RIGHT = 1 << 4,
+  UP = 1 << 5,
+  DOWN = 1 << 6,
 };
 
 struct Camera {
@@ -28,22 +28,25 @@ struct Camera {
                             mFarPlane);
   }
 
-  void move(eCameraMove type) {
-    if (type == FRONT)
+  void move() {
+    if (mMoveStatus & FRONT)
       mPos += mMoveSpeed * mFront;
-    if (type == BACK)
+    if (mMoveStatus & BACK)
       mPos -= mMoveSpeed * mFront;
     glm::vec3 cameraRight = glm::normalize(glm::cross(mUp, -mFront));
-    if (type == LEFT)
+    if (mMoveStatus & LEFT)
       mPos -= mMoveSpeed * cameraRight;
-    if (type == RIGHT)
+    if (mMoveStatus & RIGHT)
       mPos += mMoveSpeed * cameraRight;
     glm::vec3 cameraUp = glm::cross(-mFront, cameraRight);
-    if (type == UP)
+    if (mMoveStatus & UP)
       mPos += mMoveSpeed * cameraUp;
-    if (type == DOWN)
+    if (mMoveStatus & DOWN)
       mPos -= mMoveSpeed * cameraUp;
   }
+
+  void setMove(eCameraMove type) { mMoveStatus |= type; }
+  void unsetMove(eCameraMove type) { mMoveStatus &= ~type; }
 
   void rotate(glm::vec2 delta) {
     mYaw -= delta.x * mRotSpeed;
@@ -80,8 +83,9 @@ struct Camera {
   float mAspect{16.0f / 9.0f};
   float mNearPlane{0.1f};
   float mFarPlane{100.0f};
-  float mMoveSpeed = 0.05f;
-  float mRotSpeed = 0.20f;
+  unsigned char mMoveStatus{0};
+  float mMoveSpeed{0.05f};
+  float mRotSpeed{0.15f};
 
   glm::vec3 mPos{0.0f, 1.5f, 5.0f};
   glm::vec3 mFront{0.0f, 0.0f, -1.0f};
