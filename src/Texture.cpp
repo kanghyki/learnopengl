@@ -1,4 +1,6 @@
 #include "Texture.hpp"
+#define STB_IMAGE_WRITE_IMPLEMENTATION
+#include <stb/stb_image_write.h>
 
 Texture::Texture() {}
 
@@ -63,17 +65,17 @@ void Texture::setTextureFromImage(const Image *image) {
   GLenum format = GL_RGBA;
 
   switch (image->getChannelCount()) {
-  case 1:
-    format = GL_RED;
-    break;
-  case 2:
-    format = GL_RG;
-    break;
-  case 3:
-    format = GL_RGB;
-    break;
-  default:
-    break;
+    case 1:
+      format = GL_RED;
+      break;
+    case 2:
+      format = GL_RG;
+      break;
+    case 3:
+      format = GL_RGB;
+      break;
+    default:
+      break;
   }
 
   mWidth = image->getWidth();
@@ -114,8 +116,8 @@ CubeTexture::~CubeTexture() {
   }
 }
 
-std::unique_ptr<CubeTexture>
-CubeTexture::create(const std::vector<Image *> &images) {
+std::unique_ptr<CubeTexture> CubeTexture::create(
+    const std::vector<Image *> &images) {
   auto texture = std::unique_ptr<CubeTexture>(new CubeTexture());
   if (!texture->initFromImages(images)) {
     return nullptr;
@@ -140,17 +142,17 @@ bool CubeTexture::initFromImages(const std::vector<Image *> &images) {
     auto image = images[i];
     GLenum format = GL_RGBA;
     switch (image->getChannelCount()) {
-    case 1:
-      format = GL_RED;
-      break;
-    case 2:
-      format = GL_RG;
-      break;
-    case 3:
-      format = GL_RGB;
-      break;
-    default:
-      break;
+      case 1:
+        format = GL_RED;
+        break;
+      case 2:
+        format = GL_RG;
+        break;
+      case 3:
+        format = GL_RGB;
+        break;
+      default:
+        break;
     }
 
     glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, 0, GL_RGB,
@@ -162,3 +164,46 @@ bool CubeTexture::initFromImages(const std::vector<Image *> &images) {
 }
 
 const uint32_t CubeTexture::getId() const { return mId; }
+
+bool Texture::saveAsPng(const std::string &filename) const {
+  int channelCount = 0;
+
+  switch (mFormat) {
+    case GL_R:
+      channelCount = 1;
+      break;
+    case GL_RG:
+      channelCount = 2;
+      break;
+    case GL_RGB:
+      channelCount = 3;
+      break;
+    case GL_RGBA:
+      channelCount = 4;
+      break;
+    default:
+      SPDLOG_ERROR("channel count error");
+      return false;
+  }
+
+  unsigned char *data = new unsigned char[mWidth * mHeight * channelCount];
+  if (!data) {
+    SPDLOG_ERROR("malloc error");
+    return false;
+  }
+  memset(data, 0, mWidth * mHeight * channelCount);
+
+  glBindTexture(GL_TEXTURE_2D, mId);
+  glGetTexImage(GL_TEXTURE_2D, 0, GL_RGBA, GL_UNSIGNED_BYTE, data);
+
+  bool result = true;
+  stbi_flip_vertically_on_write(true);
+  if (!stbi_write_png(filename.c_str(), mWidth, mHeight, channelCount, data,
+                      mWidth * channelCount)) {
+    SPDLOG_ERROR("failed to save texture to PNG file");
+    result = false;
+  }
+  delete[] data;
+
+  return result;
+}

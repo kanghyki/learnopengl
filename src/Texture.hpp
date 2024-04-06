@@ -4,7 +4,7 @@
 #include "Image.hpp"
 
 class Texture {
-public:
+ public:
   ~Texture();
   static std::unique_ptr<Texture> create(const Image *image);
   static std::unique_ptr<Texture> create(const std::string &filename);
@@ -22,7 +22,9 @@ public:
   int getHeight() const;
   uint32_t getFormat() const;
 
-private:
+  bool saveAsPng(const std::string &filename) const;
+
+ private:
   Texture();
 
   void createTexture();
@@ -35,16 +37,16 @@ private:
 };
 
 class CubeTexture {
-public:
+ public:
   ~CubeTexture();
 
-  static std::unique_ptr<CubeTexture>
-  create(const std::vector<Image *> &images);
+  static std::unique_ptr<CubeTexture> create(
+      const std::vector<Image *> &images);
 
   const uint32_t getId() const;
   void bind() const;
 
-private:
+ private:
   CubeTexture();
 
   bool initFromImages(const std::vector<Image *> &images);
