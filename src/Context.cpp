@@ -1,6 +1,7 @@
+#include <imgui.h>
+
 #include "Context.hpp"
 #include "Image.hpp"
-#include <imgui.h>
 
 Context::Context() {
   mClearBit = GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT;
@@ -48,14 +49,14 @@ bool Context::init() {
 
   mPlaneProgram = Program::create("shader/texture.vs", "shader/texture.fs");
   if (!mPlaneProgram) {
-    return nullptr;
+    return false;
   }
 
   mEnvMapProgram = Program::create("shader/env_map.vs", "shader/env_map.fs");
   if (!mEnvMapProgram) {
-    return nullptr;
+    return false;
   }
-  { // box mesh
+  {  // box mesh
     auto mat = Material::create();
     mat->specular = Texture::create(
         Image::createSingleColorImage(4, 4, glm::vec4(1.0f, 1.0f, 1.0f, 1.0f))
@@ -66,7 +67,7 @@ bool Context::init() {
     mBox = Mesh::createBox();
     mBox->setMaterial(std::move(mat));
   }
-  { // sphere mesh
+  {  // sphere mesh
     auto mat = Material::create();
     mat->specular = Texture::create(
         Image::createSingleColorImage(4, 4, glm::vec4(1.0f, 1.0f, 1.0f, 1.0f))
@@ -77,13 +78,13 @@ bool Context::init() {
     mSphere = Mesh::createSphere(35, 35);
     mSphere->setMaterial(std::move(mat));
   }
-  { // plane mesh
+  {  // plane mesh
     mPlaneTexture = Texture::create(
         Image::createSingleColorImage(4, 4, glm::vec4(0.4f, 0.4f, 0.4f, 0.5f))
             .get());
     mPlane = Mesh::createPlane();
   }
-  { // cube texture
+  {  // cube texture
     auto cubeRight = Image::load("./image/cube_texture/right.jpg", false);
     auto cubeLeft = Image::load("./image/cube_texture/left.jpg", false);
     auto cubeTop = Image::load("./image/cube_texture/top.jpg", false);
@@ -99,7 +100,7 @@ bool Context::init() {
         cubeBack.get(),
     });
   }
-  { // model
+  {  // model
     mModel = Model::load("model/resources/teapot.obj");
     if (!mModel) {
       return false;
@@ -119,7 +120,7 @@ void Context::render() {
   auto projection = mCamera.getPerspectiveProjectionMatrix();
   auto view = mCamera.getViewMatrix();
 
-  { // cube program
+  {  // cube program
     glActiveTexture(GL_TEXTURE0);
     mCubeTexture->bind();
 
@@ -130,7 +131,7 @@ void Context::render() {
     mCubeProgram->setUniform("transform", projection * view * model);
     mSphere->draw(mCubeProgram.get());
   }
-  { // simple program
+  {  // simple program
     auto lightModelTransform = glm::translate(glm::mat4(1.0), mLight.position) *
                                glm::scale(glm::mat4(1.0), glm::vec3(0.1f));
     mSimpleProgram->use();
@@ -140,7 +141,7 @@ void Context::render() {
                                projection * view * lightModelTransform);
     mBox->draw(mSimpleProgram.get());
   }
-  { // lighting program
+  {  // lighting program
     mLightingProgram->use();
     mLightingProgram->setUniform("lightType", mLightType);
     mLightingProgram->setUniform("viewPos", mCamera.mPos);
@@ -192,7 +193,7 @@ void Context::render() {
       mModel->draw(mLightingProgram.get());
     }
   }
-  { // env map program
+  {  // env map program
     auto transform =
         glm::translate(glm::mat4(1.0f), glm::vec3(-3.5f, 1.5f, -1.0f)) *
         glm::scale(glm::mat4(1.0f), glm::vec3(1.0f, 1.0f, 1.0f));
@@ -205,7 +206,7 @@ void Context::render() {
     mEnvMapProgram->setUniform("cube", 0);
     mSphere->draw(mEnvMapProgram.get());
   }
-  { // plane program
+  {  // plane program
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
@@ -222,11 +223,10 @@ void Context::render() {
     mPlane->draw(mPlaneProgram.get());
     glDisable(GL_BLEND);
   }
-
   Framebuffer::bindToDefault();
   glDisable(GL_DEPTH_TEST);
   glClear(mClearBit);
-  { // post program
+  {  // post program
     auto model = glm::scale(glm::mat4(1.0f), glm::vec3(2.0f, 2.0f, 2.0f));
     mPostProgram->use();
     mPostProgram->setUniform("transform", model);
@@ -238,7 +238,7 @@ void Context::render() {
   }
 }
 
-void Context::processKeyboardInput(GLFWwindow *window) {
+void Context::processKeyboardInput(GLFWwindow* window) {
   if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS) {
     mCamera.setMove(FRONT);
   }
@@ -312,103 +312,176 @@ void Context::reshapeViewport(int width, int height) {
 }
 
 void Context::renderImGui() {
-  { // settings
-    ImGui::Begin("Settings");
-    static float prevTime = 0;
-    static int frames = 0;
-    static float fps = 0.0f;
-    static int prevFrames = 0;
-
-    frames++;
-    float currTime = (float)glfwGetTime();
-    if (currTime - prevTime >= 1.0) {
-      prevFrames = frames;
-      fps = 1000.0f / frames;
-      prevTime = currTime;
-      frames = 0;
-    }
-
-    ImGui::Text("%.3f ms/frame (%dfps)", fps, prevFrames);
-    ImGui::Spacing();
-    ImGui::Spacing();
-
-    if (ImGui::CollapsingHeader("Background", ImGuiTreeNodeFlags_DefaultOpen)) {
-      if (ImGui::ColorEdit4("color", glm::value_ptr(mClearColor))) {
-        glClearColor(mClearColor[0], mClearColor[1], mClearColor[2],
-                     mClearColor[3]);
+  if (ImGui::BeginMainMenuBar()) {
+    if (ImGui::BeginMenu("Open")) {
+      if (ImGui::MenuItem("Settings")) {
+        mIsSettingOpen = true;
       }
-    }
-    ImGui::Spacing();
-    ImGui::Spacing();
-    if (ImGui::CollapsingHeader("Camera", ImGuiTreeNodeFlags_DefaultOpen)) {
-      ImGui::Text("Camera");
-      ImGui::DragFloat3("Position", glm::value_ptr(mCamera.mPos), 0.01f);
-      ImGui::Text("Front : x(%.3f), y(%.3f), z(%.3f)", mCamera.mFront.x,
-                  mCamera.mFront.y, mCamera.mFront.z);
-      ImGui::Text("Up    : x(%.3f), y(%.3f), z(%.3f)", mCamera.mUp.x,
-                  mCamera.mUp.y, mCamera.mUp.z);
-      if (ImGui::Button("Reset camera")) {
-        mCamera.reset();
+      if (ImGui::MenuItem("Framebuffer")) {
+        mIsFrambufferOpen = true;
       }
-      ImGui::SameLine();
+      ImGui::EndMenu();
     }
-    ImGui::Spacing();
-    ImGui::Spacing();
-    if (ImGui::CollapsingHeader("Light", ImGuiTreeNodeFlags_DefaultOpen)) {
-      ImGui::RadioButton("Directional", &mLightType, 0);
-      ImGui::SameLine();
-      ImGui::RadioButton("Point", &mLightType, 1);
-      ImGui::SameLine();
-      ImGui::RadioButton("Spot", &mLightType, 2);
-      if (mLightType == 0) {
-        ImGui::DragFloat3("direction", glm::value_ptr(mLight.direction), 0.01f);
-        if (ImGui::Button("Sync the camera")) {
-          mLight.direction = mCamera.mFront;
-        }
-      } else if (mLightType == 1) {
-        ImGui::DragFloat3("position", glm::value_ptr(mLight.position), 0.01f);
-        if (ImGui::Button("Sync the camera")) {
-          mLight.position = mCamera.mPos - (mCamera.mFront * 0.2f);
-        }
-      } else if (mLightType == 2) {
-        ImGui::DragFloat3("direction", glm::value_ptr(mLight.direction), 0.01f);
-        ImGui::DragFloat3("position", glm::value_ptr(mLight.position), 0.01f);
-        ImGui::DragFloat2("cutoff", glm::value_ptr(mLight.cutoff), 0.5f, 0.0f,
-                          180.0f);
-        if (ImGui::Button("Sync the camera")) {
-          mLight.position = mCamera.mPos - (mCamera.mFront * 0.2f);
-          mLight.direction = mCamera.mFront;
+    ImGui::EndMainMenuBar();
+  }
+  if (mIsSettingOpen) {
+    if (ImGui::Begin("Settings", &mIsSettingOpen,
+                     ImGuiWindowFlags_AlwaysAutoResize)) {
+      static float prevTime = 0;
+      static int frames = 0;
+      static float fps = 0.0f;
+      static int prevFrames = 0;
+
+      frames++;
+      float currTime = (float)glfwGetTime();
+      if (currTime - prevTime >= 1.0) {
+        prevFrames = frames;
+        fps = 1000.0f / frames;
+        prevTime = currTime;
+        frames = 0;
+      }
+
+      ImGui::Text("%.3f ms/frame (%dfps)", fps, prevFrames);
+      ImGui::Spacing();
+      ImGui::Spacing();
+
+      if (ImGui::CollapsingHeader("Background",
+                                  ImGuiTreeNodeFlags_DefaultOpen)) {
+        if (ImGui::ColorEdit4("color", glm::value_ptr(mClearColor))) {
+          glClearColor(mClearColor[0], mClearColor[1], mClearColor[2],
+                       mClearColor[3]);
         }
       }
-      ImGui::Text("All");
-      ImGui::ColorEdit3("ambient", glm::value_ptr(mLight.ambient));
-      ImGui::ColorEdit3("diffuse", glm::value_ptr(mLight.diffuse));
-      ImGui::ColorEdit3("specular", glm::value_ptr(mLight.specular));
-    }
-    ImGui::Spacing();
-    ImGui::Spacing();
-    if (ImGui::CollapsingHeader("Extras", ImGuiTreeNodeFlags_DefaultOpen)) {
-      if (ImGui::Checkbox("Active wireFrame", &mIsWireframeActive)) {
-        if (mIsWireframeActive) {
-          glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-        } else {
-          glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+      ImGui::Spacing();
+      ImGui::Spacing();
+      if (ImGui::CollapsingHeader("Camera", ImGuiTreeNodeFlags_DefaultOpen)) {
+        ImGui::Text("Camera");
+        ImGui::DragFloat3("Position", glm::value_ptr(mCamera.mPos), 0.01f);
+        ImGui::Text("Front : x(%.3f), y(%.3f), z(%.3f)", mCamera.mFront.x,
+                    mCamera.mFront.y, mCamera.mFront.z);
+        ImGui::Text("Up    : x(%.3f), y(%.3f), z(%.3f)", mCamera.mUp.x,
+                    mCamera.mUp.y, mCamera.mUp.z);
+        if (ImGui::Button("Reset camera")) {
+          mCamera.reset();
         }
+        ImGui::SameLine();
       }
-      ImGui::Checkbox("Active animation", &mIsAnimationActive);
+      ImGui::Spacing();
+      ImGui::Spacing();
+      if (ImGui::CollapsingHeader("Light", ImGuiTreeNodeFlags_DefaultOpen)) {
+        ImGui::RadioButton("Directional", &mLightType, 0);
+        ImGui::SameLine();
+        ImGui::RadioButton("Point", &mLightType, 1);
+        ImGui::SameLine();
+        ImGui::RadioButton("Spot", &mLightType, 2);
+        if (mLightType == 0) {
+          ImGui::DragFloat3("direction", glm::value_ptr(mLight.direction),
+                            0.01f);
+          if (ImGui::Button("Sync the camera")) {
+            mLight.direction = mCamera.mFront;
+          }
+        } else if (mLightType == 1) {
+          ImGui::DragFloat3("position", glm::value_ptr(mLight.position), 0.01f);
+          if (ImGui::Button("Sync the camera")) {
+            mLight.position = mCamera.mPos - (mCamera.mFront * 0.2f);
+          }
+        } else if (mLightType == 2) {
+          ImGui::DragFloat3("direction", glm::value_ptr(mLight.direction),
+                            0.01f);
+          ImGui::DragFloat3("position", glm::value_ptr(mLight.position), 0.01f);
+          ImGui::DragFloat2("cutoff", glm::value_ptr(mLight.cutoff), 0.5f, 0.0f,
+                            180.0f);
+          if (ImGui::Button("Sync the camera")) {
+            mLight.position = mCamera.mPos - (mCamera.mFront * 0.2f);
+            mLight.direction = mCamera.mFront;
+          }
+        }
+        ImGui::Text("All");
+        ImGui::ColorEdit3("ambient", glm::value_ptr(mLight.ambient));
+        ImGui::ColorEdit3("diffuse", glm::value_ptr(mLight.diffuse));
+        ImGui::ColorEdit3("specular", glm::value_ptr(mLight.specular));
+      }
+      ImGui::Spacing();
+      ImGui::Spacing();
+      if (ImGui::CollapsingHeader("Extras", ImGuiTreeNodeFlags_DefaultOpen)) {
+        if (ImGui::Checkbox("Active wireFrame", &mIsWireframeActive)) {
+          if (mIsWireframeActive) {
+            glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+          } else {
+            glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+          }
+        }
+        ImGui::Checkbox("Active animation", &mIsAnimationActive);
+        ImGui::DragFloat("Gamma", &mGamma, 0.01f, 0.0f, 2.0f);
+      }
     }
-
     ImGui::End();
   }
-  { // framebuffer
-    ImGui::Begin("Framebuffer");
-    ImGui::Image((ImTextureID)mFramebuffer->getColorAttachment()->getId(),
-                 ImVec2(mImGuiImageSize * ((float)mWidth / (float)mHeight),
-                        (float)mImGuiImageSize),
-                 ImVec2(0, 1), ImVec2(1, 0));
-    ImGui::DragFloat("Gamma", &mGamma, 0.01f, 0.0f, 2.0f);
-    ImGui::InputInt("Size", &mImGuiImageSize);
+  if (mIsFrambufferOpen) {
+    if (ImGui::Begin(
+            "Framebuffer", &mIsFrambufferOpen,
+            ImGuiWindowFlags_MenuBar | ImGuiWindowFlags_AlwaysAutoResize)) {
+      static const std::string title = "Save as PNG";
+      static int isModalOpen = false;
+
+      if (ImGui::BeginMenuBar()) {
+        if (ImGui::BeginMenu("File")) {
+          if (ImGui::MenuItem("Save as PNG", "-")) {
+            isModalOpen = true;
+          }
+          ImGui::EndMenu();
+        }
+        ImGui::EndMenuBar();
+      }
+
+      ImGui::Image(reinterpret_cast<ImTextureID>(
+                       mFramebuffer->getColorAttachment()->getId()),
+                   ImVec2(mImGuiImageSize * ((float)mWidth / (float)mHeight),
+                          (float)mImGuiImageSize),
+                   ImVec2(0, 1), ImVec2(1, 0));
+      ImGui::InputInt("Size", &mImGuiImageSize);
+
+      if (isModalOpen) {
+        ImGui::OpenPopup(title.c_str());
+      }
+      imguiModal(
+          title,
+          "if the file already exists, it will be overwritten\n\n"
+          "Are you sure?",
+          [this]() -> void {
+            if (!mFramebuffer->getColorAttachment()->saveAsPng(
+                    "save/framebuffer.png")) {
+              SPDLOG_INFO("failed");
+            }
+            isModalOpen = false;
+          },
+          []() -> void { isModalOpen = false; });
+    }
+    ImGui::End();
   }
-  ImGui::End();
+
   ImGui::Render();
+}
+
+void Context::imguiModal(const std::string& title, const std::string& text,
+                         std::function<void(void)> ok,
+                         std::function<void(void)> cancel) {
+  ImVec2 center = ImGui::GetMainViewport()->GetCenter();
+  ImGui::SetNextWindowPos(center, ImGuiCond_Appearing, ImVec2(0.5f, 0.5f));
+  if (ImGui::BeginPopupModal(title.c_str(), NULL,
+                             ImGuiWindowFlags_AlwaysAutoResize)) {
+    ImGui::Text("%s", text.c_str());
+    ImGui::Separator();
+    if (ImGui::Button("OK", ImVec2(50, 0))) {
+      ok();
+      ImGui::CloseCurrentPopup();
+    }
+    ImGui::SetItemDefaultFocus();
+    ImGui::SameLine();
+    if (ImGui::Button("Cancel", ImVec2(50, 0))) {
+      cancel();
+      ImGui::CloseCurrentPopup();
+    }
+    ImGui::EndPopup();
+  }
 }

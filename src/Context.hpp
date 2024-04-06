@@ -12,19 +12,23 @@
 #include "common.hpp"
 
 class Context {
-public:
+ public:
   ~Context();
   static std::unique_ptr<Context> create();
   void update();
   void render();
   void renderImGui();
-  void processKeyboardInput(GLFWwindow *window);
+  void processKeyboardInput(GLFWwindow* window);
   void processMouseMove(double x, double y);
   void processMouseButton(int button, int action, double x, double y);
   void processMouseScroll(double xoffset, double yoffset);
   void reshapeViewport(int width, int height);
 
-private:
+  void imguiModal(const std::string& title, const std::string& text,
+                  std::function<void(void)> ok,
+                  std::function<void(void)> cancel);
+
+ private:
   Context();
   bool init();
 
@@ -63,6 +67,8 @@ private:
   bool mIsAnimationActive{true};
   int mLightType{0};
   int mImGuiImageSize{300};
+  bool mIsSettingOpen{true};
+  bool mIsFrambufferOpen{true};
 };
 
 #endif

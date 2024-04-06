@@ -4,7 +4,7 @@
 #include "common.hpp"
 
 class Image {
-public:
+ public:
   static std::unique_ptr<Image> load(const std::string &filepath,
                                      bool flipVertical = true);
   static std::unique_ptr<Image> create(int width, int height,
@@ -18,7 +18,7 @@ public:
   int getHeight() const;
   int getChannelCount() const;
 
-private:
+ private:
   Image();
   bool loadFile(const std::string &filepath, bool flipVertical);
   bool allocate(int width, int height, int channelCount);

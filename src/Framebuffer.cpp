@@ -1,4 +1,4 @@
-#include "FrameBuffer.hpp"
+#include "Framebuffer.hpp"
 
 Framebuffer::Framebuffer() {}
 
@@ -11,8 +11,8 @@ Framebuffer::~Framebuffer() {
   }
 }
 
-std::unique_ptr<Framebuffer>
-Framebuffer::create(const std::shared_ptr<Texture> colorAttachment) {
+std::unique_ptr<Framebuffer> Framebuffer::create(
+    const std::shared_ptr<Texture> colorAttachment) {
   auto framebuffer = std::unique_ptr<Framebuffer>(new Framebuffer());
   if (!framebuffer->initWithColorAttachment(colorAttachment)) {
     return nullptr;

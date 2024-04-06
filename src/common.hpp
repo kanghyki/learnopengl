@@ -4,17 +4,19 @@
 // clang-format off
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
-// clang-format on
 #include <spdlog/spdlog.h>
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
+// clang-format on
+
+#include <stdint.h>
 
 #include <fstream>
+#include <functional>
 #include <memory>
 #include <optional>
 #include <sstream>
-#include <stdint.h>
 #include <string>
 
 std::optional<std::string> loadTextFile(const std::string &filename);

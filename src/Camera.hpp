@@ -4,6 +4,7 @@
 #include "common.hpp"
 
 enum eCameraMove {
+  NONE = 1 << 0,
   FRONT = 1 << 1,
   BACK = 1 << 2,
   LEFT = 1 << 3,
@@ -29,20 +30,15 @@ struct Camera {
   }
 
   void move() {
-    if (mMoveStatus & FRONT)
-      mPos += mMoveSpeed * mFront;
-    if (mMoveStatus & BACK)
-      mPos -= mMoveSpeed * mFront;
+    if (mMoveStatus == NONE) return;
+    if (mMoveStatus & FRONT) mPos += mMoveSpeed * mFront;
+    if (mMoveStatus & BACK) mPos -= mMoveSpeed * mFront;
     glm::vec3 cameraRight = glm::normalize(glm::cross(mUp, -mFront));
-    if (mMoveStatus & LEFT)
-      mPos -= mMoveSpeed * cameraRight;
-    if (mMoveStatus & RIGHT)
-      mPos += mMoveSpeed * cameraRight;
+    if (mMoveStatus & LEFT) mPos -= mMoveSpeed * cameraRight;
+    if (mMoveStatus & RIGHT) mPos += mMoveSpeed * cameraRight;
     glm::vec3 cameraUp = glm::cross(-mFront, cameraRight);
-    if (mMoveStatus & UP)
-      mPos += mMoveSpeed * cameraUp;
-    if (mMoveStatus & DOWN)
-      mPos -= mMoveSpeed * cameraUp;
+    if (mMoveStatus & UP) mPos += mMoveSpeed * cameraUp;
+    if (mMoveStatus & DOWN) mPos -= mMoveSpeed * cameraUp;
   }
 
   void setMove(eCameraMove type) { mMoveStatus |= type; }
@@ -52,15 +48,11 @@ struct Camera {
     mYaw -= delta.x * mRotSpeed;
     mPitch -= delta.y * mRotSpeed;
 
-    if (mYaw < 0.0f)
-      mYaw += 360.0f;
-    if (mYaw > 360.0f)
-      mYaw -= 360.0f;
+    if (mYaw < 0.0f) mYaw += 360.0f;
+    if (mYaw > 360.0f) mYaw -= 360.0f;
 
-    if (mPitch > 89.0f)
-      mPitch = 89.0f;
-    if (mPitch < -89.0f)
-      mPitch = -89.0f;
+    if (mPitch > 89.0f) mPitch = 89.0f;
+    if (mPitch < -89.0f) mPitch = -89.0f;
   }
 
   void changeAspect(int width, int height) {
