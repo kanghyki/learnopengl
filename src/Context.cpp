@@ -114,15 +114,15 @@ void Context::render() {
   mFramebuffer->bind();
   glEnable(GL_DEPTH_TEST);
   glClear(mClearBit);
-  auto projection = getPerspectiveMatrix();
+  auto projection = mCamera.getPerspectiveProjectionMatrix();
   auto view = mCamera.getViewMatrix();
 
   { // cube program
     glActiveTexture(GL_TEXTURE0);
     mCubeTexture->bind();
 
-    auto model = glm::translate(glm::mat4(1.0), mCamera.pos) *
-                 glm::scale(glm::mat4(1.0), glm::vec3(mFar / 2));
+    auto model = glm::translate(glm::mat4(1.0), mCamera.mPos) *
+                 glm::scale(glm::mat4(1.0), glm::vec3(30.0f));
     mCubeProgram->use();
     mCubeProgram->setUniform("cube", 0);
     mCubeProgram->setUniform("transform", projection * view * model);
@@ -141,7 +141,7 @@ void Context::render() {
   { // lighting program
     mLightingProgram->use();
     mLightingProgram->setUniform("lightType", mLightType);
-    mLightingProgram->setUniform("viewPos", mCamera.pos);
+    mLightingProgram->setUniform("viewPos", mCamera.mPos);
     mLightingProgram->setUniform("light.position", mLight.position);
     mLightingProgram->setUniform("light.direction", mLight.direction);
     mLightingProgram->setUniform(
@@ -198,7 +198,7 @@ void Context::render() {
     mEnvMapProgram->setUniform("model", transform);
     mEnvMapProgram->setUniform("view", view);
     mEnvMapProgram->setUniform("projection", projection);
-    mEnvMapProgram->setUniform("cameraPos", mCamera.pos);
+    mEnvMapProgram->setUniform("cameraPos", mCamera.mPos);
     mCubeTexture->bind();
     mEnvMapProgram->setUniform("cube", 0);
     mSphere->draw(mEnvMapProgram.get());
@@ -235,50 +235,37 @@ void Context::render() {
   }
 }
 
-glm::mat4 Context::getPerspectiveMatrix() const {
-  float aspect = (float)(mWidth) / (float)mHeight;
-
-  return glm::perspective(glm::radians(45.0f), aspect, mNear, mFar);
-}
-
 void Context::processKeyboardInput(GLFWwindow *window) {
-  const float cameraSpeed = 0.05f;
-  if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
-    mCamera.pos += cameraSpeed * mCamera.front;
-  if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
-    mCamera.pos -= cameraSpeed * mCamera.front;
-  auto cameraRight = glm::normalize(glm::cross(mCamera.up, -mCamera.front));
-  if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
-    mCamera.pos += cameraSpeed * cameraRight;
-  if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
-    mCamera.pos -= cameraSpeed * cameraRight;
-  auto cameraUp = glm::cross(-mCamera.front, cameraRight);
-  if (glfwGetKey(window, GLFW_KEY_E) == GLFW_PRESS)
-    mCamera.pos += cameraSpeed * cameraUp;
-  if (glfwGetKey(window, GLFW_KEY_Q) == GLFW_PRESS)
-    mCamera.pos -= cameraSpeed * cameraUp;
+  if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS) {
+    mCamera.move(FRONT);
+  }
+  if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS) {
+    mCamera.move(BACK);
+  }
+  if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS) {
+    mCamera.move(RIGHT);
+  }
+  if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS) {
+    mCamera.move(LEFT);
+  }
+  if (glfwGetKey(window, GLFW_KEY_E) == GLFW_PRESS) {
+    mCamera.move(UP);
+  }
+  if (glfwGetKey(window, GLFW_KEY_Q) == GLFW_PRESS) {
+    mCamera.move(DOWN);
+  }
+  if (glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS) {
+    mCamera.setMoveSpeed(0.15f);
+  } else if (glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_RELEASE) {
+    mCamera.setMoveSpeed(0.05f);
+  }
 }
 
 void Context::processMouseMove(double x, double y) {
   if (mCameraDirectionControl) {
-    auto pos = glm::vec2((float)x, (float)y);
-    auto deltaPos = pos - mPrevMousePos;
-
-    const float cameraRotSpeed = 0.25f;
-    mCamera.yaw -= deltaPos.x * cameraRotSpeed;
-    mCamera.pitch -= deltaPos.y * cameraRotSpeed;
-
-    if (mCamera.yaw < 0.0f)
-      mCamera.yaw += 360.0f;
-    if (mCamera.yaw > 360.0f)
-      mCamera.yaw -= 360.0f;
-
-    if (mCamera.pitch > 89.0f)
-      mCamera.pitch = 89.0f;
-    if (mCamera.pitch < -89.0f)
-      mCamera.pitch = -89.0f;
-
-    mPrevMousePos = pos;
+    glm::vec2 curPos(x, y);
+    mCamera.rotate(curPos - mPrevMousePos);
+    mPrevMousePos = curPos;
   }
 }
 
@@ -298,6 +285,7 @@ void Context::processMouseScroll(double xoffset, double yoffset) {}
 void Context::reshapeViewport(int width, int height) {
   mWidth = width;
   mHeight = height;
+  mCamera.changeAspect(mWidth, mHeight);
   glViewport(0, 0, mWidth, mHeight);
   mFramebuffer = Framebuffer::create(Texture::create(mWidth, mHeight, GL_RGBA));
 }
@@ -333,11 +321,11 @@ void Context::renderImGui() {
     ImGui::Spacing();
     if (ImGui::CollapsingHeader("Camera", ImGuiTreeNodeFlags_DefaultOpen)) {
       ImGui::Text("Camera");
-      ImGui::DragFloat3("Position", glm::value_ptr(mCamera.pos), 0.01f);
-      ImGui::Text("Front : x(%.3f), y(%.3f), z(%.3f)", mCamera.front.x,
-                  mCamera.front.y, mCamera.front.z);
-      ImGui::Text("Up    : x(%.3f), y(%.3f), z(%.3f)", mCamera.up.x,
-                  mCamera.up.y, mCamera.up.z);
+      ImGui::DragFloat3("Position", glm::value_ptr(mCamera.mPos), 0.01f);
+      ImGui::Text("Front : x(%.3f), y(%.3f), z(%.3f)", mCamera.mFront.x,
+                  mCamera.mFront.y, mCamera.mFront.z);
+      ImGui::Text("Up    : x(%.3f), y(%.3f), z(%.3f)", mCamera.mUp.x,
+                  mCamera.mUp.y, mCamera.mUp.z);
       if (ImGui::Button("Reset camera")) {
         mCamera.reset();
       }
@@ -354,12 +342,12 @@ void Context::renderImGui() {
       if (mLightType == 0) {
         ImGui::DragFloat3("direction", glm::value_ptr(mLight.direction), 0.01f);
         if (ImGui::Button("Sync the camera")) {
-          mLight.direction = mCamera.front;
+          mLight.direction = mCamera.mFront;
         }
       } else if (mLightType == 1) {
         ImGui::DragFloat3("position", glm::value_ptr(mLight.position), 0.01f);
         if (ImGui::Button("Sync the camera")) {
-          mLight.position = mCamera.pos - (mCamera.front * 0.2f);
+          mLight.position = mCamera.mPos - (mCamera.mFront * 0.2f);
         }
       } else if (mLightType == 2) {
         ImGui::DragFloat3("direction", glm::value_ptr(mLight.direction), 0.01f);
@@ -367,8 +355,8 @@ void Context::renderImGui() {
         ImGui::DragFloat2("cutoff", glm::value_ptr(mLight.cutoff), 0.5f, 0.0f,
                           180.0f);
         if (ImGui::Button("Sync the camera")) {
-          mLight.position = mCamera.pos - (mCamera.front * 0.2f);
-          mLight.direction = mCamera.front;
+          mLight.position = mCamera.mPos - (mCamera.mFront * 0.2f);
+          mLight.direction = mCamera.mFront;
         }
       }
       ImGui::Text("All");

@@ -19,8 +19,8 @@ src/Buffer.cpp      src/Buffer.hpp
 src/VertexArray.cpp src/VertexArray.hpp
 src/Image.cpp       src/Image.hpp
 src/Texture.cpp     src/Texture.hpp
-src/Camera.cpp      src/Camera.hpp
-src/Light.hpp
+                    src/Camera.hpp
+                    src/Light.hpp
 src/Mesh.cpp        src/Mesh.hpp
 src/Model.cpp       src/Model.hpp
 src/Material.cpp    src/Material.hpp

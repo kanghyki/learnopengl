@@ -27,8 +27,6 @@ private:
   Context();
   bool init();
 
-  glm::mat4 getPerspectiveMatrix() const;
-
   uint32_t mClearBit{0};
   int mWidth{WINDOW_WIDTH};
   int mHeight{WINDOW_HEIGHT};
@@ -49,11 +47,10 @@ private:
   std::unique_ptr<Mesh> mPlane{nullptr};
   std::unique_ptr<Model> mModel{nullptr};
 
-  struct Camera mCamera;
+  Camera mCamera;
   glm::vec2 mPrevMousePos{0.0f};
   bool mCameraDirectionControl{false};
-  float mNear{0.1f};
-  float mFar{100.0f};
+  bool mCameraFastMove{false};
 
   std::unique_ptr<Framebuffer> mFramebuffer{nullptr};
   std::unique_ptr<Program> mPostProgram{nullptr};
