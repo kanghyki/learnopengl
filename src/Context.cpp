@@ -222,6 +222,7 @@ void Context::render() {
     mPlane->draw(mPlaneProgram.get());
     glDisable(GL_BLEND);
   }
+
   Framebuffer::bindToDefault();
   glDisable(GL_DEPTH_TEST);
   glClear(mClearBit);

@@ -29,7 +29,7 @@ bool Framebuffer::initWithColorAttachment(
     const std::shared_ptr<Texture> colorAttachment) {
   mColorAttachment = colorAttachment;
   glGenFramebuffers(1, &mId);
-  glBindFramebuffer(GL_FRAMEBUFFER, mId);
+  bind();
 
   glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D,
                          colorAttachment->getId(), 0);

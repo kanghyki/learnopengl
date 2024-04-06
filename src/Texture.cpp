@@ -76,31 +76,31 @@ void Texture::setTextureFromImage(const Image *image) {
     break;
   }
 
-  m_width = image->getWidth();
-  m_height = image->getHeight();
-  m_format = format;
+  mWidth = image->getWidth();
+  mHeight = image->getHeight();
+  mFormat = format;
 
-  glTexImage2D(GL_TEXTURE_2D, 0, m_format, m_width, m_height, 0, format,
+  glTexImage2D(GL_TEXTURE_2D, 0, mFormat, mWidth, mHeight, 0, format,
                GL_UNSIGNED_BYTE, image->getData());
   glGenerateMipmap(GL_TEXTURE_2D);
 }
 
 void Texture::setTextureFormat(int width, int height, uint32_t format) {
-  m_width = width;
-  m_height = height;
-  m_format = format;
+  mWidth = width;
+  mHeight = height;
+  mFormat = format;
 
-  glTexImage2D(GL_TEXTURE_2D, 0, m_format, m_width, m_height, 0, m_format,
+  glTexImage2D(GL_TEXTURE_2D, 0, mFormat, mWidth, mHeight, 0, mFormat,
                GL_UNSIGNED_BYTE, nullptr);
 }
 
 const uint32_t Texture::getId() const { return mId; }
 
-int Texture::getWidth() const { return m_width; }
+int Texture::getWidth() const { return mWidth; }
 
-int Texture::getHeight() const { return m_height; }
+int Texture::getHeight() const { return mHeight; }
 
-uint32_t Texture::getFormat() const { return m_format; }
+uint32_t Texture::getFormat() const { return mFormat; }
 
 /*
  * CubeTexture

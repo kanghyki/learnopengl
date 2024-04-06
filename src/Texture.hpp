@@ -29,9 +29,9 @@ private:
   void setTextureFromImage(const Image *image);
 
   uint32_t mId{0};
-  int m_width{0};
-  int m_height{0};
-  uint32_t m_format{GL_RGBA};
+  int mWidth{0};
+  int mHeight{0};
+  uint32_t mFormat{GL_RGBA};
 };
 
 class CubeTexture {
