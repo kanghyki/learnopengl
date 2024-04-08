@@ -3,7 +3,7 @@
 
 #include "common.hpp"
 
-enum eCameraMove {
+enum CameraMove {
   kNone = 1 << 0,
   kFront = 1 << 1,
   kBack = 1 << 2,
@@ -29,8 +29,8 @@ struct Camera {
                             far_plane_);
   }
 
-  inline void SetMove(eCameraMove type) { move_status_ |= type; }
-  inline void UnsetMove(eCameraMove type) { move_status_ &= ~type; }
+  inline void SetMove(CameraMove type) { move_status_ |= type; }
+  inline void UnsetMove(CameraMove type) { move_status_ &= ~type; }
   void Move() {
     if (move_status_ == kNone) return;
     if (move_status_ & kFront) position_ += move_speed_ * front_;

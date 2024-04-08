@@ -1,7 +1,7 @@
 #ifndef INCLUDED_TEXTURE_HPP
 #define INCLUDED_TEXTURE_HPP
 
-#include "Image.hpp"
+#include "image.hpp"
 
 class Texture {
  public:

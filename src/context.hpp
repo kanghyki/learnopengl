@@ -1,15 +1,15 @@
 #ifndef INCLUDED_CONTEXT_HPP
 #define INCLUDED_CONTEXT_HPP
 
-#include "Camera.hpp"
-#include "Framebuffer.hpp"
-#include "Light.hpp"
-#include "Material.hpp"
-#include "Mesh.hpp"
-#include "Model.hpp"
-#include "Program.hpp"
-#include "Shader.hpp"
+#include "camera.hpp"
 #include "common.hpp"
+#include "framebuffer.hpp"
+#include "light.hpp"
+#include "material.hpp"
+#include "mesh.hpp"
+#include "model.hpp"
+#include "program.hpp"
+#include "shader.hpp"
 
 class Context {
  public:

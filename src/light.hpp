@@ -1,8 +1,8 @@
 #ifndef INCLUDED_LIGHT_HPP
 #define INCLUDED_LIGHT_HPP
 
-#include "Texture.hpp"
 #include "common.hpp"
+#include "texture.hpp"
 
 struct Light {
   // Point & Spot

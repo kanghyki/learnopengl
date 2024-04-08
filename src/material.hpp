@@ -1,9 +1,9 @@
 #ifndef INCLUDED_MATERIAL_HPP
 #define INCLUDED_MATERIAL_HPP
 
-#include "Program.hpp"
-#include "Texture.hpp"
 #include "common.hpp"
+#include "program.hpp"
+#include "texture.hpp"
 
 class Material {
  public:

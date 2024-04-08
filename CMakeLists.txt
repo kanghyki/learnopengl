@@ -11,20 +11,20 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS 1)
 project(${PROJECT_NAME})
 add_executable(${PROJECT_NAME}
 src/main.cpp
-src/common.cpp      src/common.hpp
-src/Shader.cpp      src/Shader.hpp
-src/Program.cpp     src/Program.hpp
-src/Context.cpp     src/Context.hpp
-src/Buffer.cpp      src/Buffer.hpp
-src/VertexArray.cpp src/VertexArray.hpp
-src/Image.cpp       src/Image.hpp
-src/Texture.cpp     src/Texture.hpp
-                    src/Camera.hpp
-                    src/Light.hpp
-src/Mesh.cpp        src/Mesh.hpp
-src/Model.cpp       src/Model.hpp
-src/Material.cpp    src/Material.hpp
-src/Framebuffer.cpp src/Framebuffer.hpp
+src/common.cpp        src/common.hpp
+src/shader.cpp        src/shader.hpp
+src/program.cpp       src/program.hpp
+src/context.cpp       src/context.hpp
+src/buffer.cpp        src/buffer.hpp
+src/vertex_array.cpp  src/vertex_array.hpp
+src/image.cpp         src/image.hpp
+src/texture.cpp       src/texture.hpp
+                      src/camera.hpp
+                      src/light.hpp
+src/mesh.cpp          src/mesh.hpp
+src/model.cpp         src/model.hpp
+src/material.cpp      src/material.hpp
+src/framebuffer.cpp   src/framebuffer.hpp
 )
 
 include(Dependency.cmake)

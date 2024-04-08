@@ -1,8 +1,8 @@
 #ifndef INCLUDED_PROGRAM_HPP
 #define INCLUDED_PROGRAM_HPP
 
-#include "Shader.hpp"
 #include "common.hpp"
+#include "shader.hpp"
 
 class Program {
  public:

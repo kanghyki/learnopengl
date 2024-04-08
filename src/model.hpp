@@ -1,8 +1,8 @@
 #ifndef INCLUDED_MODEL_HPP
 #define INCLUDED_MODEL_HPP
 
-#include "Mesh.hpp"
 #include "common.hpp"
+#include "mesh.hpp"
 
 struct VertexIndex {
   int v;

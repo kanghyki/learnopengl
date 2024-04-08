@@ -1,8 +1,8 @@
 #ifndef INCLUDED_FRAMEBUFFER_HPP
 #define INCLUDED_FRAMEBUFFER_HPP
 
-#include "Texture.hpp"
 #include "common.hpp"
+#include "texture.hpp"
 
 class Framebuffer {
  public:

@@ -1,8 +1,8 @@
-#include "Context.hpp"
+#include "context.hpp"
 
 #include <imgui.h>
 
-#include "Image.hpp"
+#include "image.hpp"
 
 Context::Context() {
   clear_bit_ =

@@ -1,10 +1,10 @@
 #ifndef INCLUDED_MESH_HPP
 #define INCLUDED_MESH_HPP
 
-#include "Buffer.hpp"
-#include "Material.hpp"
-#include "VertexArray.hpp"
+#include "buffer.hpp"
 #include "common.hpp"
+#include "material.hpp"
+#include "vertex_array.hpp"
 
 struct Vertex {
   glm::vec3 position;

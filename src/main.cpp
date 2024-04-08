@@ -1,7 +1,7 @@
 #include <imgui_impl_glfw.h>
 #include <imgui_impl_opengl3.h>
 
-#include "Context.hpp"
+#include "context.hpp"
 
 void FramebufferSizeCallbackFunc(GLFWwindow *window, int width, int height);
 void OnKeyEvent(GLFWwindow *window, int key, int scancode, int action,
