@@ -87,13 +87,24 @@ bool Context::Init() {
   {  // box mesh
     auto mat = Material::Create();
     mat->specular_ = Texture::Create(
-        Image::CreateSingleColorImage(4, 4, glm::vec4(1.0f, 1.0f, 1.0f, 1.0f))
+        Image::CreateSingleColorImage(4, 4, glm::vec4(0.0f, 1.0f, 0.0f, 1.0f))
             .get());
     mat->diffuse_ = Texture::Create(
-        Image::CreateSingleColorImage(4, 4, glm::vec4(0.7f, 0.7f, 0.7f, 1.0f))
+        Image::CreateSingleColorImage(4, 4, glm::vec4(0.1f, 0.5f, 0.1f, 1.0f))
             .get());
-    box_ = Mesh::CreateBox();
-    box_->set_material(std::move(mat));
+    red_box_ = Mesh::CreateBox();
+    red_box_->set_material(std::move(mat));
+  }
+  {
+    auto mat = Material::Create();
+    mat->specular_ = Texture::Create(
+        Image::CreateSingleColorImage(4, 4, glm::vec4(1.0f, 0.0f, 0.0f, 1.0f))
+            .get());
+    mat->diffuse_ = Texture::Create(
+        Image::CreateSingleColorImage(4, 4, glm::vec4(0.5f, 0.1f, 0.1f, 1.0f))
+            .get());
+    green_box_ = Mesh::CreateBox();
+    green_box_->set_material(std::move(mat));
   }
   {  // sphere mesh
     auto mat = Material::Create();
@@ -119,37 +130,24 @@ bool Context::Init() {
     }
   }
 
-  {
-    Object shader_box = Object(box_.get());
-    auto transform = shader_box.transform();
-    transform.scale = glm::vec3(0.5f);
-    transform.translate = glm::vec3(-1.7f, 3.0f, -7.5f);
-    shader_box.set_transform(transform);
-    pickable_objects_.push_back(shader_box);
+  Object rbox = Object(red_box_.get());
+  auto rbox_transform = rbox.transform();
+  rbox_transform.scale = glm::vec3(0.5f);
+  rbox_transform.translate = glm::vec3(-1.7f, 3.0f, -7.5f);
+  rbox.set_transform(rbox_transform);
+  pickable_objects_.push_back(rbox);
 
-    Object shader_sphere = Object(sphere_.get());
-    auto transform1 = shader_sphere.transform();
-    transform1.scale = glm::vec3(0.5f);
-    transform1.translate = glm::vec3(1.5f, 2.0f, -2.5f);
-    shader_sphere.set_transform(transform1);
-    pickable_objects_.push_back(shader_sphere);
-  }
+  Object gbox = Object(green_box_.get());
+  auto gbox_transform = gbox.transform();
+  gbox_transform.scale = glm::vec3(0.5f);
+  gbox_transform.translate = glm::vec3(1.5f, 2.0f, -2.5f);
+  gbox.set_transform(gbox_transform);
+  pickable_objects_.push_back(gbox);
 
   return true;
 }
 
-void Context::Update() {
-  camera_.Move();
-  for (auto& obj : pickable_objects_) {
-    auto transform = obj.transform();
-    transform.rotate.x =
-        (is_animation_active_ ? (float)glfwGetTime() : 0) * 90.0f;
-    transform.rotate.y =
-        (is_animation_active_ ? (float)glfwGetTime() : 0) * 45.0f;
-    obj.set_transform(transform);
-    transform = obj.transform();
-  }
-}
+void Context::Update() { camera_.Move(); }
 
 void Context::Render() {
   RenderImGui();
@@ -178,7 +176,7 @@ void Context::Render() {
         "color", glm::vec4(light_.ambient + light_.diffuse, 1.0f));
     simple_program_->SetUniform("transform",
                                 projection * view * lightModelTransform);
-    box_->Draw(simple_program_.get());
+    red_box_->Draw(simple_program_.get());
   }
   {  // lighting program
     lighting_program_->Use();
@@ -200,33 +198,18 @@ void Context::Render() {
     for (size_t i = 0; i < pickable_objects_.size(); ++i) {
       auto obj = pickable_objects_[i];
       if (i == pick_) {
-        simple_program_->Use();
-        auto model = obj.transform().GetMatrix();
-        simple_program_->SetUniform("transform", projection * view * model);
-        simple_program_->SetUniform("color", glm::vec4(1.0f, 0.0f, 0.0f, 1.0f));
-        obj.Draw(simple_program_.get());
-
-        lighting_program_->Use();
-        lighting_program_->SetUniform("lightType", light_type_);
-        lighting_program_->SetUniform("viewPos", camera_.position_);
-        lighting_program_->SetUniform("light.position", light_.position);
-        lighting_program_->SetUniform("light.direction", light_.direction);
-        lighting_program_->SetUniform(
-            "light.cutoff",
-            glm::vec2(cosf(glm::radians(light_.cutoff[0])),
-                      cosf(glm::radians(light_.cutoff[0] + light_.cutoff[1]))));
-        lighting_program_->SetUniform("light.constant", light_.constant);
-        lighting_program_->SetUniform("light.linear", light_.linear);
-        lighting_program_->SetUniform("light.quadratic", light_.quadratic);
-        lighting_program_->SetUniform("light.ambient", light_.ambient);
-        lighting_program_->SetUniform("light.diffuse", light_.diffuse);
-        lighting_program_->SetUniform("light.specular", light_.specular);
-      } else {
-        auto model = obj.transform().GetMatrix();
-        lighting_program_->SetUniform("transform", projection * view * model);
-        lighting_program_->SetUniform("modelTransform", model);
-        obj.Draw(lighting_program_.get());
+        auto transform = obj.transform();
+        transform.rotate.x =
+            (is_animation_active_ ? (float)glfwGetTime() : 0) * 90.0f;
+        transform.rotate.y =
+            (is_animation_active_ ? (float)glfwGetTime() : 0) * 45.0f;
+        obj.set_transform(transform);
+        transform = obj.transform();
       }
+      auto model = obj.transform().GetMatrix();
+      lighting_program_->SetUniform("transform", projection * view * model);
+      lighting_program_->SetUniform("modelTransform", model);
+      obj.Draw(lighting_program_.get());
     }
     {
       auto model = glm::translate(glm::mat4(1.0), glm::vec3(0.0f, 1.5f, 0.0f));
@@ -344,19 +327,6 @@ void Context::ProcessMouseMove(double x, double y) {
     camera_.Rotate(curPos - prev_mouse_pos_);
     prev_mouse_pos_ = curPos;
   }
-  index_framebuffer_->Bind();
-  int height = index_framebuffer_->color_attachment()->height();
-  std::array<uint8_t, 4> pixel =
-      index_framebuffer_->color_attachment()->GetTexPixel((int)x,
-                                                          height - (int)y);
-  if (pixel[0] == 25) {
-    pick_ = 0;
-  } else if (pixel[0] == 51) {
-    pick_ = 1;
-  } else {
-    pick_ = -1;
-  }
-  SPDLOG_INFO("{}", pick_);
 }
 
 void Context::ProcessMouseButton(int button, int action, double x, double y) {
@@ -366,6 +336,21 @@ void Context::ProcessMouseButton(int button, int action, double x, double y) {
       camera_direction_control_ = true;
     } else if (action == GLFW_RELEASE) {
       camera_direction_control_ = false;
+    }
+  }
+  if (button == GLFW_MOUSE_BUTTON_LEFT) {
+    if (action == GLFW_PRESS) {
+      index_framebuffer_->Bind();
+      int height = index_framebuffer_->color_attachment()->height();
+      std::array<uint8_t, 4> pixel =
+          index_framebuffer_->color_attachment()->GetTexPixel((int)x,
+                                                              height - (int)y);
+      if (pixel[0] == 25) {
+        pick_ = 0;
+      } else if (pixel[0] == 51) {
+        pick_ = 1;
+      }
+      SPDLOG_INFO("{}", pick_);
     }
   }
 }
@@ -533,6 +518,35 @@ void Context::RenderImGui() {
             isModalOpen = false;
           },
           []() -> void { isModalOpen = false; });
+    }
+    ImGui::End();
+  }
+
+  {
+    if (ImGui::Begin("Object")) {
+      if (pick_ != -1) {
+        Object& obj = pickable_objects_[pick_];
+        Mesh* mesh = obj.mesh();
+        Transform transform = pickable_objects_[pick_].transform();
+
+        ImGui::DragFloat3("Translate", glm::value_ptr(transform.translate),
+                          0.01f);
+        ImGui::DragFloat3("Scale", glm::value_ptr(transform.scale), 0.01f);
+        ImGui::DragFloat3("Rotate", glm::value_ptr(transform.rotate), 0.01f);
+
+        if (mesh->material()->diffuse_) {
+          ImGui::Text("Diffuse texture");
+          ImGui::Image(
+              reinterpret_cast<ImTextureID>(mesh->material()->diffuse_->id()),
+              ImVec2((float)150, (float)150), ImVec2(0, 1), ImVec2(1, 0));
+        }
+        if (mesh->material()->specular_) {
+          ImGui::Text("Specular texture");
+          ImGui::Image(
+              reinterpret_cast<ImTextureID>(mesh->material()->specular_->id()),
+              ImVec2((float)150, (float)150), ImVec2(0, 1), ImVec2(1, 0));
+        }
+      }
     }
     ImGui::End();
   }

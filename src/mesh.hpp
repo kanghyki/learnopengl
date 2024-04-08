@@ -78,6 +78,7 @@ class Object {
   ~Object() {}
 
   void Draw(const Program *program) const { mesh_->Draw(program); }
+  Mesh *mesh() { return mesh_; }
   inline Transform transform() const { return transform_; }
   inline void set_transform(Transform transform) { transform_ = transform; }
 

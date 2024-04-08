@@ -47,7 +47,8 @@ class Context {
   std::unique_ptr<CubeTexture> cube_texture_{nullptr};
 
   // Meshes
-  std::unique_ptr<Mesh> box_{nullptr};
+  std::unique_ptr<Mesh> red_box_{nullptr};
+  std::unique_ptr<Mesh> green_box_{nullptr};
   std::unique_ptr<Mesh> sphere_{nullptr};
   std::unique_ptr<Mesh> plane_{nullptr};
   std::unique_ptr<Model> model_{nullptr};
