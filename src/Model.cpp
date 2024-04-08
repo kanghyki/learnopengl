@@ -4,32 +4,32 @@ Model::Model() {}
 
 Model::~Model() {}
 
-std::unique_ptr<Model> Model::load(const std::string &filename) {
+std::unique_ptr<Model> Model::Load(const std::string &filename) {
   auto model = std::unique_ptr<Model>(new Model());
-  std::optional<std::string> data = loadTextFile(filename);
+  std::optional<std::string> data = LoadTextFile(filename);
 
-  if (!data || !model->parseObjToMesh(*data)) {
+  if (!data || !model->ParseObjToMesh(*data)) {
     return nullptr;
   }
-  if (!model->parseObjToMesh(*data)) {
+  if (!model->ParseObjToMesh(*data)) {
     return nullptr;
   }
 
   return std::move(model);
 }
 
-void Model::draw(const Program *program) const { mMesh->draw(program); }
+void Model::Draw(const Program *program) const { mesh_->Draw(program); }
 
-bool Model::parseObjToMesh(const std::string &data) {
+bool Model::ParseObjToMesh(const std::string &data) {
   std::vector<Vertex> vertexes;
   std::vector<uint32_t> indices;
-  std::vector<glm::vec3> tempVertexes;
-  std::vector<glm::vec2> tempTexCoords;
-  std::vector<glm::vec3> tempNormals;
-  std::vector<std::string> lines = split(data, "\n");
+  std::vector<glm::vec3> temp_vertexes;
+  std::vector<glm::vec2> temp_texcoords;
+  std::vector<glm::vec3> temp_normals;
+  std::vector<std::string> lines = Split(data, "\n");
 
   for (const auto &line : lines) {
-    std::vector<std::string> word = split(line, " ");
+    std::vector<std::string> word = Split(line, " ");
     std::string prefix = word[0];
     word.erase(word.begin());
 
@@ -40,22 +40,22 @@ bool Model::parseObjToMesh(const std::string &data) {
       temp.x = std::stof(word[0]);
       temp.y = std::stof(word[1]);
       temp.z = std::stof(word[2]);
-      tempVertexes.push_back(temp);
+      temp_vertexes.push_back(temp);
     } else if (prefix == "vt") {
       glm::vec2 temp;
       temp.x = std::stof(word[0]);
       temp.y = std::stof(word[1]);
-      tempTexCoords.push_back(temp);
+      temp_texcoords.push_back(temp);
     } else if (prefix == "vn") {
       glm::vec3 temp;
       temp.x = std::stof(word[0]);
       temp.y = std::stof(word[1]);
       temp.z = std::stof(word[2]);
-      tempNormals.push_back(temp);
+      temp_normals.push_back(temp);
     } else if (prefix == "f") {
       std::vector<VertexIndex> vi;
       for (size_t i = 0; i < word.size(); ++i) {
-        std::vector<std::string> vtx = split(word[i], "/");
+        std::vector<std::string> vtx = Split(word[i], "/");
         VertexIndex index = {-1, -1, -1};
         index.v += std::stoi(vtx[0]);
         if (vtx.size() == 3) {
@@ -65,53 +65,54 @@ bool Model::parseObjToMesh(const std::string &data) {
         vi.push_back(index);
       }
 
-      std::vector<Vertex> tempV;
+      std::vector<Vertex> temp_v;
       for (size_t i = 0; i < word.size(); ++i) {
         VertexIndex index = vi[i];
-        glm::vec3 v = tempVertexes[index.v];
-        glm::vec3 vn = index.vn != -1 ? tempNormals[index.vn] : glm::vec3(0.0f);
+        glm::vec3 v = temp_vertexes[index.v];
+        glm::vec3 vn =
+            index.vn != -1 ? temp_normals[index.vn] : glm::vec3(0.0f);
         glm::vec2 vt =
-            index.vt != -1 ? tempTexCoords[index.vt] : glm::vec2(0.0f);
-        tempV.push_back({v, vn, vt});
+            index.vt != -1 ? temp_texcoords[index.vt] : glm::vec2(0.0f);
+        temp_v.push_back({v, vn, vt});
       }
 
-      glm::vec3 v0 = tempV[1].position - tempV[0].position;
-      glm::vec3 v1 = tempV[2].position - tempV[0].position;
+      glm::vec3 v0 = temp_v[1].position - temp_v[0].position;
+      glm::vec3 v1 = temp_v[2].position - temp_v[0].position;
       glm::vec3 n = glm::cross(v0, v1);
       for (size_t i = 0; i < vi.size(); ++i) {
         if (vi[i].vn == -1) {
-          tempV[i].normal = n;
+          temp_v[i].normal = n;
         }
       }
 
-      size_t beforeVertexSize = vertexes.size();
+      size_t before_vertex_size = vertexes.size();
       for (size_t i = 0; i < word.size() - 2; ++i) {
-        indices.push_back(beforeVertexSize);
-        indices.push_back(beforeVertexSize + i + 1);
-        indices.push_back(beforeVertexSize + i + 2);
+        indices.push_back(before_vertex_size);
+        indices.push_back(before_vertex_size + i + 1);
+        indices.push_back(before_vertex_size + i + 2);
       }
 
-      vertexes.insert(vertexes.end(), tempV.begin(), tempV.end());
+      vertexes.insert(vertexes.end(), temp_v.begin(), temp_v.end());
     }
   }
 
-  mMesh = Mesh::create(vertexes, indices, GL_TRIANGLES);
-  loadMaterial();
+  mesh_ = Mesh::Create(vertexes, indices, GL_TRIANGLES);
+  LoadMaterial();
 
   return true;
 }
 
 // TODO: load material
-bool Model::loadMaterial() {
-  auto material = Material::create();
+bool Model::LoadMaterial() {
+  auto material = Material::Create();
 
-  material->specular = Texture::create(
-      Image::createSingleColorImage(4, 4, glm::vec4(1.0f, 1.0f, 1.0f, 1.0f))
+  material->specular_ = Texture::Create(
+      Image::CreateSingleColorImage(4, 4, glm::vec4(1.0f, 1.0f, 1.0f, 1.0f))
           .get());
-  material->diffuse = Texture::create(
-      Image::createSingleColorImage(4, 4, glm::vec4(0.7f, 0.7f, 0.7f, 1.0f))
+  material->diffuse_ = Texture::Create(
+      Image::CreateSingleColorImage(4, 4, glm::vec4(0.7f, 0.7f, 0.7f, 1.0f))
           .get());
-  mMesh->setMaterial(material);
+  mesh_->set_material(material);
 
   return true;
 }

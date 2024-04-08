@@ -3,22 +3,23 @@
 Shader::Shader() {}
 
 Shader::~Shader() {
-  if (mId) {
-    glDeleteShader(mId);
+  if (id_) {
+    glDeleteShader(id_);
   }
 }
 
-std::shared_ptr<Shader> Shader::createFromFile(const std::string &fileName,
-                                               GLenum shaderType) {
+std::shared_ptr<Shader> Shader::CreateFromFile(const std::string &filename,
+                                               GLenum shader_type) {
   auto shader = std::unique_ptr<Shader>(new Shader());
-  if (!shader->loadFile(fileName, shaderType)) {
+  if (!shader->LoadFile(filename, shader_type)) {
     return nullptr;
   }
+
   return std::move(shader);
 }
 
-bool Shader::loadFile(const std::string &fileName, GLenum shaderType) {
-  auto result = loadTextFile(fileName);
+bool Shader::LoadFile(const std::string &filename, GLenum shader_type) {
+  auto result = LoadTextFile(filename);
   if (!result.has_value()) {
     return false;
   }
@@ -27,20 +28,18 @@ bool Shader::loadFile(const std::string &fileName, GLenum shaderType) {
   const char *pSource = code.c_str();
   int32_t codeLength = code.length();
 
-  mId = glCreateShader(shaderType);
-  glShaderSource(mId, 1, &pSource, &codeLength);
-  glCompileShader(mId);
+  id_ = glCreateShader(shader_type);
+  glShaderSource(id_, 1, &pSource, &codeLength);
+  glCompileShader(id_);
 
   int success = 0;
-  glGetShaderiv(mId, GL_COMPILE_STATUS, &success);
+  glGetShaderiv(id_, GL_COMPILE_STATUS, &success);
   if (!success) {
     char infoLog[512];
-    glGetShaderInfoLog(mId, 512, nullptr, infoLog);
-    SPDLOG_ERROR("ERROR::SHADER::COMPILATION_FAILED: {}", fileName);
+    glGetShaderInfoLog(id_, 512, nullptr, infoLog);
+    SPDLOG_ERROR("ERROR::SHADER::COMPILATION_FAILED: {}", filename);
     SPDLOG_ERROR("{}", infoLog);
   }
 
   return success;
 }
-
-uint32_t Shader::getId() const { return mId; }

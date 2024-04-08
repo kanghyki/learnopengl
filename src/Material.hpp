@@ -6,17 +6,17 @@
 #include "common.hpp"
 
 class Material {
-public:
+ public:
+  static std::shared_ptr<Material> Create();
   ~Material();
-  static std::shared_ptr<Material> create();
 
   void setToProgram(const Program *program) const;
 
-  std::unique_ptr<Texture> diffuse{nullptr};
-  std::unique_ptr<Texture> specular{nullptr};
-  float shininess{30.0f};
+  std::unique_ptr<Texture> diffuse_{nullptr};
+  std::unique_ptr<Texture> specular_{nullptr};
+  float shininess_{30.0f};
 
-private:
+ private:
   Material();
 };
 

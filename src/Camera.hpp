@@ -4,84 +4,82 @@
 #include "common.hpp"
 
 enum eCameraMove {
-  NONE = 1 << 0,
-  FRONT = 1 << 1,
-  BACK = 1 << 2,
-  LEFT = 1 << 3,
-  RIGHT = 1 << 4,
-  UP = 1 << 5,
-  DOWN = 1 << 6,
+  kNone = 1 << 0,
+  kFront = 1 << 1,
+  kBack = 1 << 2,
+  kLeft = 1 << 3,
+  kRight = 1 << 4,
+  kUp = 1 << 5,
+  kDown = 1 << 6,
 };
 
 struct Camera {
-  glm::mat4 getViewMatrix() {
-    mFront = glm::rotate(glm::mat4(1.0f), glm::radians(mYaw),
+  glm::mat4 GetViewMatrix() {
+    front_ = glm::rotate(glm::mat4(1.0f), glm::radians(yaw_),
                          glm::vec3(0.0f, 1.0f, 0.0f)) *
-             glm::rotate(glm::mat4(1.0f), glm::radians(mPitch),
+             glm::rotate(glm::mat4(1.0f), glm::radians(pitch_),
                          glm::vec3(1.0f, 0.0f, 0.0f)) *
              glm::vec4(0.0f, 0.0f, -1.0f, 0.0f);
 
-    return glm::lookAt(mPos, mPos + mFront, mUp);
+    return glm::lookAt(position_, position_ + front_, up_);
   }
 
-  glm::mat4 getPerspectiveProjectionMatrix() const {
-    return glm::perspective(glm::radians(mFovY), mAspect, mNearPlane,
-                            mFarPlane);
+  glm::mat4 GetPerspectiveProjectionMatrix() const {
+    return glm::perspective(glm::radians(fov_y_), aspect_, near_plane_,
+                            far_plane_);
   }
 
-  void move() {
-    if (mMoveStatus == NONE) return;
-    if (mMoveStatus & FRONT) mPos += mMoveSpeed * mFront;
-    if (mMoveStatus & BACK) mPos -= mMoveSpeed * mFront;
-    glm::vec3 cameraRight = glm::normalize(glm::cross(mUp, -mFront));
-    if (mMoveStatus & LEFT) mPos -= mMoveSpeed * cameraRight;
-    if (mMoveStatus & RIGHT) mPos += mMoveSpeed * cameraRight;
-    glm::vec3 cameraUp = glm::cross(-mFront, cameraRight);
-    if (mMoveStatus & UP) mPos += mMoveSpeed * cameraUp;
-    if (mMoveStatus & DOWN) mPos -= mMoveSpeed * cameraUp;
+  inline void SetMove(eCameraMove type) { move_status_ |= type; }
+  inline void UnsetMove(eCameraMove type) { move_status_ &= ~type; }
+  void Move() {
+    if (move_status_ == kNone) return;
+    if (move_status_ & kFront) position_ += move_speed_ * front_;
+    if (move_status_ & kBack) position_ -= move_speed_ * front_;
+    glm::vec3 cameraRight = glm::normalize(glm::cross(up_, -front_));
+    if (move_status_ & kLeft) position_ -= move_speed_ * cameraRight;
+    if (move_status_ & kRight) position_ += move_speed_ * cameraRight;
+    glm::vec3 cameraUp = glm::cross(-front_, cameraRight);
+    if (move_status_ & kUp) position_ += move_speed_ * cameraUp;
+    if (move_status_ & kDown) position_ -= move_speed_ * cameraUp;
   }
 
-  void setMove(eCameraMove type) { mMoveStatus |= type; }
-  void unsetMove(eCameraMove type) { mMoveStatus &= ~type; }
+  void Rotate(glm::vec2 delta) {
+    yaw_ -= delta.x * rot_speed_;
+    pitch_ -= delta.y * rot_speed_;
 
-  void rotate(glm::vec2 delta) {
-    mYaw -= delta.x * mRotSpeed;
-    mPitch -= delta.y * mRotSpeed;
+    if (yaw_ < 0.0f) yaw_ += 360.0f;
+    if (yaw_ > 360.0f) yaw_ -= 360.0f;
 
-    if (mYaw < 0.0f) mYaw += 360.0f;
-    if (mYaw > 360.0f) mYaw -= 360.0f;
-
-    if (mPitch > 89.0f) mPitch = 89.0f;
-    if (mPitch < -89.0f) mPitch = -89.0f;
+    if (pitch_ > 89.0f) pitch_ = 89.0f;
+    if (pitch_ < -89.0f) pitch_ = -89.0f;
   }
 
-  void changeAspect(int width, int height) {
-    mAspect = (float)width / (float)height;
+  void ChangeAspect(int width, int height) {
+    aspect_ = (float)width / (float)height;
   }
 
-  void reset() {
-    mPitch = {0.0f};
-    mYaw = {0.0f};
-    mPos = {0.0f, 0.0f, 3.0f};
-    mFront = {0.0f, 0.0f, -1.0f};
-    mUp = {0.0f, 1.0f, 0.0f};
+  void Reset() {
+    pitch_ = {0.0f};
+    yaw_ = {0.0f};
+    position_ = {0.0f, 0.0f, 3.0f};
+    front_ = {0.0f, 0.0f, -1.0f};
+    up_ = {0.0f, 1.0f, 0.0f};
   }
 
-  void setMoveSpeed(float speed) { mMoveSpeed = speed; }
+  void SetMoveSpeed(float speed) { move_speed_ = speed; }
 
-  float mPitch{0.0f};
-  float mYaw{0.0f};
-  float mFovY{45.0f};
-  float mAspect{16.0f / 9.0f};
-  float mNearPlane{0.1f};
-  float mFarPlane{100.0f};
-  unsigned char mMoveStatus{0};
-  float mMoveSpeed{0.05f};
-  float mRotSpeed{0.15f};
-
-  glm::vec3 mPos{0.0f, 1.5f, 5.0f};
-  glm::vec3 mFront{0.0f, 0.0f, -1.0f};
-  glm::vec3 mUp{0.0f, 1.0f, 0.0f};
+  float pitch_{0.0f};
+  float yaw_{0.0f};
+  float fov_y_{45.0f};
+  float aspect_{16.0f / 9.0f};
+  float near_plane_{0.1f};
+  float far_plane_{100.0f};
+  unsigned char move_status_{0};
+  float move_speed_{0.05f};
+  float rot_speed_{0.15f};
+  glm::vec3 position_{0.0f, 1.5f, 5.0f};
+  glm::vec3 front_{0.0f, 0.0f, -1.0f};
+  glm::vec3 up_{0.0f, 1.0f, 0.0f};
 };
 
 #endif

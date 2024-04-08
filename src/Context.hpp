@@ -13,62 +13,62 @@
 
 class Context {
  public:
+  static std::unique_ptr<Context> Create();
   ~Context();
-  static std::unique_ptr<Context> create();
-  void update();
-  void render();
-  void renderImGui();
-  void processKeyboardInput(GLFWwindow* window);
-  void processMouseMove(double x, double y);
-  void processMouseButton(int button, int action, double x, double y);
-  void processMouseScroll(double xoffset, double yoffset);
-  void reshapeViewport(int width, int height);
 
-  void imguiModal(const std::string& title, const std::string& text,
+  void Update();
+  void Render();
+  void RenderImGui();
+  void ProcessKeyboardInput(GLFWwindow* window);
+  void ProcessMouseMove(double x, double y);
+  void ProcessMouseButton(int button, int action, double x, double y);
+  void ProcessMouseScroll(double xoffset, double yoffset);
+  void ReshapeViewport(int width, int height);
+  void ImguiModal(const std::string& title, const std::string& text,
                   std::function<void(void)> ok,
                   std::function<void(void)> cancel);
 
  private:
   Context();
-  bool init();
+  bool Init();
 
-  uint32_t mClearBit{0};
-  int mWidth{WINDOW_WIDTH};
-  int mHeight{WINDOW_HEIGHT};
+  uint32_t clear_bit_{0};
+  int width_{WINDOW_WIDTH};
+  int height_{WINDOW_HEIGHT};
 
-  struct Light mLight;
+  struct Light light_;
 
-  std::unique_ptr<Program> mSimpleProgram{nullptr};
-  std::unique_ptr<Program> mLightingProgram{nullptr};
-  std::unique_ptr<Program> mPlaneProgram{nullptr};
-  std::unique_ptr<Program> mEnvMapProgram{nullptr};
-  std::unique_ptr<Program> mCubeProgram{nullptr};
+  std::unique_ptr<Program> simple_program_{nullptr};
+  std::unique_ptr<Program> lighting_program_{nullptr};
+  std::unique_ptr<Program> plane_program_{nullptr};
+  std::unique_ptr<Program> env_map_program_{nullptr};
+  std::unique_ptr<Program> cube_program_{nullptr};
 
-  std::unique_ptr<CubeTexture> mCubeTexture{nullptr};
-  std::unique_ptr<Texture> mPlaneTexture{nullptr};
+  std::unique_ptr<CubeTexture> cube_texture_{nullptr};
+  std::unique_ptr<Texture> plane_texture_{nullptr};
 
-  std::unique_ptr<Mesh> mBox{nullptr};
-  std::unique_ptr<Mesh> mSphere{nullptr};
-  std::unique_ptr<Mesh> mPlane{nullptr};
-  std::unique_ptr<Model> mModel{nullptr};
+  std::unique_ptr<Mesh> box_{nullptr};
+  std::unique_ptr<Mesh> sphere_{nullptr};
+  std::unique_ptr<Mesh> plane_{nullptr};
+  std::unique_ptr<Model> model_{nullptr};
 
-  Camera mCamera;
-  glm::vec2 mPrevMousePos{0.0f};
-  bool mCameraDirectionControl{false};
-  bool mCameraFastMove{false};
+  Camera camera_;
+  glm::vec2 prev_mouse_pos_{0.0f};
+  bool camera_direction_control_{false};
+  bool camera_fast_move_{false};
 
-  std::unique_ptr<Framebuffer> mFramebuffer{nullptr};
-  std::unique_ptr<Program> mPostProgram{nullptr};
-  float mGamma{1.0f};
+  std::unique_ptr<Framebuffer> framebuffer_{nullptr};
+  std::unique_ptr<Program> post_program_{nullptr};
+  float gamma_{1.0f};
 
-  glm::vec4 mClearColor{0.3f, 0.3f, 0.3f, 1.0f};
+  glm::vec4 clear_color_{0.3f, 0.3f, 0.3f, 1.0f};
 
-  bool mIsWireframeActive{false};
-  bool mIsAnimationActive{true};
-  int mLightType{0};
-  int mImGuiImageSize{300};
-  bool mIsSettingOpen{true};
-  bool mIsFrambufferOpen{true};
+  bool is_wireframe_active_{false};
+  bool is_animation_active_{true};
+  int light_type_{0};
+  int imgui_image_size_{300};
+  bool is_setting_open_{true};
+  bool is_frambuffer_open_{true};
 };
 
 #endif

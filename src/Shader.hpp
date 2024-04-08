@@ -4,17 +4,18 @@
 #include "common.hpp"
 
 class Shader {
-public:
+ public:
+  static std::shared_ptr<Shader> CreateFromFile(const std::string &filename,
+                                                GLenum shader_type);
   ~Shader();
-  static std::shared_ptr<Shader> createFromFile(const std::string &fileName,
-                                                GLenum shaderType);
-  uint32_t getId() const;
 
-private:
+  inline const uint32_t id() const { return id_; }
+
+ private:
   Shader();
-  bool loadFile(const std::string &fileName, GLenum shaderType);
+  bool LoadFile(const std::string &filename, GLenum shader_type);
 
-  uint32_t mId{0};
+  uint32_t id_{0};
 };
 
 #endif

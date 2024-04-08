@@ -1,14 +1,15 @@
-#include "Context.hpp"
 #include <imgui_impl_glfw.h>
 #include <imgui_impl_opengl3.h>
 
-void framebufferSizeCallbackFunc(GLFWwindow *window, int width, int height);
-void onKeyEvent(GLFWwindow *window, int key, int scancode, int action,
+#include "Context.hpp"
+
+void FramebufferSizeCallbackFunc(GLFWwindow *window, int width, int height);
+void OnKeyEvent(GLFWwindow *window, int key, int scancode, int action,
                 int mods);
-void onCharEvent(GLFWwindow *window, unsigned int ch);
-void onScroll(GLFWwindow *window, double xoffset, double yoffset);
-void onCursorPos(GLFWwindow *window, double x, double y);
-void onMouseButton(GLFWwindow *window, int button, int action, int modifier);
+void OnCharEvent(GLFWwindow *window, unsigned int ch);
+void OnScroll(GLFWwindow *window, double xoffset, double yoffset);
+void OnCursorPos(GLFWwindow *window, double x, double y);
+void OnMouseButton(GLFWwindow *window, int button, int action, int modifier);
 
 int main(int argc, char **argv) {
   SPDLOG_INFO("Initialize glfw");
@@ -42,8 +43,8 @@ int main(int argc, char **argv) {
     return -1;
   }
 
-  auto imguiContext = ImGui::CreateContext();
-  ImGui::SetCurrentContext(imguiContext);
+  auto imgui_ctx = ImGui::CreateContext();
+  ImGui::SetCurrentContext(imgui_ctx);
   ImGui_ImplGlfw_InitForOpenGL(window, false);
   ImGui_ImplOpenGL3_Init();
   ImGui_ImplOpenGL3_CreateFontsTexture();
@@ -51,14 +52,14 @@ int main(int argc, char **argv) {
 
   glViewport(0, 0, WINDOW_WIDTH, WINDOW_HEIGHT);
 
-  glfwSetFramebufferSizeCallback(window, framebufferSizeCallbackFunc);
-  glfwSetKeyCallback(window, onKeyEvent);
-  glfwSetCharCallback(window, onCharEvent);
-  glfwSetCursorPosCallback(window, onCursorPos);
-  glfwSetMouseButtonCallback(window, onMouseButton);
-  glfwSetScrollCallback(window, onScroll);
+  glfwSetFramebufferSizeCallback(window, FramebufferSizeCallbackFunc);
+  glfwSetKeyCallback(window, OnKeyEvent);
+  glfwSetCharCallback(window, OnCharEvent);
+  glfwSetCursorPosCallback(window, OnCursorPos);
+  glfwSetMouseButtonCallback(window, OnMouseButton);
+  glfwSetScrollCallback(window, OnScroll);
 
-  auto context = Context::create();
+  auto context = Context::Create();
   if (!context) {
     SPDLOG_ERROR("failed to initialize context");
     glfwTerminate();
@@ -71,8 +72,8 @@ int main(int argc, char **argv) {
     ImGui_ImplGlfw_NewFrame();
     ImGui::NewFrame();
 
-    context->update();
-    context->render();
+    context->Update();
+    context->Render();
     ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 
     glfwSwapBuffers(window);
@@ -84,19 +85,19 @@ int main(int argc, char **argv) {
   ImGui_ImplOpenGL3_DestroyDeviceObjects();
   ImGui_ImplOpenGL3_Shutdown();
   ImGui_ImplGlfw_Shutdown();
-  ImGui::DestroyContext(imguiContext);
+  ImGui::DestroyContext(imgui_ctx);
 
   glfwTerminate();
   return 0;
 }
 
-void framebufferSizeCallbackFunc(GLFWwindow *window, int width, int height) {
+void FramebufferSizeCallbackFunc(GLFWwindow *window, int width, int height) {
   SPDLOG_INFO("frame buffer size w:{}, h:{}", width, height);
   auto ptr = reinterpret_cast<Context *>(glfwGetWindowUserPointer(window));
-  ptr->reshapeViewport(width, height);
+  ptr->ReshapeViewport(width, height);
 }
 
-void onKeyEvent(GLFWwindow *window, int key, int scancode, int action,
+void OnKeyEvent(GLFWwindow *window, int key, int scancode, int action,
                 int mods) {
   ImGui_ImplGlfw_KeyCallback(window, key, scancode, action, mods);
   SPDLOG_INFO("key: {}, scancode: {}, action: {}, mods: {}{}{}", key, scancode,
@@ -108,31 +109,31 @@ void onKeyEvent(GLFWwindow *window, int key, int scancode, int action,
               mods & GLFW_MOD_SHIFT ? "S" : "-",
               mods & GLFW_MOD_ALT ? "A" : "-");
   auto ptr = reinterpret_cast<Context *>(glfwGetWindowUserPointer(window));
-  ptr->processKeyboardInput(window);
+  ptr->ProcessKeyboardInput(window);
   if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS) {
     glfwSetWindowShouldClose(window, true);
   }
 }
 
-void onCharEvent(GLFWwindow *window, unsigned int ch) {
+void OnCharEvent(GLFWwindow *window, unsigned int ch) {
   ImGui_ImplGlfw_CharCallback(window, ch);
 }
 
-void onScroll(GLFWwindow *window, double xoffset, double yoffset) {
+void OnScroll(GLFWwindow *window, double xoffset, double yoffset) {
   ImGui_ImplGlfw_ScrollCallback(window, xoffset, yoffset);
   auto ptr = reinterpret_cast<Context *>(glfwGetWindowUserPointer(window));
-  ptr->processMouseScroll(xoffset, yoffset);
+  ptr->ProcessMouseScroll(xoffset, yoffset);
 }
 
-void onCursorPos(GLFWwindow *window, double x, double y) {
+void OnCursorPos(GLFWwindow *window, double x, double y) {
   auto ptr = reinterpret_cast<Context *>(glfwGetWindowUserPointer(window));
-  ptr->processMouseMove(x, y);
+  ptr->ProcessMouseMove(x, y);
 }
 
-void onMouseButton(GLFWwindow *window, int button, int action, int modifier) {
+void OnMouseButton(GLFWwindow *window, int button, int action, int modifier) {
   ImGui_ImplGlfw_MouseButtonCallback(window, button, action, modifier);
   auto context = (Context *)glfwGetWindowUserPointer(window);
   double x, y;
   glfwGetCursorPos(window, &x, &y);
-  context->processMouseButton(button, action, x, y);
+  context->ProcessMouseButton(button, action, x, y);
 }

@@ -5,42 +5,42 @@
 Image::Image() {}
 
 Image::~Image() {
-  if (mData) {
-    stbi_image_free(mData);
+  if (data_) {
+    stbi_image_free(data_);
   }
 }
 
-std::unique_ptr<Image> Image::load(const std::string &filepath,
-                                   bool flipVertical) {
+std::unique_ptr<Image> Image::Load(const std::string &filepath,
+                                   bool flip_vertical) {
   auto image = std::unique_ptr<Image>(new Image());
-  if (!image->loadFile(filepath, flipVertical)) {
+  if (!image->LoadFile(filepath, flip_vertical)) {
     return nullptr;
   }
 
   return std::move(image);
 }
 
-std::unique_ptr<Image> Image::create(int width, int height, int channelCount) {
+std::unique_ptr<Image> Image::Create(int width, int height, int channel_count) {
   auto image = std::unique_ptr<Image>(new Image());
-  if (!image->allocate(width, height, channelCount)) {
+  if (!image->Allocate(width, height, channel_count)) {
     return nullptr;
   }
 
   return std::move(image);
 }
 
-bool Image::allocate(int width, int height, int channelCount) {
-  mWidth = width;
-  mHeight = height;
-  mChannelCount = channelCount;
-  if (!(mData = (uint8_t *)malloc(mWidth * mHeight * mChannelCount))) {
+bool Image::Allocate(int width, int height, int channelCount) {
+  width_ = width;
+  height_ = height;
+  channel_count_ = channelCount;
+  if (!(data_ = (uint8_t *)malloc(width_ * height_ * channel_count_))) {
     return false;
   }
 
   return true;
 }
 
-std::unique_ptr<Image> Image::createSingleColorImage(int width, int height,
+std::unique_ptr<Image> Image::CreateSingleColorImage(int width, int height,
                                                      const glm::vec4 &color) {
   glm::vec4 clamped = glm::clamp(color * 255.0f, 0.0f, 255.0f);
   uint8_t rgba[4] = {
@@ -49,29 +49,21 @@ std::unique_ptr<Image> Image::createSingleColorImage(int width, int height,
       (uint8_t)clamped.b,
       (uint8_t)clamped.a,
   };
-  auto image = create(width, height, 4);
+  auto image = Create(width, height, 4);
   for (int i = 0; i < width * height; ++i) {
-    memcpy(image->mData + 4 * i, rgba, 4);
+    memcpy(image->data_ + 4 * i, rgba, 4);
   }
 
   return std::move(image);
 }
 
-bool Image::loadFile(const std::string &filepath, bool flipVertical) {
-  stbi_set_flip_vertically_on_load(flipVertical);
-  mData = stbi_load(filepath.c_str(), &mWidth, &mHeight, &mChannelCount, 0);
-  if (!mData) {
+bool Image::LoadFile(const std::string &filepath, bool flip_vertical) {
+  stbi_set_flip_vertically_on_load(flip_vertical);
+  data_ = stbi_load(filepath.c_str(), &width_, &height_, &channel_count_, 0);
+  if (!data_) {
     SPDLOG_ERROR("failed to load image: {}", filepath);
     return false;
   }
 
   return true;
 }
-
-const uint8_t *Image::getData() const { return mData; }
-
-int Image::getWidth() const { return mWidth; }
-
-int Image::getHeight() const { return mHeight; }
-
-int Image::getChannelCount() const { return mChannelCount; }

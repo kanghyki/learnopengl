@@ -1,6 +1,6 @@
 #include "common.hpp"
 
-std::optional<std::string> loadTextFile(const std::string &filename) {
+std::optional<std::string> LoadTextFile(const std::string &filename) {
   std::ifstream fin(filename);
   if (!fin.is_open()) {
     SPDLOG_ERROR("failed to open file: {}", filename);
@@ -12,7 +12,7 @@ std::optional<std::string> loadTextFile(const std::string &filename) {
   return text.str();
 }
 
-std::vector<std::string> split(const std::string &s,
+std::vector<std::string> Split(const std::string &s,
                                const std::string &sep = " ") {
   size_t pos = 0;
   size_t npos = 0;

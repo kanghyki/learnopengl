@@ -4,52 +4,38 @@ Mesh::Mesh() {}
 
 Mesh::~Mesh() {}
 
-std::unique_ptr<Mesh> Mesh::create(const std::vector<Vertex> &vertices,
+std::unique_ptr<Mesh> Mesh::Create(const std::vector<Vertex> &vertices,
                                    const std::vector<uint32_t> &indices,
-                                   uint32_t primitiveType) {
+                                   uint32_t primitive_type) {
   auto mesh = std::unique_ptr<Mesh>(new Mesh());
-  mesh->init(vertices, indices, primitiveType);
+  mesh->Init(vertices, indices, primitive_type);
 
   return std::move(mesh);
 }
 
-void Mesh::init(const std::vector<Vertex> &vertices,
-                const std::vector<uint32_t> &indices, uint32_t primitiveType) {
-  mVertexArray = VertexArray::create();
-  mVertexBuffer =
-      Buffer::create(GL_ARRAY_BUFFER, GL_STATIC_DRAW, vertices.data(),
-                     sizeof(Vertex), vertices.size());
-  mIndexBuffer =
-      Buffer::create(GL_ELEMENT_ARRAY_BUFFER, GL_STATIC_DRAW, indices.data(),
-                     sizeof(uint32_t), indices.size());
-  mVertexArray->setAttrib(0, 3, GL_FLOAT, false, sizeof(Vertex), 0);
-  mVertexArray->setAttrib(1, 3, GL_FLOAT, false, sizeof(Vertex),
-                          offsetof(Vertex, normal));
-  mVertexArray->setAttrib(2, 2, GL_FLOAT, false, sizeof(Vertex),
-                          offsetof(Vertex, texCoord));
+void Mesh::Init(const std::vector<Vertex> &vertices,
+                const std::vector<uint32_t> &indices, uint32_t primitive_type) {
+  va_ = VertexArray::Create();
+  vb_ = Buffer::Create(GL_ARRAY_BUFFER, GL_STATIC_DRAW, vertices.data(),
+                       sizeof(Vertex), vertices.size());
+  ib_ = Buffer::Create(GL_ELEMENT_ARRAY_BUFFER, GL_STATIC_DRAW, indices.data(),
+                       sizeof(uint32_t), indices.size());
+  va_->SetAttrib(0, 3, GL_FLOAT, false, sizeof(Vertex), 0);
+  va_->SetAttrib(1, 3, GL_FLOAT, false, sizeof(Vertex),
+                 offsetof(Vertex, normal));
+  va_->SetAttrib(2, 2, GL_FLOAT, false, sizeof(Vertex),
+                 offsetof(Vertex, texCoord));
 }
 
-void Mesh::draw(const Program *program) const {
-  mVertexArray->bind();
-  if (mMaterial) {
-    mMaterial->setToProgram(program);
+void Mesh::Draw(const Program *program) const {
+  va_->Bind();
+  if (material_) {
+    material_->setToProgram(program);
   }
-  glDrawElements(mPrimitiveType, mIndexBuffer->getCount(), GL_UNSIGNED_INT, 0);
+  glDrawElements(primitive_type_, ib_->count(), GL_UNSIGNED_INT, 0);
 }
 
-const VertexArray *Mesh::getVertexLayout() const { return mVertexArray.get(); }
-
-std::shared_ptr<Buffer> Mesh::getVertexBuffer() const { return mVertexBuffer; }
-
-std::shared_ptr<Buffer> Mesh::getIndexBuffer() const { return mIndexBuffer; }
-
-std::shared_ptr<Material> Mesh::getMaterial() const { return mMaterial; }
-
-void Mesh::setMaterial(std::shared_ptr<Material> material) {
-  mMaterial = material;
-}
-
-std::unique_ptr<Mesh> Mesh::createBox() {
+std::unique_ptr<Mesh> Mesh::CreateBox() {
   std::vector<Vertex> vertices = {
       Vertex{glm::vec3(-0.5f, -0.5f, -0.5f), glm::vec3(0.0f, 0.0f, -1.0f),
              glm::vec2(0.0f, 0.0f)},
@@ -113,10 +99,10 @@ std::unique_ptr<Mesh> Mesh::createBox() {
       12, 14, 13, 14, 12, 15, 16, 17, 18, 18, 19, 16, 20, 22, 21, 22, 20, 23,
   };
 
-  return create(vertices, indices, GL_TRIANGLES);
+  return Create(vertices, indices, GL_TRIANGLES);
 }
 
-std::unique_ptr<Mesh> Mesh::createSphere(size_t slice, size_t stack) {
+std::unique_ptr<Mesh> Mesh::CreateSphere(size_t slice, size_t stack) {
   std::vector<Vertex> vertices;
   std::vector<uint32_t> indices;
   const float radius = 1.0f;
@@ -151,10 +137,10 @@ std::unique_ptr<Mesh> Mesh::createSphere(size_t slice, size_t stack) {
     }
   }
 
-  return create(vertices, indices, GL_TRIANGLES);
+  return Create(vertices, indices, GL_TRIANGLES);
 }
 
-std::unique_ptr<Mesh> Mesh::createPlane() {
+std::unique_ptr<Mesh> Mesh::CreatePlane() {
   std::vector<Vertex> vertices = {
       Vertex{glm::vec3(-0.5f, 0.5f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f),
              glm::vec2(0.0f, 1.0f)},
@@ -168,5 +154,5 @@ std::unique_ptr<Mesh> Mesh::createPlane() {
 
   std::vector<uint32_t> indices = {0, 1, 3, 1, 2, 3};
 
-  return create(vertices, indices, GL_TRIANGLES);
+  return Create(vertices, indices, GL_TRIANGLES);
 }

@@ -3,33 +3,27 @@
 Buffer::Buffer() {}
 
 Buffer::~Buffer() {
-  if (mId) {
-    glDeleteBuffers(1, &mId);
+  if (id_) {
+    glDeleteBuffers(1, &id_);
   }
 }
 
-std::unique_ptr<Buffer> Buffer::create(uint32_t bufferType, uint32_t usage,
+std::unique_ptr<Buffer> Buffer::Create(uint32_t buffer_type, uint32_t usage,
                                        const void *data, size_t stride,
                                        size_t count) {
   auto buffer = std::unique_ptr<Buffer>(new Buffer());
-  buffer->init(bufferType, usage, data, stride, count);
+  buffer->Init(buffer_type, usage, data, stride, count);
 
   return std::move(buffer);
 }
 
-void Buffer::init(uint32_t bufferType, uint32_t usage, const void *data,
+void Buffer::Init(uint32_t buffer_type, uint32_t usage, const void *data,
                   size_t stride, size_t count) {
-  mBufferType = bufferType;
-  mUsage = usage;
-  mStride = stride;
-  mCount = count;
-  glGenBuffers(1, &mId);
-  glBindBuffer(mBufferType, mId);
-  glBufferData(mBufferType, mStride * mCount, data, usage);
+  buffer_type_ = buffer_type;
+  usage_ = usage;
+  stride_ = stride;
+  count_ = count;
+  glGenBuffers(1, &id_);
+  glBindBuffer(buffer_type_, id_);
+  glBufferData(buffer_type_, stride_ * count_, data, usage);
 }
-
-uint32_t Buffer::getId() const { return mId; }
-
-size_t Buffer::getStride() const { return mStride; }
-
-size_t Buffer::getCount() const { return mCount; }

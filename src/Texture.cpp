@@ -5,66 +5,64 @@
 Texture::Texture() {}
 
 Texture::~Texture() {
-  if (mId) {
-    glDeleteTextures(1, &mId);
+  if (id_) {
+    glDeleteTextures(1, &id_);
   }
 }
 
-std::unique_ptr<Texture> Texture::create(const Image *image) {
+std::unique_ptr<Texture> Texture::Create(const Image *image) {
   auto texture = std::unique_ptr<Texture>(new Texture());
-  texture->createTexture();
-  texture->setTextureFromImage(image);
+  texture->CreateTexture();
+  texture->SetTextureFromImage(image);
 
   return std::move(texture);
 }
 
-std::unique_ptr<Texture> Texture::create(const std::string &filename) {
-  auto image = Image::load(filename);
+std::unique_ptr<Texture> Texture::CreateFromFile(const std::string &filename) {
+  auto image = Image::Load(filename);
   if (!image) {
     return nullptr;
   }
-  SPDLOG_INFO("image: {}x{}, {} channels", image->getWidth(),
-              image->getHeight(), image->getChannelCount());
+  SPDLOG_INFO("image: {}x{}, {} channels", image->width(), image->height(),
+              image->channel_count());
   auto texture = std::unique_ptr<Texture>(new Texture());
-  texture->createTexture();
-  texture->setTextureFromImage(image.get());
+  texture->CreateTexture();
+  texture->SetTextureFromImage(image.get());
 
   return std::move(texture);
 }
 
-std::unique_ptr<Texture> Texture::create(int width, int height,
-                                         uint32_t format) {
+std::unique_ptr<Texture> Texture::CreateEmpty(int width, int height,
+                                              uint32_t format) {
   auto texture = std::unique_ptr<Texture>(new Texture());
-  texture->createTexture();
-  texture->setTextureFormat(width, height, format);
-  texture->setFilter(GL_LINEAR, GL_LINEAR);
+  texture->CreateTexture();
+  texture->SetTextureFormat(width, height, format);
+  texture->SetFilter(GL_LINEAR, GL_LINEAR);
 
   return std::move(texture);
 }
 
-void Texture::bind() { glBindTexture(GL_TEXTURE_2D, mId); }
-
-void Texture::setFilter(uint32_t minFilter, uint32_t magFilter) const {
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, minFilter);
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, magFilter);
+void Texture::SetFilter(uint32_t min_filter, uint32_t mag_filter) const {
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, min_filter);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, mag_filter);
 }
 
-void Texture::setWrap(uint32_t sWrap, uint32_t tWrap) const {
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, sWrap);
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, tWrap);
+void Texture::SetWrap(uint32_t s_wrap, uint32_t t_wrap) const {
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, s_wrap);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, t_wrap);
 }
 
-void Texture::createTexture() {
-  glGenTextures(1, &mId);
-  glBindTexture(GL_TEXTURE_2D, mId);
-  setFilter(GL_LINEAR_MIPMAP_LINEAR, GL_LINEAR);
-  setWrap(GL_CLAMP_TO_EDGE, GL_CLAMP_TO_EDGE);
+void Texture::CreateTexture() {
+  glGenTextures(1, &id_);
+  glBindTexture(GL_TEXTURE_2D, id_);
+  SetFilter(GL_LINEAR_MIPMAP_LINEAR, GL_LINEAR);
+  SetWrap(GL_CLAMP_TO_EDGE, GL_CLAMP_TO_EDGE);
 }
 
-void Texture::setTextureFromImage(const Image *image) {
+void Texture::SetTextureFromImage(const Image *image) {
   GLenum format = GL_RGBA;
 
-  switch (image->getChannelCount()) {
+  switch (image->channel_count()) {
     case 1:
       format = GL_RED;
       break;
@@ -78,31 +76,23 @@ void Texture::setTextureFromImage(const Image *image) {
       break;
   }
 
-  mWidth = image->getWidth();
-  mHeight = image->getHeight();
-  mFormat = format;
+  width_ = image->width();
+  height_ = image->height();
+  format_ = format;
 
-  glTexImage2D(GL_TEXTURE_2D, 0, mFormat, mWidth, mHeight, 0, format,
-               GL_UNSIGNED_BYTE, image->getData());
+  glTexImage2D(GL_TEXTURE_2D, 0, format_, width_, height_, 0, format,
+               GL_UNSIGNED_BYTE, image->data());
   glGenerateMipmap(GL_TEXTURE_2D);
 }
 
-void Texture::setTextureFormat(int width, int height, uint32_t format) {
-  mWidth = width;
-  mHeight = height;
-  mFormat = format;
+void Texture::SetTextureFormat(int width, int height, uint32_t format) {
+  width_ = width;
+  height_ = height;
+  format_ = format;
 
-  glTexImage2D(GL_TEXTURE_2D, 0, mFormat, mWidth, mHeight, 0, mFormat,
+  glTexImage2D(GL_TEXTURE_2D, 0, format_, width_, height_, 0, format_,
                GL_UNSIGNED_BYTE, nullptr);
 }
-
-const uint32_t Texture::getId() const { return mId; }
-
-int Texture::getWidth() const { return mWidth; }
-
-int Texture::getHeight() const { return mHeight; }
-
-uint32_t Texture::getFormat() const { return mFormat; }
 
 /*
  * CubeTexture
@@ -111,26 +101,24 @@ uint32_t Texture::getFormat() const { return mFormat; }
 CubeTexture::CubeTexture() {}
 
 CubeTexture::~CubeTexture() {
-  if (mId) {
-    glDeleteTextures(1, &mId);
+  if (id_) {
+    glDeleteTextures(1, &id_);
   }
 }
 
-std::unique_ptr<CubeTexture> CubeTexture::create(
+std::unique_ptr<CubeTexture> CubeTexture::Create(
     const std::vector<Image *> &images) {
   auto texture = std::unique_ptr<CubeTexture>(new CubeTexture());
-  if (!texture->initFromImages(images)) {
+  if (!texture->InitFromImages(images)) {
     return nullptr;
   }
 
   return std::move(texture);
 }
 
-void CubeTexture::bind() const { glBindTexture(GL_TEXTURE_CUBE_MAP, mId); }
-
-bool CubeTexture::initFromImages(const std::vector<Image *> &images) {
-  glGenTextures(1, &mId);
-  bind();
+bool CubeTexture::InitFromImages(const std::vector<Image *> &images) {
+  glGenTextures(1, &id_);
+  Bind();
 
   glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
   glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
@@ -141,7 +129,7 @@ bool CubeTexture::initFromImages(const std::vector<Image *> &images) {
   for (uint32_t i = 0; i < (uint32_t)images.size(); i++) {
     auto image = images[i];
     GLenum format = GL_RGBA;
-    switch (image->getChannelCount()) {
+    switch (image->channel_count()) {
       case 1:
         format = GL_RED;
         break;
@@ -155,20 +143,17 @@ bool CubeTexture::initFromImages(const std::vector<Image *> &images) {
         break;
     }
 
-    glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, 0, GL_RGB,
-                 image->getWidth(), image->getHeight(), 0, format,
-                 GL_UNSIGNED_BYTE, image->getData());
+    glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, 0, GL_RGB, image->width(),
+                 image->height(), 0, format, GL_UNSIGNED_BYTE, image->data());
   }
 
   return true;
 }
 
-const uint32_t CubeTexture::getId() const { return mId; }
-
-bool Texture::saveAsPng(const std::string &filename) const {
+bool Texture::SaveAsPng(const std::string &filename) const {
   int channelCount = 0;
 
-  switch (mFormat) {
+  switch (format_) {
     case GL_R:
       channelCount = 1;
       break;
@@ -186,20 +171,20 @@ bool Texture::saveAsPng(const std::string &filename) const {
       return false;
   }
 
-  unsigned char *data = new unsigned char[mWidth * mHeight * channelCount];
+  unsigned char *data = new unsigned char[width_ * height_ * channelCount];
   if (!data) {
     SPDLOG_ERROR("malloc error");
     return false;
   }
-  memset(data, 0, mWidth * mHeight * channelCount);
+  memset(data, 0, width_ * height_ * channelCount);
 
-  glBindTexture(GL_TEXTURE_2D, mId);
+  glBindTexture(GL_TEXTURE_2D, id_);
   glGetTexImage(GL_TEXTURE_2D, 0, GL_RGBA, GL_UNSIGNED_BYTE, data);
 
   bool result = true;
   stbi_flip_vertically_on_write(true);
-  if (!stbi_write_png(filename.c_str(), mWidth, mHeight, channelCount, data,
-                      mWidth * channelCount)) {
+  if (!stbi_write_png(filename.c_str(), width_, height_, channelCount, data,
+                      width_ * channelCount)) {
     SPDLOG_ERROR("failed to save texture to PNG file");
     result = false;
   }

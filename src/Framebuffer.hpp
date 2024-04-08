@@ -5,26 +5,27 @@
 #include "common.hpp"
 
 class Framebuffer {
-public:
+ public:
+  static std::unique_ptr<Framebuffer> Create(
+      const std::shared_ptr<Texture> color_attachment);
+  inline static void BindToDefault() { glBindFramebuffer(GL_FRAMEBUFFER, 0); };
   ~Framebuffer();
 
-  static std::unique_ptr<Framebuffer>
-  create(const std::shared_ptr<Texture> colorAttachment);
-  static void bindToDefault();
+  inline void Bind() const { glBindFramebuffer(GL_FRAMEBUFFER, id_); };
 
-  void bind() const;
+  inline const uint32_t id() const { return id_; };
+  inline const std::shared_ptr<Texture> colorAttachment() const {
+    return color_attachment_;
+  };
 
-  const uint32_t getId() const;
-  const std::shared_ptr<Texture> getColorAttachment() const;
-
-private:
+ private:
   Framebuffer();
 
-  bool initWithColorAttachment(const std::shared_ptr<Texture> colorAttachment);
+  bool InitWithColorAttachment(const std::shared_ptr<Texture> color_attachment);
 
-  uint32_t mId{0};
-  uint32_t mDepthStencilBuffer{0};
-  std::shared_ptr<Texture> mColorAttachment{nullptr};
+  uint32_t id_{0};
+  uint32_t depth_stencil_buffer_{0};
+  std::shared_ptr<Texture> color_attachment_{nullptr};
 };
 
 #endif

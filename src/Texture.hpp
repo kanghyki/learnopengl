@@ -5,53 +5,52 @@
 
 class Texture {
  public:
+  static std::unique_ptr<Texture> Create(const Image *image);
+  static std::unique_ptr<Texture> CreateFromFile(const std::string &filename);
+  static std::unique_ptr<Texture> CreateEmpty(int width, int height,
+                                              uint32_t format);
   ~Texture();
-  static std::unique_ptr<Texture> create(const Image *image);
-  static std::unique_ptr<Texture> create(const std::string &filename);
-  static std::unique_ptr<Texture> create(int width, int height,
-                                         uint32_t format);
 
-  void bind();
+  inline void Bind() { glBindTexture(GL_TEXTURE_2D, id_); }
+  bool SaveAsPng(const std::string &filename) const;
 
-  void setFilter(uint32_t minFilter, uint32_t magFilter) const;
-  void setWrap(uint32_t sWrap, uint32_t tWrap) const;
-  void setTextureFormat(int width, int height, uint32_t format);
+  void SetFilter(uint32_t min_filter, uint32_t mag_filter) const;
+  void SetWrap(uint32_t s_wrap, uint32_t t_wrap) const;
+  void SetTextureFormat(int width, int height, uint32_t format);
 
-  const uint32_t getId() const;
-  int getWidth() const;
-  int getHeight() const;
-  uint32_t getFormat() const;
-
-  bool saveAsPng(const std::string &filename) const;
+  inline const uint32_t id() const { return id_; }
+  inline int width() const { return width_; }
+  inline int height() const { return height_; }
+  inline uint32_t format() const { return format_; }
 
  private:
   Texture();
 
-  void createTexture();
-  void setTextureFromImage(const Image *image);
+  void CreateTexture();
+  void SetTextureFromImage(const Image *image);
 
-  uint32_t mId{0};
-  int mWidth{0};
-  int mHeight{0};
-  uint32_t mFormat{GL_RGBA};
+  uint32_t id_{0};
+  int width_{0};
+  int height_{0};
+  uint32_t format_{GL_RGBA};
 };
 
 class CubeTexture {
  public:
+  static std::unique_ptr<CubeTexture> Create(
+      const std::vector<Image *> &images);
   ~CubeTexture();
 
-  static std::unique_ptr<CubeTexture> create(
-      const std::vector<Image *> &images);
+  inline void Bind() const { glBindTexture(GL_TEXTURE_CUBE_MAP, id_); }
 
-  const uint32_t getId() const;
-  void bind() const;
+  inline const uint32_t id() const { return id_; }
 
  private:
   CubeTexture();
 
-  bool initFromImages(const std::vector<Image *> &images);
+  bool InitFromImages(const std::vector<Image *> &images);
 
-  uint32_t mId{0};
+  uint32_t id_{0};
 };
 
 #endif

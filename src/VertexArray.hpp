@@ -4,22 +4,22 @@
 #include "common.hpp"
 
 class VertexArray {
-public:
+ public:
+  static std::unique_ptr<VertexArray> Create();
   ~VertexArray();
-  static std::unique_ptr<VertexArray> create();
 
-  void bind() const;
-
-  uint32_t getId() const;
-  void setAttrib(uint32_t attribIndex, int count, uint32_t type,
+  inline void Bind() const { glBindVertexArray(id_); }
+  void SetAttrib(uint32_t attrib_index, int count, uint32_t type,
                  bool normalized, size_t stride, uint64_t offset) const;
 
-private:
+  inline uint32_t id() const { return id_; }
+
+ private:
   VertexArray();
 
-  void init();
+  void Init();
 
-  uint32_t mId{0};
+  uint32_t id_{0};
 };
 
 #endif

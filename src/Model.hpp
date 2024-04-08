@@ -11,21 +11,21 @@ struct VertexIndex {
 };
 
 class Model {
-public:
+ public:
+  static std::unique_ptr<Model> Load(const std::string &filename);
   ~Model();
-  static std::unique_ptr<Model> load(const std::string &filename);
 
-  void draw(const Program *program) const;
+  void Draw(const Program *program) const;
 
-private:
+ private:
   Model();
   Model(const Model &model);
   Model &operator=(const Model &model);
 
-  bool parseObjToMesh(const std::string &data);
-  bool loadMaterial();
+  bool ParseObjToMesh(const std::string &data);
+  bool LoadMaterial();
 
-  std::unique_ptr<Mesh> mMesh;
+  std::unique_ptr<Mesh> mesh_;
 };
 
 #endif
