@@ -29,6 +29,12 @@ bool Context::Init() {
     return false;
   }
 
+  index_framebuffer_ =
+      Framebuffer::Create(Texture::CreateEmpty(width_, height_, GL_RGBA));
+  if (!index_framebuffer_) {
+    return false;
+  }
+
   lighting_program_ =
       Program::Create("shader/lighting.vs", "shader/lighting.fs");
   if (!lighting_program_) {
@@ -60,6 +66,24 @@ bool Context::Init() {
   if (!env_map_program_) {
     return false;
   }
+
+  {  // cube texture
+    auto cubeRight = Image::Load("./image/cube_texture/right.jpg", false);
+    auto cubeLeft = Image::Load("./image/cube_texture/left.jpg", false);
+    auto cubeTop = Image::Load("./image/cube_texture/top.jpg", false);
+    auto cubeBottom = Image::Load("./image/cube_texture/bottom.jpg", false);
+    auto cubeFront = Image::Load("./image/cube_texture/front.jpg", false);
+    auto cubeBack = Image::Load("./image/cube_texture/back.jpg", false);
+    cube_texture_ = CubeTexture::Create({
+        cubeRight.get(),
+        cubeLeft.get(),
+        cubeTop.get(),
+        cubeBottom.get(),
+        cubeFront.get(),
+        cubeBack.get(),
+    });
+  }
+
   {  // box mesh
     auto mat = Material::Create();
     mat->specular_ = Texture::Create(
@@ -88,22 +112,6 @@ bool Context::Init() {
             .get());
     plane_ = Mesh::CreatePlane();
   }
-  {  // cube texture
-    auto cubeRight = Image::Load("./image/cube_texture/right.jpg", false);
-    auto cubeLeft = Image::Load("./image/cube_texture/left.jpg", false);
-    auto cubeTop = Image::Load("./image/cube_texture/top.jpg", false);
-    auto cubeBottom = Image::Load("./image/cube_texture/bottom.jpg", false);
-    auto cubeFront = Image::Load("./image/cube_texture/front.jpg", false);
-    auto cubeBack = Image::Load("./image/cube_texture/back.jpg", false);
-    cube_texture_ = CubeTexture::Create({
-        cubeRight.get(),
-        cubeLeft.get(),
-        cubeTop.get(),
-        cubeBottom.get(),
-        cubeFront.get(),
-        cubeBack.get(),
-    });
-  }
   {  // model
     model_ = Model::Load("model/resources/teapot.obj");
     if (!model_) {
@@ -111,10 +119,37 @@ bool Context::Init() {
     }
   }
 
+  {
+    Object shader_box = Object(box_.get());
+    auto transform = shader_box.transform();
+    transform.scale = glm::vec3(0.5f);
+    transform.translate = glm::vec3(-1.7f, 3.0f, -7.5f);
+    shader_box.set_transform(transform);
+    pickable_objects_.push_back(shader_box);
+
+    Object shader_sphere = Object(sphere_.get());
+    auto transform1 = shader_sphere.transform();
+    transform1.scale = glm::vec3(0.5f);
+    transform1.translate = glm::vec3(1.5f, 2.0f, -2.5f);
+    shader_sphere.set_transform(transform1);
+    pickable_objects_.push_back(shader_sphere);
+  }
+
   return true;
 }
 
-void Context::Update() { camera_.Move(); }
+void Context::Update() {
+  camera_.Move();
+  for (auto& obj : pickable_objects_) {
+    auto transform = obj.transform();
+    transform.rotate.x =
+        (is_animation_active_ ? (float)glfwGetTime() : 0) * 90.0f;
+    transform.rotate.y =
+        (is_animation_active_ ? (float)glfwGetTime() : 0) * 45.0f;
+    obj.set_transform(transform);
+    transform = obj.transform();
+  }
+}
 
 void Context::Render() {
   RenderImGui();
@@ -161,29 +196,37 @@ void Context::Render() {
     lighting_program_->SetUniform("light.ambient", light_.ambient);
     lighting_program_->SetUniform("light.diffuse", light_.diffuse);
     lighting_program_->SetUniform("light.specular", light_.specular);
-    auto genModel = [this](glm::mat4 mat) -> glm::mat4 {
-      return glm::scale(
-          glm::rotate(
-              mat,
-              glm::radians((is_animation_active_ ? (float)glfwGetTime() : 0) *
-                           90.0f),
-              glm::vec3(1.0f, 0.5f, 0.0f)),
-          glm::vec3(0.3f));
-    };
 
-    {
-      auto pos = glm::vec3(-1.7f, 3.0f, -7.5f);
-      auto model = genModel(glm::translate(glm::mat4(1.0f), pos));
-      lighting_program_->SetUniform("transform", projection * view * model);
-      lighting_program_->SetUniform("modelTransform", model);
-      box_->Draw(lighting_program_.get());
-    }
-    {
-      auto pos = glm::vec3(1.5f, 2.0f, -2.5f);
-      auto model = genModel(glm::translate(glm::mat4(1.0f), pos));
-      lighting_program_->SetUniform("transform", projection * view * model);
-      lighting_program_->SetUniform("modelTransform", model);
-      sphere_->Draw(lighting_program_.get());
+    for (size_t i = 0; i < pickable_objects_.size(); ++i) {
+      auto obj = pickable_objects_[i];
+      if (i == pick_) {
+        simple_program_->Use();
+        auto model = obj.transform().GetMatrix();
+        simple_program_->SetUniform("transform", projection * view * model);
+        simple_program_->SetUniform("color", glm::vec4(1.0f, 0.0f, 0.0f, 1.0f));
+        obj.Draw(simple_program_.get());
+
+        lighting_program_->Use();
+        lighting_program_->SetUniform("lightType", light_type_);
+        lighting_program_->SetUniform("viewPos", camera_.position_);
+        lighting_program_->SetUniform("light.position", light_.position);
+        lighting_program_->SetUniform("light.direction", light_.direction);
+        lighting_program_->SetUniform(
+            "light.cutoff",
+            glm::vec2(cosf(glm::radians(light_.cutoff[0])),
+                      cosf(glm::radians(light_.cutoff[0] + light_.cutoff[1]))));
+        lighting_program_->SetUniform("light.constant", light_.constant);
+        lighting_program_->SetUniform("light.linear", light_.linear);
+        lighting_program_->SetUniform("light.quadratic", light_.quadratic);
+        lighting_program_->SetUniform("light.ambient", light_.ambient);
+        lighting_program_->SetUniform("light.diffuse", light_.diffuse);
+        lighting_program_->SetUniform("light.specular", light_.specular);
+      } else {
+        auto model = obj.transform().GetMatrix();
+        lighting_program_->SetUniform("transform", projection * view * model);
+        lighting_program_->SetUniform("modelTransform", model);
+        obj.Draw(lighting_program_.get());
+      }
     }
     {
       auto model = glm::translate(glm::mat4(1.0), glm::vec3(0.0f, 1.5f, 0.0f));
@@ -227,6 +270,21 @@ void Context::Render() {
     plane_->Draw(plane_program_.get());
     glDisable(GL_BLEND);
   }
+
+  index_framebuffer_->Bind();
+  glEnable(GL_DEPTH_TEST);
+  glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
+  glClear(clear_bit_);
+  simple_program_->Use();
+  for (size_t i = 0; i < pickable_objects_.size(); ++i) {
+    float index = (i + 1) * 0.1f;
+    auto obj = pickable_objects_[i];
+    auto model = obj.transform().GetMatrix();
+    simple_program_->SetUniform("transform", projection * view * model);
+    simple_program_->SetUniform("color", glm::vec4(index, index, index, 1.0f));
+    obj.Draw(simple_program_.get());
+  }
+
   Framebuffer::BindToDefault();
   glDisable(GL_DEPTH_TEST);
   glClear(clear_bit_);
@@ -236,7 +294,7 @@ void Context::Render() {
     post_program_->SetUniform("transform", model);
     post_program_->SetUniform("gamma", gamma_);
     glActiveTexture(GL_TEXTURE0);
-    framebuffer_->colorAttachment()->Bind();
+    framebuffer_->color_attachment()->Bind();
     post_program_->SetUniform("tex", 0);
     plane_->Draw(post_program_.get());
   }
@@ -245,38 +303,32 @@ void Context::Render() {
 void Context::ProcessKeyboardInput(GLFWwindow* window) {
   if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS) {
     camera_.SetMove(kFront);
-  }
-  if (glfwGetKey(window, GLFW_KEY_W) == GLFW_RELEASE) {
+  } else if (glfwGetKey(window, GLFW_KEY_W) == GLFW_RELEASE) {
     camera_.UnsetMove(kFront);
   }
   if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS) {
     camera_.SetMove(kBack);
-  }
-  if (glfwGetKey(window, GLFW_KEY_S) == GLFW_RELEASE) {
+  } else if (glfwGetKey(window, GLFW_KEY_S) == GLFW_RELEASE) {
     camera_.UnsetMove(kBack);
   }
   if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS) {
     camera_.SetMove(kRight);
-  }
-  if (glfwGetKey(window, GLFW_KEY_D) == GLFW_RELEASE) {
+  } else if (glfwGetKey(window, GLFW_KEY_D) == GLFW_RELEASE) {
     camera_.UnsetMove(kRight);
   }
   if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS) {
     camera_.SetMove(kLeft);
-  }
-  if (glfwGetKey(window, GLFW_KEY_A) == GLFW_RELEASE) {
+  } else if (glfwGetKey(window, GLFW_KEY_A) == GLFW_RELEASE) {
     camera_.UnsetMove(kLeft);
   }
   if (glfwGetKey(window, GLFW_KEY_E) == GLFW_PRESS) {
     camera_.SetMove(kUp);
-  }
-  if (glfwGetKey(window, GLFW_KEY_E) == GLFW_RELEASE) {
+  } else if (glfwGetKey(window, GLFW_KEY_E) == GLFW_RELEASE) {
     camera_.UnsetMove(kUp);
   }
   if (glfwGetKey(window, GLFW_KEY_Q) == GLFW_PRESS) {
     camera_.SetMove(kDown);
-  }
-  if (glfwGetKey(window, GLFW_KEY_Q) == GLFW_RELEASE) {
+  } else if (glfwGetKey(window, GLFW_KEY_Q) == GLFW_RELEASE) {
     camera_.UnsetMove(kDown);
   }
   if (glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS) {
@@ -292,6 +344,19 @@ void Context::ProcessMouseMove(double x, double y) {
     camera_.Rotate(curPos - prev_mouse_pos_);
     prev_mouse_pos_ = curPos;
   }
+  index_framebuffer_->Bind();
+  int height = index_framebuffer_->color_attachment()->height();
+  std::array<uint8_t, 4> pixel =
+      index_framebuffer_->color_attachment()->GetTexPixel((int)x,
+                                                          height - (int)y);
+  if (pixel[0] == 25) {
+    pick_ = 0;
+  } else if (pixel[0] == 51) {
+    pick_ = 1;
+  } else {
+    pick_ = -1;
+  }
+  SPDLOG_INFO("{}", pick_);
 }
 
 void Context::ProcessMouseButton(int button, int action, double x, double y) {
@@ -313,6 +378,8 @@ void Context::ReshapeViewport(int width, int height) {
   camera_.ChangeAspect(width_, height_);
   glViewport(0, 0, width_, height_);
   framebuffer_ =
+      Framebuffer::Create(Texture::CreateEmpty(width_, height_, GL_RGBA));
+  index_framebuffer_ =
       Framebuffer::Create(Texture::CreateEmpty(width_, height_, GL_RGBA));
 }
 
@@ -439,8 +506,13 @@ void Context::RenderImGui() {
         ImGui::EndMenuBar();
       }
 
+      ImGui::Image(reinterpret_cast<ImTextureID>(
+                       index_framebuffer_->color_attachment()->id()),
+                   ImVec2(imgui_image_size_ * ((float)width_ / (float)height_),
+                          (float)imgui_image_size_),
+                   ImVec2(0, 1), ImVec2(1, 0));
       ImGui::Image(
-          reinterpret_cast<ImTextureID>(framebuffer_->colorAttachment()->id()),
+          reinterpret_cast<ImTextureID>(framebuffer_->color_attachment()->id()),
           ImVec2(imgui_image_size_ * ((float)width_ / (float)height_),
                  (float)imgui_image_size_),
           ImVec2(0, 1), ImVec2(1, 0));
@@ -454,7 +526,7 @@ void Context::RenderImGui() {
           "if the file already exists, it will be overwritten\n\n"
           "Are you sure?",
           [this]() -> void {
-            if (!framebuffer_->colorAttachment()->SaveAsPng(
+            if (!framebuffer_->color_attachment()->SaveAsPng(
                     "save/framebuffer.png")) {
               SPDLOG_INFO("failed");
             }

@@ -35,22 +35,28 @@ class Context {
   uint32_t clear_bit_{0};
   int width_{WINDOW_WIDTH};
   int height_{WINDOW_HEIGHT};
-
-  struct Light light_;
-
+  // programs
   std::unique_ptr<Program> simple_program_{nullptr};
-  std::unique_ptr<Program> lighting_program_{nullptr};
   std::unique_ptr<Program> plane_program_{nullptr};
   std::unique_ptr<Program> env_map_program_{nullptr};
   std::unique_ptr<Program> cube_program_{nullptr};
+  std::unique_ptr<Program> lighting_program_{nullptr};
 
-  std::unique_ptr<CubeTexture> cube_texture_{nullptr};
+  // textures
   std::unique_ptr<Texture> plane_texture_{nullptr};
+  std::unique_ptr<CubeTexture> cube_texture_{nullptr};
 
+  // Meshes
   std::unique_ptr<Mesh> box_{nullptr};
   std::unique_ptr<Mesh> sphere_{nullptr};
   std::unique_ptr<Mesh> plane_{nullptr};
   std::unique_ptr<Model> model_{nullptr};
+
+  // objects
+  std::vector<Object> pickable_objects_;
+  int pick_{0};
+
+  struct Light light_;
 
   Camera camera_;
   glm::vec2 prev_mouse_pos_{0.0f};
@@ -58,6 +64,7 @@ class Context {
   bool camera_fast_move_{false};
 
   std::unique_ptr<Framebuffer> framebuffer_{nullptr};
+  std::unique_ptr<Framebuffer> index_framebuffer_{nullptr};
   std::unique_ptr<Program> post_program_{nullptr};
   float gamma_{1.0f};
 

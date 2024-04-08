@@ -14,7 +14,7 @@ class Framebuffer {
   inline void Bind() const { glBindFramebuffer(GL_FRAMEBUFFER, id_); };
 
   inline const uint32_t id() const { return id_; };
-  inline const std::shared_ptr<Texture> colorAttachment() const {
+  inline const std::shared_ptr<Texture> color_attachment() const {
     return color_attachment_;
   };
 

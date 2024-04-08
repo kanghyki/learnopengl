@@ -105,7 +105,7 @@ std::unique_ptr<Mesh> Mesh::CreateBox() {
 std::unique_ptr<Mesh> Mesh::CreateSphere(size_t slice, size_t stack) {
   std::vector<Vertex> vertices;
   std::vector<uint32_t> indices;
-  const float radius = 1.0f;
+  const float radius = 0.5f;
   const float dTheta = -(glm::pi<float>() * 2) / static_cast<float>(slice);
   const float dPhi = -glm::pi<float>() / static_cast<float>(stack);
 

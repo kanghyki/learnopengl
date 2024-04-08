@@ -44,7 +44,48 @@ class Mesh {
   std::unique_ptr<VertexArray> va_{nullptr};
   std::shared_ptr<Buffer> vb_{nullptr};
   std::shared_ptr<Buffer> ib_{nullptr};
+
   std::shared_ptr<Material> material_{nullptr};
+};
+
+struct Transform {
+  glm::vec3 translate{0.0f};
+  glm::vec3 scale{0.0f};
+  glm::vec3 rotate{0.0f};
+
+  glm::mat4 GetMatrix() {
+    auto t = glm::translate(glm::mat4(1.0f), translate);
+    auto s = glm::scale(glm::mat4(1.0f), scale);
+    auto r = glm::rotate(glm::mat4(1.0f), glm::radians(rotate.z),
+                         glm::vec3(0.0f, 0.0f, 1.0f)) *
+             glm::rotate(glm::mat4(1.0f), glm::radians(rotate.y),
+                         glm::vec3(0.0f, 1.0f, 0.0f)) *
+             glm::rotate(glm::mat4(1.0f), glm::radians(rotate.x),
+                         glm::vec3(1.0f, 1.0f, 1.0f));
+
+    return t * s * r;
+  }
+};
+
+class Object {
+ public:
+  Object() {}
+  Object(const Object &obj) {
+    mesh_ = obj.mesh_;
+    transform_ = obj.transform_;
+  }
+  Object(Mesh *mesh) { mesh_ = mesh; }
+  ~Object() {}
+
+  void Draw(const Program *program) const { mesh_->Draw(program); }
+  inline Transform transform() const { return transform_; }
+  inline void set_transform(Transform transform) { transform_ = transform; }
+
+ private:
+  Object &operator=(const Object &obj);
+
+  Mesh *mesh_;
+  Transform transform_;
 };
 
 #endif

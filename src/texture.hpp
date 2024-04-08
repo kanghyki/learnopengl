@@ -11,12 +11,15 @@ class Texture {
                                               uint32_t format);
   ~Texture();
 
-  inline void Bind() { glBindTexture(GL_TEXTURE_2D, id_); }
+  inline void Bind() const { glBindTexture(GL_TEXTURE_2D, id_); }
   bool SaveAsPng(const std::string &filename) const;
 
   void SetFilter(uint32_t min_filter, uint32_t mag_filter) const;
   void SetWrap(uint32_t s_wrap, uint32_t t_wrap) const;
   void SetTextureFormat(int width, int height, uint32_t format);
+  unsigned char *GetTexImage() const;
+  std::array<uint8_t, 4> GetTexPixel(int x, int y) const;
+  uint32_t GetChannelCount() const;
 
   inline const uint32_t id() const { return id_; }
   inline int width() const { return width_; }

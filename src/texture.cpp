@@ -151,44 +151,62 @@ bool CubeTexture::InitFromImages(const std::vector<Image *> &images) {
 }
 
 bool Texture::SaveAsPng(const std::string &filename) const {
-  int channelCount = 0;
-
-  switch (format_) {
-    case GL_R:
-      channelCount = 1;
-      break;
-    case GL_RG:
-      channelCount = 2;
-      break;
-    case GL_RGB:
-      channelCount = 3;
-      break;
-    case GL_RGBA:
-      channelCount = 4;
-      break;
-    default:
-      SPDLOG_ERROR("channel count error");
-      return false;
-  }
-
-  unsigned char *data = new unsigned char[width_ * height_ * channelCount];
+  int channel_count = GetChannelCount();
+  unsigned char *data = GetTexImage();
   if (!data) {
     SPDLOG_ERROR("malloc error");
     return false;
   }
-  memset(data, 0, width_ * height_ * channelCount);
-
-  glBindTexture(GL_TEXTURE_2D, id_);
-  glGetTexImage(GL_TEXTURE_2D, 0, GL_RGBA, GL_UNSIGNED_BYTE, data);
 
   bool result = true;
   stbi_flip_vertically_on_write(true);
-  if (!stbi_write_png(filename.c_str(), width_, height_, channelCount, data,
-                      width_ * channelCount)) {
+  if (!stbi_write_png(filename.c_str(), width_, height_, channel_count, data,
+                      width_ * channel_count)) {
     SPDLOG_ERROR("failed to save texture to PNG file");
     result = false;
   }
   delete[] data;
 
   return result;
+}
+
+unsigned char *Texture::GetTexImage() const {
+  int channel_count = GetChannelCount();
+  unsigned char *data = new unsigned char[width_ * height_ * channel_count];
+  if (!data) {
+    return nullptr;
+  }
+  Bind();
+  glGetTexImage(GL_TEXTURE_2D, 0, GL_RGBA, GL_UNSIGNED_BYTE, data);
+
+  return data;
+}
+
+std::array<uint8_t, 4> Texture::GetTexPixel(int x, int y) const {
+  uint8_t pixel[4];
+
+  Bind();
+  glReadPixels(x, y, 1, 1, format_, GL_UNSIGNED_BYTE, pixel);
+
+  return {pixel[0], pixel[1], pixel[2], pixel[3]};
+}
+
+uint32_t Texture::GetChannelCount() const {
+  int channel_count = 4;  // GL_RGBA
+
+  switch (format_) {
+    case GL_RED:
+      channel_count = 1;
+      break;
+    case GL_RG:
+      channel_count = 2;
+      break;
+    case GL_RGB:
+      channel_count = 3;
+      break;
+    default:
+      break;
+  }
+
+  return channel_count;
 }
