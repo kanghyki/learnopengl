@@ -87,10 +87,10 @@ bool Context::Init() {
   {  // box mesh
     auto mat = Material::Create();
     mat->specular_ = Texture::Create(
-        Image::CreateSingleColorImage(4, 4, glm::vec4(0.0f, 1.0f, 0.0f, 1.0f))
+        Image::CreateSingleColorImage(4, 4, glm::vec4(0.7f, 0.0f, 0.0f, 1.0f))
             .get());
     mat->diffuse_ = Texture::Create(
-        Image::CreateSingleColorImage(4, 4, glm::vec4(0.1f, 0.5f, 0.1f, 1.0f))
+        Image::CreateSingleColorImage(4, 4, glm::vec4(0.5f, 0.1f, 0.1f, 1.0f))
             .get());
     red_box_ = Mesh::CreateBox();
     red_box_->set_material(std::move(mat));
@@ -98,10 +98,10 @@ bool Context::Init() {
   {
     auto mat = Material::Create();
     mat->specular_ = Texture::Create(
-        Image::CreateSingleColorImage(4, 4, glm::vec4(1.0f, 0.0f, 0.0f, 1.0f))
+        Image::CreateSingleColorImage(4, 4, glm::vec4(0.0f, 0.7f, 0.0f, 1.0f))
             .get());
     mat->diffuse_ = Texture::Create(
-        Image::CreateSingleColorImage(4, 4, glm::vec4(0.5f, 0.1f, 0.1f, 1.0f))
+        Image::CreateSingleColorImage(4, 4, glm::vec4(0.1f, 0.5f, 0.1f, 1.0f))
             .get());
     green_box_ = Mesh::CreateBox();
     green_box_->set_material(std::move(mat));
@@ -130,19 +130,22 @@ bool Context::Init() {
     }
   }
 
-  Object rbox = Object(red_box_.get());
-  auto rbox_transform = rbox.transform();
-  rbox_transform.scale = glm::vec3(0.5f);
-  rbox_transform.translate = glm::vec3(-1.7f, 3.0f, -7.5f);
-  rbox.set_transform(rbox_transform);
-  pickable_objects_.push_back(rbox);
-
-  Object gbox = Object(green_box_.get());
-  auto gbox_transform = gbox.transform();
-  gbox_transform.scale = glm::vec3(0.5f);
-  gbox_transform.translate = glm::vec3(1.5f, 2.0f, -2.5f);
-  gbox.set_transform(gbox_transform);
-  pickable_objects_.push_back(gbox);
+  for (int i = 0; i < 10; ++i) {
+    for (int j = 1; j < 10; ++j) {
+      auto box = Object::Create(red_box_.get());
+      auto& box_t = box->transform();
+      box_t.translate = glm::vec3(1.0f * j, 0.0f, 1.0f * i);
+      box_t.scale = glm::vec3(0.5f);
+      object_componets_.push_back(box);
+      for (int k = 1; k < 10; ++k) {
+        auto up = Object::Create(green_box_.get());
+        auto& up_t = up->transform();
+        up_t.scale = glm::vec3(0.5f);
+        up_t.translate = glm::vec3(0.0f, 1.0f * k, 0.0f);
+        box->Add(up);
+      }
+    }
+  }
 
   return true;
 }
@@ -162,7 +165,7 @@ void Context::Render() {
     cube_texture_->Bind();
 
     auto model = glm::translate(glm::mat4(1.0), camera_.position_) *
-                 glm::scale(glm::mat4(1.0), glm::vec3(30.0f));
+                 glm::scale(glm::mat4(1.0), glm::vec3(100.0f));
     cube_program_->Use();
     cube_program_->SetUniform("cube", 0);
     cube_program_->SetUniform("transform", projection * view * model);
@@ -194,23 +197,35 @@ void Context::Render() {
     lighting_program_->SetUniform("light.ambient", light_.ambient);
     lighting_program_->SetUniform("light.diffuse", light_.diffuse);
     lighting_program_->SetUniform("light.specular", light_.specular);
+    lighting_program_->SetUniform("projection", projection);
+    lighting_program_->SetUniform("view", view);
 
-    for (size_t i = 0; i < pickable_objects_.size(); ++i) {
-      auto obj = pickable_objects_[i];
-      if (i == pick_) {
-        auto transform = obj.transform();
-        transform.rotate.x =
-            (is_animation_active_ ? (float)glfwGetTime() : 0) * 90.0f;
-        transform.rotate.y =
-            (is_animation_active_ ? (float)glfwGetTime() : 0) * 45.0f;
-        obj.set_transform(transform);
-        transform = obj.transform();
-      }
-      auto model = obj.transform().GetMatrix();
-      lighting_program_->SetUniform("transform", projection * view * model);
-      lighting_program_->SetUniform("modelTransform", model);
-      obj.Draw(lighting_program_.get());
+    for (auto& cp : object_componets_) {
+      cp->Draw(
+          [this](ObjectComponent* c) -> void {
+            if (picking_object_id_ == c->id()) {
+              lighting_program_->SetUniform("pick", true);
+            } else {
+              lighting_program_->SetUniform("pick", false);
+            }
+            lighting_program_->SetUniform("model", c->model());
+          },
+          glm::mat4(1.0f), lighting_program_.get());
     }
+
+    // for (size_t i = 0; i < pickable_objects_.size(); ++i) {
+    //   auto obj = pickable_objects_[i];
+    //   auto transform = obj->transform();
+    //   if (i == pick_) {
+    //     transform.rotate.x =
+    //         (is_animation_active_ ? (float)glfwGetTime() : 0) * 90.0f;
+    //     transform.rotate.y =
+    //         (is_animation_active_ ? (float)glfwGetTime() : 0) * 45.0f;
+    //   }
+    //   auto model = transform.GetMatrix();
+    //   lighting_program_->SetUniform("model", model);
+    //   obj->Draw(lighting_program_.get());
+    // }
     {
       auto model = glm::translate(glm::mat4(1.0), glm::vec3(0.0f, 1.5f, 0.0f));
       model = glm::scale(
@@ -218,8 +233,7 @@ void Context::Render() {
           glm::vec3(0.3f));
 
       lighting_program_->Use();
-      lighting_program_->SetUniform("transform", projection * view * model);
-      lighting_program_->SetUniform("modelTransform", model);
+      lighting_program_->SetUniform("model", model);
       model_->Draw(lighting_program_.get());
     }
   }
@@ -256,16 +270,25 @@ void Context::Render() {
 
   index_framebuffer_->Bind();
   glEnable(GL_DEPTH_TEST);
-  glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
+  glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
   glClear(clear_bit_);
   simple_program_->Use();
-  for (size_t i = 0; i < pickable_objects_.size(); ++i) {
-    float index = (i + 1) * 0.1f;
-    auto obj = pickable_objects_[i];
-    auto model = obj.transform().GetMatrix();
-    simple_program_->SetUniform("transform", projection * view * model);
-    simple_program_->SetUniform("color", glm::vec4(index, index, index, 1.0f));
-    obj.Draw(simple_program_.get());
+  size_t index = 0;
+  for (auto& component : object_componets_) {
+    component->Draw(
+        [this, &projection, &view](ObjectComponent* p) -> void {
+          auto rgba = IdToRGBA(p->id());
+          uint8_t r = rgba[0];
+          uint8_t g = rgba[1];
+          uint8_t b = rgba[2];
+          uint8_t a = rgba[3];
+          simple_program_->SetUniform(
+              "color", glm::vec4((float)r / 255, (float)g / 255, (float)b / 255,
+                                 (float)a / 255));
+          simple_program_->SetUniform("transform",
+                                      projection * view * p->model());
+        },
+        glm::mat4(1.0f), simple_program_.get());
   }
 
   Framebuffer::BindToDefault();
@@ -345,12 +368,18 @@ void Context::ProcessMouseButton(int button, int action, double x, double y) {
       std::array<uint8_t, 4> pixel =
           index_framebuffer_->color_attachment()->GetTexPixel((int)x,
                                                               height - (int)y);
-      if (pixel[0] == 25) {
-        pick_ = 0;
-      } else if (pixel[0] == 51) {
-        pick_ = 1;
+
+      SPDLOG_INFO("R{} G{} B{} A{}", pixel[0], pixel[1], pixel[2], pixel[3]);
+      size_t id = RGBAToId(pixel);
+      SPDLOG_INFO("ID: {}", id);
+      picking_object_id_ = static_cast<int>(id);
+      for (auto& obj : object_componets_) {
+        ObjectComponent* p_obj = obj->FindChild(picking_object_id_);
+        if (p_obj) {
+          picking_object_ = p_obj;
+          break;
+        }
       }
-      SPDLOG_INFO("{}", pick_);
     }
   }
 }
@@ -524,10 +553,10 @@ void Context::RenderImGui() {
 
   {
     if (ImGui::Begin("Object")) {
-      if (pick_ != -1) {
-        Object& obj = pickable_objects_[pick_];
-        Mesh* mesh = obj.mesh();
-        Transform transform = pickable_objects_[pick_].transform();
+      if (picking_object_) {
+        ImGui::Text("Object id : %d", picking_object_id_);
+        Mesh* mesh = picking_object_->mesh();
+        Transform& transform = picking_object_->transform();
 
         ImGui::DragFloat3("Translate", glm::value_ptr(transform.translate),
                           0.01f);
@@ -575,4 +604,25 @@ void Context::ImguiModal(const std::string& title, const std::string& text,
     }
     ImGui::EndPopup();
   }
+}
+
+size_t RGBAToId(std::array<uint8_t, 4> rgba) {
+  size_t id = 0;
+
+  id |= (rgba[0] & 0xFF);
+  id |= (rgba[1] & 0xFF) << 8;
+  id |= (rgba[2] & 0xFF) << 16;
+  id |= (rgba[3] & 0xFF) << 24;
+
+  return id;
+}
+std::array<uint8_t, 4> IdToRGBA(size_t id) {
+  uint8_t rgba[4];
+
+  rgba[0] = id & 0xFF;
+  rgba[1] = (id >> 8) & 0xFF;
+  rgba[2] = (id >> 16) & 0xFF;
+  rgba[3] = (id >> 24) & 0xFF;
+
+  return {rgba[0], rgba[1], rgba[2], rgba[3]};
 }

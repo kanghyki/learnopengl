@@ -8,6 +8,7 @@
 #include "material.hpp"
 #include "mesh.hpp"
 #include "model.hpp"
+#include "object.hpp"
 #include "program.hpp"
 #include "shader.hpp"
 
@@ -54,8 +55,9 @@ class Context {
   std::unique_ptr<Model> model_{nullptr};
 
   // objects
-  std::vector<Object> pickable_objects_;
-  int pick_{0};
+  std::vector<std::shared_ptr<ObjectComponent>> object_componets_;
+  int picking_object_id_{-1};
+  ObjectComponent* picking_object_{nullptr};
 
   struct Light light_;
 
@@ -78,5 +80,8 @@ class Context {
   bool is_setting_open_{true};
   bool is_frambuffer_open_{true};
 };
+
+size_t RGBAToId(std::array<uint8_t, 4> rgba);
+std::array<uint8_t, 4> IdToRGBA(size_t id);
 
 #endif

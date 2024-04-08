@@ -4,8 +4,8 @@ set(PROJECT_NAME output)
 set(CMAKE_CXX_STANDARD 17)
 
 set(WINDOW_NAME "Hello, OpenGL!")
-set(WINDOW_WIDTH 1280)
-set(WINDOW_HEIGHT 720)
+set(WINDOW_WIDTH 1920)
+set(WINDOW_HEIGHT 1080)
 set(CMAKE_EXPORT_COMPILE_COMMANDS 1)
 
 project(${PROJECT_NAME})
@@ -25,6 +25,7 @@ src/mesh.cpp          src/mesh.hpp
 src/model.cpp         src/model.hpp
 src/material.cpp      src/material.hpp
 src/framebuffer.cpp   src/framebuffer.hpp
+src/object.cpp        src/object.hpp
 )
 
 include(Dependency.cmake)

@@ -73,7 +73,7 @@ struct Camera {
   float fov_y_{45.0f};
   float aspect_{16.0f / 9.0f};
   float near_plane_{0.1f};
-  float far_plane_{100.0f};
+  float far_plane_{200.0f};
   unsigned char move_status_{0};
   float move_speed_{0.05f};
   float rot_speed_{0.15f};
