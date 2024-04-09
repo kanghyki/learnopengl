@@ -4,6 +4,30 @@
 
 #include "image.hpp"
 
+glm::vec3 Context::CreateRay(double mouse_x, double mouse_y) {
+  float ndc_x = (float)mouse_x / (width_ * 0.5f) - 1.0f;
+  float ndc_y = (float)mouse_y / (height_ * 0.5f) - 1.0f;
+
+  glm::vec4 near_pos = glm::vec4(ndc_x, ndc_y, -1.0f, 1.0f);
+  glm::vec4 far_pos = glm::vec4(ndc_x, ndc_y, 1.0f, 1.0f);
+
+  glm::mat4 i_proj = glm::inverse(camera_.GetPerspectiveProjectionMatrix());
+  glm::mat4 i_view = glm::inverse(camera_.GetViewMatrix());
+
+  glm::vec4 view_near_temp = i_proj * near_pos;
+  glm::vec4 view_near_position = view_near_temp / view_near_temp.w;
+  glm::vec4 world_near_position = i_view * view_near_position;
+
+  glm::vec4 view_far_temp = i_proj * far_pos;
+  glm::vec4 view_far_position = view_far_temp / view_far_temp.w;
+  glm::vec4 world_far_position = i_view * view_far_position;
+
+  glm::vec3 dir(
+      glm::normalize(glm::vec3(world_far_position - world_near_position)));
+
+  return dir;
+}
+
 Context::Context() {
   clear_bit_ =
       GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT;
@@ -317,9 +341,10 @@ void Context::ProcessKeyboardInput(GLFWwindow* window) {
 
 void Context::ProcessMouseMove(double x, double y) {
   if (camera_direction_control_) {
-    glm::vec2 curPos(x, y);
-    camera_.Rotate(curPos - prev_mouse_pos_);
-    prev_mouse_pos_ = curPos;
+    glm::vec2 cur_pos(x, y);
+    glm::vec2 delta = cur_pos - prev_mouse_pos_;
+    camera_.Rotate(delta);
+    prev_mouse_pos_ = cur_pos;
   }
 }
 
@@ -333,6 +358,7 @@ void Context::ProcessMouseButton(int button, int action, double x, double y) {
     }
   }
   if (button == GLFW_MOUSE_BUTTON_LEFT) {
+    CreateRay(x, y);
     if (action == GLFW_PRESS) {
       index_framebuffer_->Bind();
       int height = index_framebuffer_->color_attachment()->height();
@@ -342,7 +368,6 @@ void Context::ProcessMouseButton(int button, int action, double x, double y) {
 
       SPDLOG_INFO("R{} G{} B{} A{}", pixel[0], pixel[1], pixel[2], pixel[3]);
       size_t id = RGBAToId(pixel);
-      SPDLOG_INFO("ID: {}", id);
       ObjectItem* p_obj = object_->FindOjbectItem(id);
       if (p_obj) {
         pick_object_item_ = p_obj;

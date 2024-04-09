@@ -17,6 +17,7 @@ class Context {
   static std::unique_ptr<Context> Create();
   ~Context();
 
+  glm::vec3 CreateRay(double x, double y);
   void Update();
   void Render();
   void RenderImGui();
