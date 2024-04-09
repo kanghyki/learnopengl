@@ -35,7 +35,7 @@ uniform vec3 viewPos;
 uniform int lightType;
 uniform Light light;
 uniform Material material;
-uniform bool pick;
+uniform bool isPick;
 
 vec3 calcAmbient(vec3 texColor) {
     vec3 ambient = texColor * light.ambient;
@@ -117,10 +117,6 @@ vec3 spotLight() {
 void main() {
     vec3 result;
 
-    if (pick) {
-      fragColor = vec4(1.0, 0.0, 0.0, 1.0);
-      return;
-    }
     if (lightType == 0) {
         result = directionalLight();
     } else if (lightType == 1) {
@@ -130,4 +126,7 @@ void main() {
     }
 
     fragColor = vec4(result, 1.0);
+    if (isPick) {
+      fragColor = vec4(pow(fragColor.rgb, vec3(0.3)), 1.0);
+    }
 }

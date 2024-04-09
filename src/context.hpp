@@ -55,9 +55,9 @@ class Context {
   std::unique_ptr<Model> model_{nullptr};
 
   // objects
-  std::vector<std::shared_ptr<ObjectComponent>> object_componets_;
-  int picking_object_id_{-1};
-  ObjectComponent* picking_object_{nullptr};
+  std::shared_ptr<ObjectComponent> object_;
+  size_t pick_object_id_{(size_t)-1};
+  ObjectItem* pick_object_item_{nullptr};
 
   struct Light light_;
 

@@ -16,6 +16,7 @@ class Model {
   ~Model();
 
   void Draw(const Program *program) const;
+  Mesh *GetMeshPtr() { return mesh_.get(); }  // test
 
  private:
   Model();

@@ -24,78 +24,46 @@ struct Transform {
   }
 };
 
-class ObjectComponent abstract {
+class ObjectItem;
+class ObjectGroup;
+class ObjectComponent {
  public:
-  virtual void Add(std::shared_ptr<ObjectComponent> c) = 0;
-  virtual void Remove(std::shared_ptr<ObjectComponent> c) = 0;
+  virtual void Add(std::shared_ptr<ObjectComponent> c) {}
+  virtual void Remove(std::shared_ptr<ObjectComponent> c) {}
   virtual void Draw(std::function<void(ObjectComponent *)> uniform_fn,
                     glm::mat4 model, Program *p) = 0;
-  virtual ObjectComponent *FindChild(size_t id) = 0;
 
-  virtual Mesh *mesh() = 0;
   virtual Transform &transform() = 0;
   virtual glm::mat4 model() const = 0;
+
+  virtual ObjectItem *FindOjbectItem(size_t id) = 0;
+  virtual ObjectGroup *FindOjbectGroup(size_t id) = 0;
   virtual size_t id() const = 0;
 };
 
-class Object : public ObjectComponent {
+class ObjectGroup : public ObjectComponent {
  public:
-  static size_t kId;
-  static std::shared_ptr<Object> Create(Mesh *mesh) {
-    auto object = std::shared_ptr<Object>(new Object(mesh));
+  static std::shared_ptr<ObjectGroup> Create();
+  ~ObjectGroup();
 
-    return std::move(object);
-  }
-  ~Object() {}
-
-  void Draw(const Program *program) const { mesh_->Draw(program); }
-  inline void set_transform(Transform transform) { transform_ = transform; }
-
-  void Add(std::shared_ptr<ObjectComponent> c) override {
-    components_.push_back(c);
-  }
-
-  void Remove(std::shared_ptr<ObjectComponent> c) override {
-    for (size_t i = 0; i < components_.size(); ++i) {
-      if (c.get() == components_[i].get()) {
-        this->components_.erase(this->components_.begin() + i);
-        break;
-      }
-    }
-  }
-
-  virtual ObjectComponent *FindChild(size_t id) override {
-    if (id == this->id()) return this;
-
-    for (auto &component : components_) {
-      ObjectComponent *ret = component->FindChild(id);
-      if (ret != nullptr) {
-        return ret;
-      }
-    }
-    return nullptr;
-  }
-
-  size_t id() const override { return id_; }
-
+  void Draw(const Program *program) const;
+  void Add(std::shared_ptr<ObjectComponent> c) override;
+  void Remove(std::shared_ptr<ObjectComponent> c) override;
   void Draw(std::function<void(ObjectComponent *)> uniform_fn, glm::mat4 model,
-            Program *p) override {
-    model_ = model * transform().GetMatrix();
-    uniform_fn(this);
-    mesh()->Draw(p);
-    for (const auto &component : components_) {
-      component->Draw(uniform_fn, model_, p);
-    }
-  }
+            Program *p) override;
 
-  Mesh *mesh() override { return mesh_; }
+  inline Transform &transform() override { return transform_; }
+  inline glm::mat4 model() const override { return model_; }
 
-  Transform &transform() override { return transform_; }
-  glm::mat4 model() const override { return model_; }
+  ObjectItem *FindOjbectItem(size_t id) override;
+  ObjectGroup *FindOjbectGroup(size_t id) override;
+  inline size_t id() const override { return id_; }
 
  private:
-  Object(Mesh *mesh) : id_(Object::kId++), mesh_(mesh) {}
-  Object &operator=(const Object &obj);
+  static size_t kGroupId;
+
+  ObjectGroup();
+  ObjectGroup &operator=(const ObjectGroup &obj);
 
   Mesh *mesh_;
   Transform transform_;
@@ -104,36 +72,32 @@ class Object : public ObjectComponent {
   std::vector<std::shared_ptr<ObjectComponent>> components_;
 };
 
-// class ObjectItem : public ObjectComponent {
-//  public:
-//   static std::shared_ptr<ObjectItem> Create(Mesh *mesh) {
-//     return std::shared_ptr<ObjectItem>(new ObjectItem(mesh));
-//   }
-//   ~ObjectItem() {}
+class ObjectItem : public ObjectComponent {
+ public:
+  static std::shared_ptr<ObjectItem> Create(Mesh *mesh);
+  ~ObjectItem();
 
-//   void Add(std::shared_ptr<ObjectComponent> c) override {}
+  void Draw(std::function<void(ObjectComponent *)> uniform_fn, glm::mat4 model,
+            Program *p) override;
 
-//   void Remove(std::shared_ptr<ObjectComponent> c) override {}
+  inline Transform &transform() override { return transform_; }
+  inline glm::mat4 model() const override { return model_; }
 
-//   std::shared_ptr<ObjectComponent> GetChild(int i) override { return nullptr;
-//   }
+  ObjectItem *FindOjbectItem(size_t id) override;
+  ObjectGroup *FindOjbectGroup(size_t id) override;
+  inline size_t id() const override { return id_; }
 
-//   void Draw(const std::string &name, glm::mat4 model, Program *p) override {
-//     p->SetUniform(name, model * transform().GetMatrix());
-//     mesh()->Draw(p);
-//   }
+  inline Mesh *mesh() { return mesh_; }
 
-//   Mesh *mesh() override { return mesh_; }
+ private:
+  static size_t kItemId;
+  ObjectItem(Mesh *mesh);
+  ObjectGroup &operator=(const ObjectGroup &obj);
 
-//   Transform &transform() override { return transform_; }
-
-//  private:
-//   ObjectItem() {}
-//   ObjectItem(Mesh *mesh) { mesh_ = mesh; }
-//   Object &operator=(const Object &obj);
-
-//   Mesh *mesh_;
-//   Transform transform_;
-// };
+  Mesh *mesh_;
+  Transform transform_;
+  glm::mat4 model_;
+  size_t id_;
+};
 
 #endif
