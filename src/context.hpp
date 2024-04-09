@@ -17,7 +17,6 @@ class Context {
   static std::unique_ptr<Context> Create();
   ~Context();
 
-  glm::vec3 CreateRay(double x, double y);
   void Update();
   void Render();
   void RenderImGui();
@@ -29,6 +28,8 @@ class Context {
   void ImguiModal(const std::string& title, const std::string& text,
                   std::function<void(void)> ok,
                   std::function<void(void)> cancel);
+
+  void SetRay(double x, double y);
 
  private:
   Context();
@@ -59,6 +60,13 @@ class Context {
   std::shared_ptr<ObjectComponent> object_;
   size_t pick_object_id_{(size_t)-1};
   ObjectItem* pick_object_item_{nullptr};
+
+  /* for test */
+  bool is_left_mouse_click_{false};
+  bool is_selected_{false};
+  glm::vec3 cursor_ray_direction_{0.0f};
+  glm::vec3 cursor_ray_position_{0.0f};
+  float cursor_distance_{0.0f};
 
   struct Light light_;
 

@@ -4,12 +4,12 @@
 
 #include "image.hpp"
 
-glm::vec3 Context::CreateRay(double mouse_x, double mouse_y) {
+void Context::SetRay(double mouse_x, double mouse_y) {
   float ndc_x = (float)mouse_x / (width_ * 0.5f) - 1.0f;
   float ndc_y = (float)mouse_y / (height_ * 0.5f) - 1.0f;
 
-  glm::vec4 near_pos = glm::vec4(ndc_x, ndc_y, -1.0f, 1.0f);
-  glm::vec4 far_pos = glm::vec4(ndc_x, ndc_y, 1.0f, 1.0f);
+  glm::vec4 near_pos = glm::vec4(ndc_x, -ndc_y, -1.0f, 1.0f);
+  glm::vec4 far_pos = glm::vec4(ndc_x, -ndc_y, 1.0f, 1.0f);
 
   glm::mat4 i_proj = glm::inverse(camera_.GetPerspectiveProjectionMatrix());
   glm::mat4 i_view = glm::inverse(camera_.GetViewMatrix());
@@ -22,10 +22,11 @@ glm::vec3 Context::CreateRay(double mouse_x, double mouse_y) {
   glm::vec4 view_far_position = view_far_temp / view_far_temp.w;
   glm::vec4 world_far_position = i_view * view_far_position;
 
-  glm::vec3 dir(
-      glm::normalize(glm::vec3(world_far_position - world_near_position)));
+  glm::vec3 mouse_ray =
+      glm::normalize(glm::vec3(world_far_position - world_near_position));
 
-  return dir;
+  cursor_ray_position_ = glm::vec3(world_near_position);
+  cursor_ray_direction_ = mouse_ray;
 }
 
 Context::Context() {
@@ -163,16 +164,16 @@ bool Context::Init() {
   model_object->transform().scale = glm::vec3(0.3f);
   object_->Add(model_object);
 
-  for (int i = 0; i < 5; ++i) {
-    for (int j = 0; j < 5; ++j) {
-      for (int k = 0; k < 5; ++k) {
-        auto box = ObjectItem::Create(green_box_.get());
-        box->transform().translate = glm::vec3(0.5f) * glm::vec3(j, k, i);
-        box->transform().scale = glm::vec3(0.25f);
-        object_->Add(box);
-      }
-    }
-  }
+  // for (int i = 0; i < 5; ++i) {
+  //   for (int j = 0; j < 5; ++j) {
+  //     for (int k = 0; k < 5; ++k) {
+  //       auto box = ObjectItem::Create(green_box_.get());
+  //       box->transform().translate = glm::vec3(0.5f) * glm::vec3(j, k, i);
+  //       box->transform().scale = glm::vec3(0.25f);
+  //       object_->Add(box);
+  //     }
+  //   }
+  // }
 
   return true;
 }
@@ -207,6 +208,17 @@ void Context::Render() {
     simple_program_->SetUniform("transform",
                                 projection * view * lightModelTransform);
     red_box_->Draw(simple_program_.get());
+    if (is_selected_) {
+      auto cursor_model =
+          glm::translate(glm::mat4(1.0),
+                         cursor_ray_position_ +
+                             (cursor_distance_ * cursor_ray_direction_)) *
+          glm::scale(glm::mat4(1.0), glm::vec3(0.1f));
+      simple_program_->SetUniform("color", glm::vec4(0.0f, 1.0f, 0, 1.0f));
+      simple_program_->SetUniform("transform",
+                                  projection * view * cursor_model);
+      sphere_->Draw(simple_program_.get());
+    }
   }
   {  // lighting program
     lighting_program_->Use();
@@ -233,6 +245,8 @@ void Context::Render() {
           lighting_program_->SetUniform("isPick", pick_object_id_ == c->id());
         },
         glm::mat4(1.0f), lighting_program_.get());
+    lighting_program_->SetUniform("model", glm::mat4(1.0f));
+    sphere_->Draw(lighting_program_.get());
   }
   {  // env map program
     auto transform =
@@ -346,6 +360,11 @@ void Context::ProcessMouseMove(double x, double y) {
     camera_.Rotate(delta);
     prev_mouse_pos_ = cur_pos;
   }
+  if (is_left_mouse_click_) {
+    SetRay(x, y);
+    is_selected_ = sphere_->Intersect(cursor_ray_position_,
+                                      cursor_ray_direction_, cursor_distance_);
+  }
 }
 
 void Context::ProcessMouseButton(int button, int action, double x, double y) {
@@ -358,21 +377,23 @@ void Context::ProcessMouseButton(int button, int action, double x, double y) {
     }
   }
   if (button == GLFW_MOUSE_BUTTON_LEFT) {
-    CreateRay(x, y);
     if (action == GLFW_PRESS) {
+      is_left_mouse_click_ = true;
       index_framebuffer_->Bind();
       int height = index_framebuffer_->color_attachment()->height();
       std::array<uint8_t, 4> pixel =
           index_framebuffer_->color_attachment()->GetTexPixel((int)x,
                                                               height - (int)y);
 
-      SPDLOG_INFO("R{} G{} B{} A{}", pixel[0], pixel[1], pixel[2], pixel[3]);
+      // SPDLOG_INFO("R{} G{} B{} A{}", pixel[0], pixel[1], pixel[2], pixel[3]);
       size_t id = RGBAToId(pixel);
       ObjectItem* p_obj = object_->FindOjbectItem(id);
       if (p_obj) {
         pick_object_item_ = p_obj;
         pick_object_id_ = id;
       }
+    } else if (action == GLFW_RELEASE) {
+      is_left_mouse_click_ = false;
     }
   }
 }
