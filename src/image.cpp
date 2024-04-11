@@ -51,7 +51,8 @@ std::unique_ptr<Image> Image::CreateSingleColorImage(int width, int height,
   };
   auto image = Create(width, height, 4);
   for (int i = 0; i < width * height; ++i) {
-    memcpy(image->data_ + 4 * i, rgba, 4);
+    memcpy(image->data_ + i * image->channel_count_, rgba,
+           image->channel_count_);
   }
 
   return std::move(image);

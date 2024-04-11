@@ -26,6 +26,7 @@ src/model.cpp         src/model.hpp
 src/material.cpp      src/material.hpp
 src/framebuffer.cpp   src/framebuffer.hpp
 src/object.cpp        src/object.hpp
+                      src/ray.hpp
 )
 
 include(Dependency.cmake)

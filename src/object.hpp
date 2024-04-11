@@ -4,100 +4,128 @@
 #include "common.hpp"
 #include "mesh.hpp"
 #include "program.hpp"
+#include "ray.hpp"
 
-struct Transform {
-  glm::vec3 translate{0.0f};
-  glm::vec3 scale{1.0f};
-  glm::vec3 rotate{0.0f};
+class Transform {
+ public:
+  Transform(){};
+  ~Transform(){};
 
-  glm::mat4 GetMatrix() {
-    auto t = glm::translate(glm::mat4(1.0f), translate);
-    auto s = glm::scale(glm::mat4(1.0f), scale);
-    auto r = glm::rotate(glm::mat4(1.0f), glm::radians(rotate.z),
-                         glm::vec3(0.0f, 0.0f, 1.0f)) *
-             glm::rotate(glm::mat4(1.0f), glm::radians(rotate.y),
-                         glm::vec3(0.0f, 1.0f, 0.0f)) *
-             glm::rotate(glm::mat4(1.0f), glm::radians(rotate.x),
-                         glm::vec3(1.0f, 1.0f, 1.0f));
+  glm::mat4 Matrix() const {
+    auto t = glm::translate(glm::mat4(1.0f), translate_);
+    auto s = glm::scale(glm::mat4(1.0f), scale_);
+    auto r = glm::toMat4(quat_);
 
     return t * s * r;
   }
-};
 
-class ObjectItem;
-class ObjectGroup;
-class ObjectComponent {
- public:
-  virtual void Add(std::shared_ptr<ObjectComponent> c) {}
-  virtual void Remove(std::shared_ptr<ObjectComponent> c) {}
-  virtual void Draw(std::function<void(ObjectComponent *)> uniform_fn,
-                    glm::mat4 model, Program *p) = 0;
+  void set_translate(const glm::vec3 &t) { translate_ = t; }
+  void set_scale(const glm::vec3 &s) { scale_ = s; }
+  void set_rotate(const glm::quat &quat) { quat_ = quat; }
+  void set_rotate(const glm::vec3 &euler) {
+    quat_ = glm::quat(glm::radians(euler));
+  }
 
-  virtual Transform &transform() = 0;
-  virtual glm::mat4 model() const = 0;
-
-  virtual ObjectItem *FindOjbectItem(size_t id) = 0;
-  virtual ObjectGroup *FindOjbectGroup(size_t id) = 0;
-  virtual size_t id() const = 0;
-};
-
-class ObjectGroup : public ObjectComponent {
- public:
-  static std::shared_ptr<ObjectGroup> Create();
-  ~ObjectGroup();
-
-  void Draw(const Program *program) const;
-  void Add(std::shared_ptr<ObjectComponent> c) override;
-  void Remove(std::shared_ptr<ObjectComponent> c) override;
-  void Draw(std::function<void(ObjectComponent *)> uniform_fn, glm::mat4 model,
-            Program *p) override;
-
-  inline Transform &transform() override { return transform_; }
-  inline glm::mat4 model() const override { return model_; }
-
-  ObjectItem *FindOjbectItem(size_t id) override;
-  ObjectGroup *FindOjbectGroup(size_t id) override;
-  inline size_t id() const override { return id_; }
+  glm::vec3 translate() const { return translate_; }
+  glm::vec3 scale() const { return scale_; }
+  glm::quat rotate_quat() const { return quat_; }
+  glm::vec3 rotate_euler() const {
+    return glm::degrees(glm::eulerAngles(quat_));
+  }
 
  private:
-  static size_t kGroupId;
-
-  ObjectGroup();
-  ObjectGroup &operator=(const ObjectGroup &obj);
-
-  Mesh *mesh_;
-  Transform transform_;
-  glm::mat4 model_;
-  size_t id_;
-  std::vector<std::shared_ptr<ObjectComponent>> components_;
+  glm::vec3 translate_{0.0f};
+  glm::vec3 scale_{1.0f};
+  glm::quat quat_{1.0f, 0.0f, 0.0f, 0.0f};
 };
 
-class ObjectItem : public ObjectComponent {
+class BoundingSphere {
  public:
-  static std::shared_ptr<ObjectItem> Create(Mesh *mesh);
-  ~ObjectItem();
+  static std::unique_ptr<BoundingSphere> Create(const glm::vec3 &min,
+                                                const glm::vec3 &max,
+                                                float radius) {
+    auto ptr =
+        std::unique_ptr<BoundingSphere>(new BoundingSphere(min, max, radius));
 
-  void Draw(std::function<void(ObjectComponent *)> uniform_fn, glm::mat4 model,
-            Program *p) override;
+    return std::move(ptr);
+  }
+  ~BoundingSphere() {}
 
-  inline Transform &transform() override { return transform_; }
-  inline glm::mat4 model() const override { return model_; }
+  bool Intersect(const Ray &ray, float &dist, const Transform &t) {
+    const glm::vec3 center = CalcCenter(t);
+    float radius = radius_;
 
-  ObjectItem *FindOjbectItem(size_t id) override;
-  ObjectGroup *FindOjbectGroup(size_t id) override;
-  inline size_t id() const override { return id_; }
+    const float b = 2.0f * glm::dot(ray.direction, ray.position - center);
+    const float c = glm::dot(ray.position - center, ray.position - center) -
+                    radius * radius;
+    const float det = b * b - 4.0f * c;
 
-  inline Mesh *mesh() { return mesh_; }
+    if (det >= 0.0f) {
+      const float d1 = (-b - sqrt(det)) / 2.0f;
+      const float d2 = (-b + sqrt(det)) / 2.0f;
+      dist = glm::min(d1, d2);
+      return true;
+    }
+
+    return false;
+  }
+
+  glm::vec3 CalcCenter(const Transform &t) {
+    glm::vec3 center = (max_ + min_) / 2.0f;
+
+    return t.Matrix() * glm::vec4(center, 1.0f);
+  }
 
  private:
-  static size_t kItemId;
-  ObjectItem(Mesh *mesh);
-  ObjectGroup &operator=(const ObjectGroup &obj);
+  // TODO: smallest
+  BoundingSphere(const glm::vec3 &min, const glm::vec3 &max, float radius)
+      : min_(min), max_(max), radius_(radius) {}
 
-  Mesh *mesh_;
-  Transform transform_;
-  glm::mat4 model_;
+  glm::vec3 min_;
+  glm::vec3 max_;
+  float radius_;
+};
+
+class Object {
+ public:
+  static std::shared_ptr<Object> Create(std::shared_ptr<Mesh> mesh) {
+    auto object = std::shared_ptr<Object>(new Object(mesh));
+
+    return std::move(object);
+  }
+  ~Object(){};
+
+  inline void Draw(const Program *p) const { mesh_->Draw(p); }
+  inline Transform &transform() { return transform_; }
+  inline size_t id() const { return id_; }
+  inline std::shared_ptr<Mesh> mesh() const { return mesh_; }
+  inline void set_material(std::shared_ptr<Material> m) {
+    mesh_->set_material(std::move(m));
+  }
+
+  void CreateBoundingSphere(float radius) {
+    bounding_sphere_ = BoundingSphere::Create(mesh_->vertex_min(),
+                                              mesh_->vertex_max(), radius);
+  }
+  bool Intersect(const Ray &ray, float &dist) {
+    if (!bounding_sphere_) {
+      return false;
+    }
+    return bounding_sphere_->Intersect(ray, dist, transform_);
+  }
+
+  glm::vec3 bounding_sphere_center() const {
+    return bounding_sphere_->CalcCenter(transform_);
+  }
+
+ private:
+  static size_t kId;
+  Object(std::shared_ptr<Mesh> mesh) : id_(Object::kId++), mesh_(mesh) {}
+
   size_t id_;
+  Transform transform_;
+  std::shared_ptr<Mesh> mesh_;
+  std::unique_ptr<BoundingSphere> bounding_sphere_{nullptr};
 };
 
 #endif

@@ -4,9 +4,9 @@
 
 #include "image.hpp"
 
-void Context::SetRay(double mouse_x, double mouse_y) {
-  float ndc_x = (float)mouse_x / (width_ * 0.5f) - 1.0f;
-  float ndc_y = (float)mouse_y / (height_ * 0.5f) - 1.0f;
+Ray Context::CalcCursorRay(glm::vec2 cursor) {
+  float ndc_x = (float)cursor.x / (width_ * 0.5f) - 1.0f;
+  float ndc_y = (float)cursor.y / (height_ * 0.5f) - 1.0f;
 
   glm::vec4 near_pos = glm::vec4(ndc_x, -ndc_y, -1.0f, 1.0f);
   glm::vec4 far_pos = glm::vec4(ndc_x, -ndc_y, 1.0f, 1.0f);
@@ -22,11 +22,16 @@ void Context::SetRay(double mouse_x, double mouse_y) {
   glm::vec4 view_far_position = view_far_temp / view_far_temp.w;
   glm::vec4 world_far_position = i_view * view_far_position;
 
-  glm::vec3 mouse_ray =
+  // FIXME:
+  world_near_ = world_near_position;
+  world_far_ = world_far_position;
+
+  Ray ray;
+  ray.position = glm::vec3(world_near_position);
+  ray.direction =
       glm::normalize(glm::vec3(world_far_position - world_near_position));
 
-  cursor_ray_position_ = glm::vec3(world_near_position);
-  cursor_ray_direction_ = mouse_ray;
+  return ray;
 }
 
 Context::Context() {
@@ -109,17 +114,6 @@ bool Context::Init() {
     });
   }
 
-  {  // box mesh
-    auto mat = Material::Create();
-    mat->specular_ = Texture::Create(
-        Image::CreateSingleColorImage(4, 4, glm::vec4(0.7f, 0.0f, 0.0f, 1.0f))
-            .get());
-    mat->diffuse_ = Texture::Create(
-        Image::CreateSingleColorImage(4, 4, glm::vec4(0.5f, 0.1f, 0.1f, 1.0f))
-            .get());
-    red_box_ = Mesh::CreateBox();
-    red_box_->set_material(std::move(mat));
-  }
   {
     auto mat = Material::Create();
     mat->specular_ = Texture::Create(
@@ -128,15 +122,14 @@ bool Context::Init() {
     mat->diffuse_ = Texture::Create(
         Image::CreateSingleColorImage(4, 4, glm::vec4(0.1f, 0.5f, 0.1f, 1.0f))
             .get());
-    green_box_ = Mesh::CreateBox();
-    green_box_->set_material(std::move(mat));
+    box_ = Mesh::CreateBox();
+    box_->set_material(std::move(mat));
   }
   {  // sphere mesh
     auto mat = Material::Create();
+
+    mat->diffuse_ = Texture::Create(Image::Load("image/wall.jpg", true).get());
     mat->specular_ = Texture::Create(
-        Image::CreateSingleColorImage(4, 4, glm::vec4(1.0f, 1.0f, 1.0f, 1.0f))
-            .get());
-    mat->diffuse_ = Texture::Create(
         Image::CreateSingleColorImage(4, 4, glm::vec4(0.7f, 0.7f, 0.7f, 1.0f))
             .get());
     sphere_ = Mesh::CreateSphere(35, 35);
@@ -155,25 +148,24 @@ bool Context::Init() {
     }
   }
 
-  object_ = ObjectGroup::Create();
+  for (int i = 0; i < 5; ++i) {
+    for (int j = 0; j < 5; ++j) {
+      for (int k = 0; k < 5; ++k) {
+        auto box = Object::Create(box_);
+        box->transform().set_translate(glm::vec3(0.5f) * glm::vec3(j, k, i) +
+                                       glm::vec3(2.0f));
+        box->transform().set_scale(glm::vec3(0.3f));
+        box->CreateBoundingSphere(0.2f);
+        objects_.push_back(box);
+      }
+    }
+  }
 
-  Mesh* ptr = model_->GetMeshPtr();
-  auto model_object = ObjectItem::Create(ptr);
-  model_object->transform().translate = glm::vec3(-1.5f, 1.5f, 0.0f);
-  model_object->transform().rotate.y = -90.0f;
-  model_object->transform().scale = glm::vec3(0.3f);
-  object_->Add(model_object);
-
-  // for (int i = 0; i < 5; ++i) {
-  //   for (int j = 0; j < 5; ++j) {
-  //     for (int k = 0; k < 5; ++k) {
-  //       auto box = ObjectItem::Create(green_box_.get());
-  //       box->transform().translate = glm::vec3(0.5f) * glm::vec3(j, k, i);
-  //       box->transform().scale = glm::vec3(0.25f);
-  //       object_->Add(box);
-  //     }
-  //   }
-  // }
+  auto sphere_object = Object::Create(sphere_);
+  sphere_object->transform().set_translate(glm::vec3(0.0f, 0.0f, 0.0f));
+  sphere_object->transform().set_scale(glm::vec3(2.0f));
+  sphere_object->CreateBoundingSphere(1.0f);
+  objects_.push_back(sphere_object);
 
   return true;
 }
@@ -207,13 +199,10 @@ void Context::Render() {
         "color", glm::vec4(light_.ambient + light_.diffuse, 1.0f));
     simple_program_->SetUniform("transform",
                                 projection * view * lightModelTransform);
-    red_box_->Draw(simple_program_.get());
-    if (is_selected_) {
-      auto cursor_model =
-          glm::translate(glm::mat4(1.0),
-                         cursor_ray_position_ +
-                             (cursor_distance_ * cursor_ray_direction_)) *
-          glm::scale(glm::mat4(1.0), glm::vec3(0.1f));
+    box_->Draw(simple_program_.get());
+    if (is_ray_hit_) {
+      auto cursor_model = glm::translate(glm::mat4(1.0), ray_hit_point_) *
+                          glm::scale(glm::mat4(1.0), glm::vec3(0.1f));
       simple_program_->SetUniform("color", glm::vec4(0.0f, 1.0f, 0, 1.0f));
       simple_program_->SetUniform("transform",
                                   projection * view * cursor_model);
@@ -239,45 +228,42 @@ void Context::Render() {
     lighting_program_->SetUniform("projection", projection);
     lighting_program_->SetUniform("view", view);
 
-    object_->Draw(
-        [this](ObjectComponent* c) -> void {
-          lighting_program_->SetUniform("model", c->model());
-          lighting_program_->SetUniform("isPick", pick_object_id_ == c->id());
-        },
-        glm::mat4(1.0f), lighting_program_.get());
-    lighting_program_->SetUniform("model", glm::mat4(1.0f));
-    sphere_->Draw(lighting_program_.get());
+    for (const auto& object : objects_) {
+      lighting_program_->SetUniform("model", object->transform().Matrix());
+      lighting_program_->SetUniform("isPick", pick_id_ == object->id());
+      object->Draw(lighting_program_.get());
+    }
   }
-  {  // env map program
-    auto transform =
-        glm::translate(glm::mat4(1.0f), glm::vec3(-3.5f, 1.5f, -1.0f)) *
-        glm::scale(glm::mat4(1.0f), glm::vec3(1.0f, 1.0f, 1.0f));
-    env_map_program_->Use();
-    env_map_program_->SetUniform("model", transform);
-    env_map_program_->SetUniform("view", view);
-    env_map_program_->SetUniform("projection", projection);
-    env_map_program_->SetUniform("cameraPos", camera_.position_);
-    cube_texture_->Bind();
-    env_map_program_->SetUniform("cube", 0);
-    sphere_->Draw(env_map_program_.get());
-  }
-  {  // plane program
-    glEnable(GL_BLEND);
-    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+  // {  // env map program
+  //   auto transform =
+  //       glm::translate(glm::mat4(1.0f), glm::vec3(-3.5f, 1.5f, -1.0f)) *
+  //       glm::scale(glm::mat4(1.0f), glm::vec3(1.0f, 1.0f, 1.0f));
+  //   env_map_program_->Use();
+  //   env_map_program_->SetUniform("model", transform);
+  //   env_map_program_->SetUniform("view", view);
+  //   env_map_program_->SetUniform("projection", projection);
+  //   env_map_program_->SetUniform("cameraPos", camera_.position_);
+  //   cube_texture_->Bind();
+  //   env_map_program_->SetUniform("cube", 0);
+  //   sphere_->Draw(env_map_program_.get());
+  // }
+  // {  // plane program
+  //   glEnable(GL_BLEND);
+  //   glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
-    glActiveTexture(GL_TEXTURE0);
-    plane_texture_->Bind();
+  //   glActiveTexture(GL_TEXTURE0);
+  //   plane_texture_->Bind();
 
-    auto model = glm::scale(glm::rotate(glm::mat4(1.0), glm::radians(90.0f),
-                                        glm::vec3(1.0f, 0.0f, 0.0f)),
-                            glm::vec3(10.0f));
-    plane_program_->Use();
-    plane_program_->SetUniform("tex", 0);
-    plane_program_->SetUniform("transform", projection * view * model);
-    plane_program_->SetUniform("modelTransform", model);
-    plane_->Draw(plane_program_.get());
-    glDisable(GL_BLEND);
-  }
+  //   auto model = glm::scale(glm::rotate(glm::mat4(1.0), glm::radians(90.0f),
+  //                                       glm::vec3(1.0f, 0.0f, 0.0f)),
+  //                           glm::vec3(10.0f));
+  //   plane_program_->Use();
+  //   plane_program_->SetUniform("tex", 0);
+  //   plane_program_->SetUniform("transform", projection * view * model);
+  //   plane_program_->SetUniform("modelTransform", model);
+  //   plane_->Draw(plane_program_.get());
+  //   glDisable(GL_BLEND);
+  // }
 
   index_framebuffer_->Bind();
   glEnable(GL_DEPTH_TEST);
@@ -285,25 +271,33 @@ void Context::Render() {
   glClear(clear_bit_);
   simple_program_->Use();
   size_t index = 0;
-  object_->Draw(
-      [this, &projection, &view](ObjectComponent* p) -> void {
-        auto rgba = IdToRGBA(p->id());
-        uint8_t r = rgba[0];
-        uint8_t g = rgba[1];
-        uint8_t b = rgba[2];
-        uint8_t a = rgba[3];
-        simple_program_->SetUniform(
-            "color", glm::vec4((float)r / 255, (float)g / 255, (float)b / 255,
-                               (float)a / 255));
-        simple_program_->SetUniform("transform",
-                                    projection * view * p->model());
-      },
-      glm::mat4(1.0f), simple_program_.get());
+
+  glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+
+  for (const auto& object : objects_) {
+    auto rgba = IdToRGBA(object->id());
+    uint8_t r = rgba[0];
+    uint8_t g = rgba[1];
+    uint8_t b = rgba[2];
+    uint8_t a = rgba[3];
+    simple_program_->SetUniform(
+        "color", glm::vec4((float)r / 255, (float)g / 255, (float)b / 255,
+                           (float)a / 255));
+    simple_program_->SetUniform(
+        "transform", projection * view * object->transform().Matrix());
+    object->Draw(simple_program_.get());
+  }
+
+  if (is_wireframe_active_) {
+    glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+  } else {
+    glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+  }
 
   Framebuffer::BindToDefault();
   glDisable(GL_DEPTH_TEST);
   glClear(clear_bit_);
-  {  // post program
+  {
     auto model = glm::scale(glm::mat4(1.0f), glm::vec3(2.0f, 2.0f, 2.0f));
     post_program_->Use();
     post_program_->SetUniform("transform", model);
@@ -316,6 +310,16 @@ void Context::Render() {
 }
 
 void Context::ProcessKeyboardInput(GLFWwindow* window) {
+  if (glfwGetKey(window, GLFW_KEY_LEFT_CONTROL) == GLFW_PRESS) {
+    ctrl_ = true;
+  } else if (glfwGetKey(window, GLFW_KEY_LEFT_CONTROL) == GLFW_RELEASE) {
+    ctrl_ = false;
+  }
+  if (glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS) {
+    shift_ = true;
+  } else if (glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_RELEASE) {
+    shift_ = false;
+  }
   if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS) {
     camera_.SetMove(kFront);
   } else if (glfwGetKey(window, GLFW_KEY_W) == GLFW_RELEASE) {
@@ -354,47 +358,77 @@ void Context::ProcessKeyboardInput(GLFWwindow* window) {
 }
 
 void Context::ProcessMouseMove(double x, double y) {
+  glm::vec2 cur_cursor{x, y};
   if (camera_direction_control_) {
-    glm::vec2 cur_pos(x, y);
-    glm::vec2 delta = cur_pos - prev_mouse_pos_;
+    glm::vec2 delta = cur_cursor - prev_cursor_;
     camera_.Rotate(delta);
-    prev_mouse_pos_ = cur_pos;
   }
-  if (is_left_mouse_click_) {
-    SetRay(x, y);
-    is_selected_ = sphere_->Intersect(cursor_ray_position_,
-                                      cursor_ray_direction_, cursor_distance_);
+  prev_cursor_ = cur_cursor;
+
+  if (pick_object_) {
+    cursor_ray_ = CalcCursorRay(cur_cursor);
+    float dist;
+    is_ray_hit_ = pick_object_->Intersect(cursor_ray_, dist);
+    if (is_ray_hit_) {
+      ray_hit_point_ = cursor_ray_.position + cursor_ray_.direction * dist;
+    }
+
+    if (ctrl_) {
+      if (!now_drag_ && is_ray_hit_) {
+        prev_ratio_ = dist / glm::length(world_far_ - world_near_);
+        prev_position_ = cursor_ray_.position + cursor_ray_.direction * dist;
+        now_drag_ = true;
+      }
+      if (now_drag_) {
+        glm::vec3 new_pos =
+            world_near_ + prev_ratio_ * (world_far_ - world_near_);
+        glm::vec3 translate(new_pos - prev_position_);
+        pick_object_->transform().set_translate(
+            pick_object_->transform().translate() + translate);
+        prev_position_ = new_pos;
+      }
+    }
+    if (shift_ && is_ray_hit_) {
+      glm::vec3 cur_vector =
+          ray_hit_point_ - pick_object_->bounding_sphere_center();
+      if (!now_drag_) {
+        now_drag_ = true;
+      } else {
+        glm::vec3 cur_vector =
+            ray_hit_point_ - pick_object_->bounding_sphere_center();
+        glm::quat q_rotate = glm::rotation(glm::normalize(prev_vector_),
+                                           glm::normalize(cur_vector));
+        pick_object_->transform().set_rotate(
+            q_rotate * pick_object_->transform().rotate_quat());
+      }
+      prev_vector_ = cur_vector;
+    }
   }
 }
 
 void Context::ProcessMouseButton(int button, int action, double x, double y) {
-  prev_mouse_pos_ = glm::vec2((float)x, (float)y);
-  if (button == GLFW_MOUSE_BUTTON_RIGHT) {
-    if (action == GLFW_PRESS) {
-      camera_direction_control_ = true;
-    } else if (action == GLFW_RELEASE) {
-      camera_direction_control_ = false;
-    }
+  if (button == GLFW_MOUSE_BUTTON_RIGHT && action == GLFW_PRESS) {
+    camera_direction_control_ = true;
+  } else if (button == GLFW_MOUSE_BUTTON_RIGHT && action == GLFW_RELEASE) {
+    camera_direction_control_ = false;
   }
-  if (button == GLFW_MOUSE_BUTTON_LEFT) {
-    if (action == GLFW_PRESS) {
-      is_left_mouse_click_ = true;
-      index_framebuffer_->Bind();
-      int height = index_framebuffer_->color_attachment()->height();
-      std::array<uint8_t, 4> pixel =
-          index_framebuffer_->color_attachment()->GetTexPixel((int)x,
-                                                              height - (int)y);
-
-      // SPDLOG_INFO("R{} G{} B{} A{}", pixel[0], pixel[1], pixel[2], pixel[3]);
-      size_t id = RGBAToId(pixel);
-      ObjectItem* p_obj = object_->FindOjbectItem(id);
-      if (p_obj) {
-        pick_object_item_ = p_obj;
-        pick_object_id_ = id;
+  if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS) {
+    index_framebuffer_->Bind();
+    int height = index_framebuffer_->color_attachment()->height();
+    auto pixel = index_framebuffer_->color_attachment()->GetTexPixel(
+        (int)x, height - (int)y);
+    size_t id = RGBAToId(pixel);
+    pick_id_ = -1;
+    pick_object_ = nullptr;
+    for (const auto& object : objects_) {
+      if (id == object->id()) {
+        pick_object_ = object;
+        pick_id_ = id;
+        break;
       }
-    } else if (action == GLFW_RELEASE) {
-      is_left_mouse_click_ = false;
     }
+  } else if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_RELEASE) {
+    now_drag_ = false;
   }
 }
 
@@ -412,18 +446,18 @@ void Context::ReshapeViewport(int width, int height) {
 }
 
 void Context::RenderImGui() {
-  if (ImGui::BeginMainMenuBar()) {
-    if (ImGui::BeginMenu("Open")) {
-      if (ImGui::MenuItem("Settings")) {
-        is_setting_open_ = true;
-      }
-      if (ImGui::MenuItem("Framebuffer")) {
-        is_frambuffer_open_ = true;
-      }
-      ImGui::EndMenu();
-    }
-    ImGui::EndMainMenuBar();
-  }
+  // if (ImGui::BeginMainMenuBar()) {
+  //   if (ImGui::BeginMenu("Open")) {
+  //     if (ImGui::MenuItem("Settings")) {
+  //       is_setting_open_ = true;
+  //     }
+  //     if (ImGui::MenuItem("Framebuffer")) {
+  //       is_frambuffer_open_ = true;
+  //     }
+  //     ImGui::EndMenu();
+  //   }
+  //   ImGui::EndMainMenuBar();
+  // }
   if (is_setting_open_) {
     if (ImGui::Begin("Settings", &is_setting_open_,
                      ImGuiWindowFlags_AlwaysAutoResize)) {
@@ -567,15 +601,19 @@ void Context::RenderImGui() {
 
   {
     if (ImGui::Begin("Object")) {
-      if (pick_object_item_) {
-        ImGui::Text("Object id : %d", pick_object_id_);
-        Mesh* mesh = pick_object_item_->mesh();
-        Transform& transform = pick_object_item_->transform();
+      if (pick_object_) {
+        ImGui::Text("Object id : %d", pick_id_);
+        std::shared_ptr<Mesh> mesh = pick_object_->mesh();
+        Transform& transform = pick_object_->transform();
 
-        ImGui::DragFloat3("Translate", glm::value_ptr(transform.translate),
-                          0.01f);
-        ImGui::DragFloat3("Scale", glm::value_ptr(transform.scale), 0.01f);
-        ImGui::DragFloat3("Rotate", glm::value_ptr(transform.rotate), 0.01f);
+        ImGui::Text("Translate: x(%.3f), y(%.3f), z(%.3f)",
+                    transform.translate().x, transform.translate().y,
+                    transform.translate().z);
+        ImGui::Text("Scale: x(%.3f), y(%.3f), z(%.3f)", transform.scale().x,
+                    transform.scale().y, transform.scale().z);
+        ImGui::Text("Rotate: x(%.3f), y(%.3f), z(%.3f)",
+                    transform.rotate_euler().x, transform.rotate_euler().y,
+                    transform.rotate_euler().z);
 
         if (mesh->material()->diffuse_) {
           ImGui::Text("Diffuse texture");

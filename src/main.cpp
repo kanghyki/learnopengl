@@ -12,7 +12,6 @@ void OnCursorPos(GLFWwindow *window, double x, double y);
 void OnMouseButton(GLFWwindow *window, int button, int action, int modifier);
 
 int main(int argc, char **argv) {
-  chdir("../../");
   SPDLOG_INFO("Initialize glfw");
   if (!glfwInit()) {
     const char *description = nullptr;

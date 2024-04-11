@@ -10,6 +10,7 @@
 #include "model.hpp"
 #include "object.hpp"
 #include "program.hpp"
+#include "ray.hpp"
 #include "shader.hpp"
 
 class Context {
@@ -29,7 +30,7 @@ class Context {
                   std::function<void(void)> ok,
                   std::function<void(void)> cancel);
 
-  void SetRay(double x, double y);
+  Ray CalcCursorRay(glm::vec2 cursor);
 
  private:
   Context();
@@ -50,28 +51,32 @@ class Context {
   std::unique_ptr<CubeTexture> cube_texture_{nullptr};
 
   // Meshes
-  std::unique_ptr<Mesh> red_box_{nullptr};
-  std::unique_ptr<Mesh> green_box_{nullptr};
-  std::unique_ptr<Mesh> sphere_{nullptr};
-  std::unique_ptr<Mesh> plane_{nullptr};
-  std::unique_ptr<Model> model_{nullptr};
+  std::shared_ptr<Mesh> box_{nullptr};
+  std::shared_ptr<Mesh> sphere_{nullptr};
+  std::shared_ptr<Mesh> plane_{nullptr};
+  std::shared_ptr<Model> model_{nullptr};
 
   // objects
-  std::shared_ptr<ObjectComponent> object_;
-  size_t pick_object_id_{(size_t)-1};
-  ObjectItem* pick_object_item_{nullptr};
+  std::vector<std::shared_ptr<Object>> objects_;
+  size_t pick_id_{(size_t)-1};
+  std::shared_ptr<Object> pick_object_{nullptr};
 
-  /* for test */
-  bool is_left_mouse_click_{false};
-  bool is_selected_{false};
-  glm::vec3 cursor_ray_direction_{0.0f};
-  glm::vec3 cursor_ray_position_{0.0f};
-  float cursor_distance_{0.0f};
+  Ray cursor_ray_;
+  glm::vec3 world_near_;
+  glm::vec3 world_far_;
+  glm::vec3 ray_hit_point_{0.0f};
+  glm::vec3 prev_vector_;
+  float prev_ratio_{0.0f};
+  glm::vec3 prev_position_{0.0f};
+  bool now_drag_{false};
+  bool is_ray_hit_{false};
+  bool ctrl_{false};
+  bool shift_{false};
 
   struct Light light_;
 
   Camera camera_;
-  glm::vec2 prev_mouse_pos_{0.0f};
+  glm::vec2 prev_cursor_{0.0f};
   bool camera_direction_control_{false};
   bool camera_fast_move_{false};
 

@@ -14,18 +14,15 @@ struct Vertex {
 
 class Mesh {
  public:
-  static std::unique_ptr<Mesh> Create(const std::vector<Vertex> &vertices,
+  static std::shared_ptr<Mesh> Create(const std::vector<Vertex> &vertices,
                                       const std::vector<uint32_t> &indices,
                                       uint32_t primitive_type);
-  static std::unique_ptr<Mesh> CreateBox();
-  static std::unique_ptr<Mesh> CreateSphere(size_t slice, size_t stack);
-  static std::unique_ptr<Mesh> CreatePlane();
+  static std::shared_ptr<Mesh> CreateBox();
+  static std::shared_ptr<Mesh> CreateSphere(size_t slice, size_t stack);
+  static std::shared_ptr<Mesh> CreatePlane();
   ~Mesh();
 
   void Draw(const Program *program) const;
-  /* for test */
-  bool Intersect(const glm::vec3 &ray_position, const glm::vec3 &ray_direction,
-                 float &distance);
 
   inline const VertexArray *va() const { return va_.get(); }
   inline std::shared_ptr<Buffer> vb() const { return vb_; }
@@ -35,25 +32,15 @@ class Mesh {
     material_ = material;
   }
 
+  inline glm::vec3 vertex_min() const { return vertex_min_; }
+  inline glm::vec3 vertex_max() const { return vertex_max_; }
+
  private:
   Mesh();
   Mesh(const Mesh &mesh);
-  Mesh &operator=(const Mesh &mesh);
 
   void Init(const std::vector<Vertex> &vertices,
             const std::vector<uint32_t> &indices, uint32_t primitive_type);
-  /* for test */
-  void CreateBoundingSphere(const std::vector<Vertex> &vertexes,
-                            const std::vector<uint32_t> &indices);
-  bool Mesh::IntersectTriangle(const glm::vec3 &v0, const glm::vec3 &v1,
-                               const glm::vec3 &v2,
-                               const glm::vec3 &ray_position,
-                               const glm::vec3 &ray_direction,
-                               glm::vec3 &hit_point, float &distance);
-  inline bool IsClose(const glm::vec3 &v0, const glm::vec3 &v1,
-                      float epsilon = glm::epsilon<float>()) {
-    return glm::all(glm::lessThanEqual(glm::abs(v0 - v1), glm::vec3(epsilon)));
-  }
 
   uint32_t primitive_type_{GL_TRIANGLES};
   std::unique_ptr<VertexArray> va_{nullptr};
@@ -61,9 +48,8 @@ class Mesh {
   std::shared_ptr<Buffer> ib_{nullptr};
   std::shared_ptr<Material> material_{nullptr};
 
-  /* for test */
-  std::vector<glm::vec3> bounding_;
-  std::vector<uint32_t> bounding_index_;
+  glm::vec3 vertex_min_{std::numeric_limits<float>::max()};
+  glm::vec3 vertex_max_{std::numeric_limits<float>::min()};
 };
 
 #endif

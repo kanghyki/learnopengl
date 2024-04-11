@@ -16,17 +16,17 @@ class Model {
   ~Model();
 
   void Draw(const Program *program) const;
-  Mesh *GetMeshPtr() { return mesh_.get(); }  // test
+
+  std::shared_ptr<Mesh> mesh() { return mesh_; }
 
  private:
   Model();
   Model(const Model &model);
-  Model &operator=(const Model &model);
 
   bool ParseObjToMesh(const std::string &data);
   bool LoadMaterial();
 
-  std::unique_ptr<Mesh> mesh_;
+  std::shared_ptr<Mesh> mesh_;
 };
 
 #endif
