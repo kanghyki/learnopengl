@@ -9,7 +9,8 @@ class Program {
   static std::unique_ptr<Program> Create(
       const std::vector<std::shared_ptr<Shader>> &shaders);
   static std::unique_ptr<Program> Create(const std::string &vs_filename,
-                                         const std::string &fs_filename);
+                                         const std::string &fs_filename,
+                                         const std::string &gs_filename = "");
   ~Program();
 
   inline void Use() const { glUseProgram(id_); }

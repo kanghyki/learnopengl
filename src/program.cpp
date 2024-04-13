@@ -19,18 +19,23 @@ std::unique_ptr<Program> Program::Create(
 }
 
 std::unique_ptr<Program> Program::Create(const std::string &vs_filename,
-                                         const std::string &fs_filename) {
+                                         const std::string &fs_filename,
+                                         const std::string &gs_filename) {
   std::shared_ptr<Shader> vs =
       Shader::CreateFromFile(vs_filename, GL_VERTEX_SHADER);
   std::shared_ptr<Shader> fs =
       Shader::CreateFromFile(fs_filename, GL_FRAGMENT_SHADER);
-  if (!vs || !fs) {
+  std::shared_ptr<Shader> gs =
+      !gs_filename.empty()
+          ? Shader::CreateFromFile(gs_filename, GL_GEOMETRY_SHADER)
+          : nullptr;
+  if (!vs || !fs || (!gs_filename.empty() && !gs)) {
     return nullptr;
   }
-  SPDLOG_INFO("vertex shader id : {}", vs->id());
-  SPDLOG_INFO("fragment shader id : {}", vs->id());
+  std::vector<std::shared_ptr<Shader>> shaders({vs, fs});
+  if (gs) shaders.push_back(gs);
 
-  return Create({vs, fs});
+  return Create(shaders);
 }
 
 bool Program::Link(const std::vector<std::shared_ptr<Shader>> &shaders) {
