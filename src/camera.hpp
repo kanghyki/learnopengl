@@ -14,7 +14,7 @@ enum CameraMove {
 };
 
 struct Camera {
-  glm::mat4 GetViewMatrix() {
+  glm::mat4 GetViewMatrix() const {
     front_ = glm::rotate(glm::mat4(1.0f), glm::radians(yaw_),
                          glm::vec3(0.0f, 1.0f, 0.0f)) *
              glm::rotate(glm::mat4(1.0f), glm::radians(pitch_),
@@ -78,7 +78,7 @@ struct Camera {
   float move_speed_{0.05f};
   float rot_speed_{0.15f};
   glm::vec3 position_{0.0f, 1.5f, 5.0f};
-  glm::vec3 front_{0.0f, 0.0f, -1.0f};
+  mutable glm::vec3 front_{0.0f, 0.0f, -1.0f};
   glm::vec3 up_{0.0f, 1.0f, 0.0f};
 };
 
