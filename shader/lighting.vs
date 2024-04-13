@@ -7,13 +7,15 @@ uniform mat4 view;
 uniform mat4 projection;
 uniform mat4 model;
 
-out vec3 normal;
-out vec2 texCoord;
-out vec3 position;
+out VS_OUT {
+  vec3 normal;
+  vec2 texCoord;
+  vec3 position;
+} vs_out;
 
 void main() {
     gl_Position = projection * view * model * vec4(aPos, 1.0);
-    normal = (transpose(inverse(model)) * vec4(aNormal, 0.0)).xyz;
-    texCoord = aTexCoord;
-    position = (model * vec4(aPos, 1.0)).xyz;
+    vs_out.normal = (transpose(inverse(model)) * vec4(aNormal, 0.0)).xyz;
+    vs_out.texCoord = aTexCoord;
+    vs_out.position = (model * vec4(aPos, 1.0)).xyz;
 }

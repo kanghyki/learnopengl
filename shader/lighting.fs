@@ -25,9 +25,12 @@ struct Material {
     float       shininess;
 };
 
-in vec3 normal;
-in vec2 texCoord;
-in vec3 position;
+
+in VS_OUT {
+  vec3 normal;
+  vec2 texCoord;
+  vec3 position;
+} fs_in;
 
 out vec4 fragColor;
 
@@ -44,7 +47,7 @@ vec3 calcAmbient(vec3 texColor) {
 }
 
 vec3 calcDiffuse(vec3 texColor, vec3 lightDir) {
-    vec3    pixelNorm   = normalize(normal);
+    vec3    pixelNorm   = normalize(fs_in.normal);
     float   diff        = max(dot(pixelNorm, lightDir), 0.0);
     vec3    diffuse     = diff * texColor * light.diffuse;
 
@@ -52,9 +55,9 @@ vec3 calcDiffuse(vec3 texColor, vec3 lightDir) {
 }
 
 vec3 calcSpecular(vec3 lightDir) {
-    vec3    pixelNorm   = normalize(normal);
-    vec3    specColor   = texture(material.specular, texCoord).xyz;
-    vec3    viewDir     = normalize(viewPos - position);
+    vec3    pixelNorm   = normalize(fs_in.normal);
+    vec3    specColor   = texture(material.specular, fs_in.texCoord).xyz;
+    vec3    viewDir     = normalize(viewPos - fs_in.position);
     vec3    reflectDir  = reflect(-lightDir, pixelNorm);
     float   spec        = pow(max(dot(viewDir, reflectDir), 0.0), material.shininess);
     vec3    specular    = spec * specColor * light.specular;
@@ -63,7 +66,7 @@ vec3 calcSpecular(vec3 lightDir) {
 }
 
 vec3 directionalLight() {
-    vec3 texColor   = texture(material.diffuse, texCoord).xyz;
+    vec3 texColor   = texture(material.diffuse, fs_in.texCoord).xyz;
     vec3 lightDir   = normalize(-light.direction);
 
     vec3 ambient    = calcAmbient(texColor);
@@ -79,10 +82,10 @@ float calcAttenuation(float dist) {
 }
 
 vec3 pointLight() {
-    vec3    texColor    = texture(material.diffuse, texCoord).xyz;
-    float   dist        = length(light.position - position);
+    vec3    texColor    = texture(material.diffuse, fs_in.texCoord).xyz;
+    float   dist        = length(light.position - fs_in.position);
     float   attenuation = calcAttenuation(dist);
-    vec3    lightDir = (light.position - position) / dist;
+    vec3    lightDir = (light.position - fs_in.position) / dist;
 
     vec3    ambient = calcAmbient(texColor);
     vec3    diffuse = calcDiffuse(texColor, lightDir);
@@ -92,10 +95,10 @@ vec3 pointLight() {
 }
 
 vec3 spotLight() {
-    vec3    texColor    = texture(material.diffuse, texCoord).xyz;
-    float   dist        = length(light.position - position);
+    vec3    texColor    = texture(material.diffuse, fs_in.texCoord).xyz;
+    float   dist        = length(light.position - fs_in.position);
     float   attenuation = calcAttenuation(dist);
-    vec3    lightDir    = (light.position - position) / length(light.position - position);
+    vec3    lightDir    = (light.position - fs_in.position) / length(light.position - fs_in.position);
 
     vec3 result = calcAmbient(texColor);
 
