@@ -4,7 +4,7 @@
 
 #include "image.hpp"
 
-Ray Context::CalcCursorRay(glm::vec2 cursor) {
+void Context::CalcCursorRay(glm::vec2 cursor) {
   float ndc_x = (float)cursor.x / (width_ * 0.5f) - 1.0f;
   float ndc_y = (float)cursor.y / (height_ * 0.5f) - 1.0f;
 
@@ -22,7 +22,6 @@ Ray Context::CalcCursorRay(glm::vec2 cursor) {
   glm::vec4 view_far_position = view_far_temp / view_far_temp.w;
   glm::vec4 world_far_position = i_view * view_far_position;
 
-  // FIXME:
   world_near_ = world_near_position;
   world_far_ = world_far_position;
 
@@ -31,7 +30,7 @@ Ray Context::CalcCursorRay(glm::vec2 cursor) {
   ray.direction =
       glm::normalize(glm::vec3(world_far_position - world_near_position));
 
-  return ray;
+  cursor_ray_ = ray;
 }
 
 Context::Context() {
@@ -490,7 +489,7 @@ void Context::ProcessMouseMove(double x, double y) {
   prev_cursor_ = cur_cursor;
 
   if (pick_object_) {
-    cursor_ray_ = CalcCursorRay(cur_cursor);
+    CalcCursorRay(cur_cursor);
     auto dist = pick_object_->Intersect(cursor_ray_, pick_object_->transform());
     if (dist) {
       is_hit_ = true;
@@ -635,53 +634,47 @@ void Context::RenderImGui() {
     }
     ImGui::End();
   }
-  if (is_frambuffer_open_) {
-    if (ImGui::Begin(
-            "Framebuffer", &is_frambuffer_open_,
-            ImGuiWindowFlags_MenuBar | ImGuiWindowFlags_AlwaysAutoResize)) {
-      static const std::string title = "Save as PNG";
-      static int isModalOpen = false;
 
-      if (ImGui::BeginMenuBar()) {
-        if (ImGui::BeginMenu("File")) {
-          if (ImGui::MenuItem("Save as PNG", "-")) {
-            isModalOpen = true;
-          }
-          ImGui::EndMenu();
-        }
-        ImGui::EndMenuBar();
-      }
+  if (ImGui::Begin("Index framebuffer", NULL)) {
+    auto window_size = ImGui::GetWindowSize();
 
-      ImGui::Image(reinterpret_cast<ImTextureID>(static_cast<uintptr_t>(
-                       index_framebuffer_->color_attachment()->id())),
-                   ImVec2(imgui_image_size_ * ((float)width_ / (float)height_),
-                          (float)imgui_image_size_),
-                   ImVec2(0, 1), ImVec2(1, 0));
-      ImGui::Image(reinterpret_cast<ImTextureID>(static_cast<uintptr_t>(
-                       framebuffer_->color_attachment()->id())),
-                   ImVec2(imgui_image_size_ * ((float)width_ / (float)height_),
-                          (float)imgui_image_size_),
-                   ImVec2(0, 1), ImVec2(1, 0));
-      ImGui::InputInt("Size", &imgui_image_size_);
+    ImGui::Image(
+        reinterpret_cast<ImTextureID>(static_cast<uintptr_t>(
+            index_framebuffer_->color_attachment()->id())),
+        ImVec2(window_size.x, window_size.x * ((float)height_ / (float)width_)),
+        ImVec2(0, 1), ImVec2(1, 0));
 
-      if (isModalOpen) {
-        ImGui::OpenPopup(title.c_str());
-      }
-      ImguiModal(
-          title,
-          "if the file already exists, it will be overwritten\n\n"
-          "Are you sure?",
-          [this]() -> void {
-            if (!framebuffer_->color_attachment()->SaveAsPng(
-                    "save/framebuffer.png")) {
-              SPDLOG_INFO("failed");
-            }
-            isModalOpen = false;
-          },
-          []() -> void { isModalOpen = false; });
+    static char buf[512] = "index_framebuffer";
+    ImGui::Text("Save as png");
+    ImGui::SameLine();
+    ImGui::InputText("", buf, 512 - 1);
+    ImGui::SameLine();
+    if (ImGui::Button("OK", ImVec2(50, 0))) {
+      index_framebuffer_->color_attachment()->SaveAsPng(
+          std::string("save/") + std::string(buf) + std::string(".png"));
     }
-    ImGui::End();
   }
+  ImGui::End();
+
+  if (ImGui::Begin("framebuffer", NULL)) {
+    auto window_size = ImGui::GetWindowSize();
+    ImGui::Image(
+        reinterpret_cast<ImTextureID>(
+            static_cast<uintptr_t>(framebuffer_->color_attachment()->id())),
+        ImVec2(window_size.x, window_size.x * ((float)height_ / (float)width_)),
+        ImVec2(0, 1), ImVec2(1, 0));
+
+    static char buf[512] = "framebuffer";
+    ImGui::Text("Save as png");
+    ImGui::SameLine();
+    ImGui::InputText("", buf, 512 - 1);
+    ImGui::SameLine();
+    if (ImGui::Button("OK", ImVec2(50, 0))) {
+      framebuffer_->color_attachment()->SaveAsPng(
+          std::string("save/") + std::string(buf) + std::string(".png"));
+    }
+  }
+  ImGui::End();
 
   {
     if (ImGui::Begin("Object")) {
@@ -776,29 +769,6 @@ void Context::RenderImGui() {
   }
 
   ImGui::Render();
-}
-
-void Context::ImguiModal(const std::string& title, const std::string& text,
-                         std::function<void(void)> ok,
-                         std::function<void(void)> cancel) {
-  ImVec2 center = ImGui::GetMainViewport()->GetCenter();
-  ImGui::SetNextWindowPos(center, ImGuiCond_Appearing, ImVec2(0.5f, 0.5f));
-  if (ImGui::BeginPopupModal(title.c_str(), NULL,
-                             ImGuiWindowFlags_AlwaysAutoResize)) {
-    ImGui::Text("%s", text.c_str());
-    ImGui::Separator();
-    if (ImGui::Button("OK", ImVec2(50, 0))) {
-      ok();
-      ImGui::CloseCurrentPopup();
-    }
-    ImGui::SetItemDefaultFocus();
-    ImGui::SameLine();
-    if (ImGui::Button("Cancel", ImVec2(50, 0))) {
-      cancel();
-      ImGui::CloseCurrentPopup();
-    }
-    ImGui::EndPopup();
-  }
 }
 
 size_t RGBAToId(std::array<uint8_t, 4> rgba) {

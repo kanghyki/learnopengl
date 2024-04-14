@@ -26,11 +26,8 @@ class Context {
   void ProcessMouseMove(double x, double y);
   void ProcessMouseScroll(double xoffset, double yoffset);
   void ReshapeViewport(int width, int height);
-  void ImguiModal(const std::string& title, const std::string& text,
-                  std::function<void(void)> ok,
-                  std::function<void(void)> cancel);
 
-  Ray CalcCursorRay(glm::vec2 cursor);
+  void CalcCursorRay(glm::vec2 cursor);
 
  private:
   Context();
@@ -74,6 +71,7 @@ class Context {
   Ray cursor_ray_;
   glm::vec3 world_near_;
   glm::vec3 world_far_;
+
   glm::vec3 prev_vector_;
   float prev_ratio_{0.0f};
   glm::vec3 prev_position_{0.0f};
@@ -97,9 +95,8 @@ class Context {
   float gamma_{1.0f};
 
   bool is_wireframe_active_{false};
-  int imgui_image_size_{300};
+  int imgui_image_size_{800};
   bool is_setting_open_{true};
-  bool is_frambuffer_open_{true};
 };
 
 size_t RGBAToId(std::array<uint8_t, 4> rgba);
