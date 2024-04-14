@@ -48,6 +48,9 @@ class Context {
   std::unique_ptr<Program> env_map_program_{nullptr};
   std::unique_ptr<Program> cube_program_{nullptr};
   std::unique_ptr<Program> lighting_program_{nullptr};
+  std::unique_ptr<Program> grass_program_{nullptr};
+  std::unique_ptr<Texture> grass_texture_{nullptr};
+  std::vector<glm::vec3> grass_pos_;
 
   // textures
   std::unique_ptr<CubeTexture> cube_texture_{nullptr};
@@ -56,7 +59,7 @@ class Context {
   std::shared_ptr<Mesh> box_{nullptr};
   std::shared_ptr<Mesh> sphere_{nullptr};
   std::shared_ptr<Mesh> plane_{nullptr};
-  std::shared_ptr<Mesh> post_plane_{nullptr};
+  std::shared_ptr<Mesh> plain_plane_{nullptr};
   std::shared_ptr<Model> model_{nullptr};
 
   // objects

@@ -97,6 +97,21 @@ bool Context::Init() {
     return false;
   }
 
+  grass_program_ = Program::Create("shader/grass.vs", "shader/grass.fs");
+  if (!grass_program_) {
+    return false;
+  }
+  grass_texture_ = Texture::Create(Image::Load("image/grass.png").get());
+  if (!grass_texture_) {
+    return false;
+  }
+  grass_pos_.resize(10000);
+  for (size_t i = 0; i < grass_pos_.size(); i++) {
+    grass_pos_[i].x = ((float)rand() / (float)RAND_MAX * 2.0f - 1.0f) * 5.0f;
+    grass_pos_[i].z = ((float)rand() / (float)RAND_MAX * 2.0f - 1.0f) * 5.0f;
+    grass_pos_[i].y = glm::radians((float)rand() / (float)RAND_MAX * 360.0f);
+  }
+
   {  // cube texture
     auto cubeRight = Image::Load("./image/cube_texture/right.jpg", false);
     auto cubeLeft = Image::Load("./image/cube_texture/left.jpg", false);
@@ -136,16 +151,14 @@ bool Context::Init() {
     sphere_->set_material(std::move(mat));
   }
   {  // plane mesh
-    post_plane_ = Mesh::CreatePlane();
+    plain_plane_ = Mesh::CreatePlane();
 
     plane_ = Mesh::CreatePlane();
     auto mat = Material::Create();
+    mat->diffuse_ =
+        Texture::Create(Image::Load("image/window.png", true).get());
     mat->specular_ = Texture::Create(
-        Image::CreateSingleColorImage(4, 4, glm::vec4(0.3f, 0.3f, 0.3f, 1.0f))
-            .get());
-    mat->diffuse_ = Texture::Create(
-        Image::CreateSingleColorImage(4, 4, glm::vec4(0.8f, 0.8f, 0.8f, 1.0f))
-            .get());
+        Image::CreateSingleColorImage(4, 4, glm::vec4(1.0f)).get());
     plane_->set_material(mat);
   }
   {  // model
@@ -203,8 +216,8 @@ void Context::Render() {
   RenderImGui();
   framebuffer_->Bind();
   glEnable(GL_DEPTH_TEST);
-  // glEnable(GL_BLEND);
-  // glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+  glEnable(GL_BLEND);
+  glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
   glClearColor(clear_color_.r, clear_color_.g, clear_color_.b, clear_color_.a);
   glClear(clear_bit_);
   auto projection = camera_.GetPerspectiveProjectionMatrix();
@@ -217,6 +230,22 @@ void Context::Render() {
   glBufferSubData(GL_UNIFORM_BUFFER, sizeof(glm::mat4), sizeof(glm::mat4),
                   glm::value_ptr(projection));
   glBindBuffer(GL_UNIFORM_BUFFER, 0);
+
+  {
+    grass_program_->Use();
+    grass_program_->SetUniform("tex", 0);
+    grass_texture_->Bind();
+    for (size_t i = 0; i < grass_pos_.size(); i++) {
+      auto modelTransform =
+          glm::translate(glm::mat4(1.0f),
+                         glm::vec3(grass_pos_[i].x, 0.5f, grass_pos_[i].z)) *
+          glm::rotate(glm::mat4(1.0f), grass_pos_[i].y,
+                      glm::vec3(0.0f, 1.0f, 0.0f));
+      auto transform = projection * view * modelTransform;
+      grass_program_->SetUniform("transform", transform);
+      plain_plane_->Draw(grass_program_.get());
+    }
+  }
 
   {  // cube program
     glActiveTexture(GL_TEXTURE0);
@@ -264,6 +293,7 @@ void Context::Render() {
   }
 
   index_framebuffer_->Bind();
+  glDisable(GL_BLEND);
   glEnable(GL_DEPTH_TEST);
   glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
   glClear(clear_bit_);
@@ -295,6 +325,7 @@ void Context::Render() {
   }
 
   Framebuffer::BindToDefault();
+  glDisable(GL_BLEND);
   glDisable(GL_DEPTH_TEST);
   glClear(clear_bit_);
   {
@@ -305,7 +336,7 @@ void Context::Render() {
     glActiveTexture(GL_TEXTURE0);
     framebuffer_->color_attachment()->Bind();
     post_program_->SetUniform("tex", 0);
-    post_plane_->Draw(post_program_.get());
+    plain_plane_->Draw(post_program_.get());
   }
 }
 
