@@ -8,7 +8,7 @@ Ray Context::CalcCursorRay(glm::vec2 cursor) {
   float ndc_x = (float)cursor.x / (width_ * 0.5f) - 1.0f;
   float ndc_y = (float)cursor.y / (height_ * 0.5f) - 1.0f;
 
-  glm::vec4 near_pos = glm::vec4(ndc_x, -ndc_y, -1.0f, 1.0f);
+  glm::vec4 near_pos = glm::vec4(ndc_x, -ndc_y, 0.0f, 1.0f);
   glm::vec4 far_pos = glm::vec4(ndc_x, -ndc_y, 1.0f, 1.0f);
 
   glm::mat4 i_proj = glm::inverse(camera_.GetPerspectiveProjectionMatrix());
@@ -167,6 +167,10 @@ bool Context::Init() {
   sphere_object->CreateBoundingSphere(1.0f);
   objects_.push_back(sphere_object);
 
+  SPDLOG_INFO("light_ size : {}", sizeof(light_));
+  SPDLOG_INFO("glm size : {}", sizeof(glm::vec3(1.0f)));
+  ubo = Buffer::Create(GL_UNIFORM_BUFFER, GL_STATIC_DRAW, NULL, 152, 1);
+
   return true;
 }
 
@@ -200,8 +204,8 @@ void Context::Render() {
     simple_program_->SetUniform("transform",
                                 projection * view * lightModelTransform);
     box_->Draw(simple_program_.get());
-    if (is_ray_hit_) {
-      auto cursor_model = glm::translate(glm::mat4(1.0), ray_hit_point_) *
+    if (is_hit_) {
+      auto cursor_model = glm::translate(glm::mat4(1.0), hit_point_) *
                           glm::scale(glm::mat4(1.0), glm::vec3(0.1f));
       simple_program_->SetUniform("color", glm::vec4(0.0f, 1.0f, 0, 1.0f));
       simple_program_->SetUniform("transform",
@@ -234,36 +238,6 @@ void Context::Render() {
       object->Draw(lighting_program_.get());
     }
   }
-  // {  // env map program
-  //   auto transform =
-  //       glm::translate(glm::mat4(1.0f), glm::vec3(-3.5f, 1.5f, -1.0f)) *
-  //       glm::scale(glm::mat4(1.0f), glm::vec3(1.0f, 1.0f, 1.0f));
-  //   env_map_program_->Use();
-  //   env_map_program_->SetUniform("model", transform);
-  //   env_map_program_->SetUniform("view", view);
-  //   env_map_program_->SetUniform("projection", projection);
-  //   env_map_program_->SetUniform("cameraPos", camera_.position_);
-  //   cube_texture_->Bind();
-  //   env_map_program_->SetUniform("cube", 0);
-  //   sphere_->Draw(env_map_program_.get());
-  // }
-  // {  // plane program
-  //   glEnable(GL_BLEND);
-  //   glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-
-  //   glActiveTexture(GL_TEXTURE0);
-  //   plane_texture_->Bind();
-
-  //   auto model = glm::scale(glm::rotate(glm::mat4(1.0), glm::radians(90.0f),
-  //                                       glm::vec3(1.0f, 0.0f, 0.0f)),
-  //                           glm::vec3(10.0f));
-  //   plane_program_->Use();
-  //   plane_program_->SetUniform("tex", 0);
-  //   plane_program_->SetUniform("transform", projection * view * model);
-  //   plane_program_->SetUniform("modelTransform", model);
-  //   plane_->Draw(plane_program_.get());
-  //   glDisable(GL_BLEND);
-  // }
 
   index_framebuffer_->Bind();
   glEnable(GL_DEPTH_TEST);
@@ -309,51 +283,127 @@ void Context::Render() {
   }
 }
 
-void Context::ProcessKeyboardInput(GLFWwindow* window) {
-  if (glfwGetKey(window, GLFW_KEY_LEFT_CONTROL) == GLFW_PRESS) {
-    ctrl_ = true;
-  } else if (glfwGetKey(window, GLFW_KEY_LEFT_CONTROL) == GLFW_RELEASE) {
-    ctrl_ = false;
+void Context::ProcessKeyboardInput(GLFWwindow* window, int key, int action) {
+  if (key == GLFW_KEY_LEFT_CONTROL) {
+    switch (action) {
+      case GLFW_PRESS:
+        ctrl_ = true;
+        break;
+      case GLFW_RELEASE:
+        ctrl_ = false;
+        drag_ = false;
+        break;
+    }
   }
-  if (glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS) {
-    shift_ = true;
-  } else if (glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_RELEASE) {
-    shift_ = false;
+  if (key == GLFW_KEY_LEFT_SHIFT) {
+    switch (action) {
+      case GLFW_PRESS:
+        camera_.SetMoveSpeed(0.15f);
+        shift_ = true;
+        break;
+      case GLFW_RELEASE:
+        camera_.SetMoveSpeed(0.05f);
+        shift_ = false;
+        drag_ = false;
+        break;
+    }
   }
-  if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS) {
-    camera_.SetMove(kFront);
-  } else if (glfwGetKey(window, GLFW_KEY_W) == GLFW_RELEASE) {
-    camera_.UnsetMove(kFront);
+  if (key == GLFW_KEY_W) {
+    switch (action) {
+      case GLFW_PRESS:
+        camera_.SetMove(kFront);
+        break;
+      case GLFW_RELEASE:
+        camera_.UnsetMove(kFront);
+        break;
+    }
   }
-  if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS) {
-    camera_.SetMove(kBack);
-  } else if (glfwGetKey(window, GLFW_KEY_S) == GLFW_RELEASE) {
-    camera_.UnsetMove(kBack);
+  if (key == GLFW_KEY_S) {
+    switch (action) {
+      case GLFW_PRESS:
+        camera_.SetMove(kBack);
+        break;
+      case GLFW_RELEASE:
+        camera_.UnsetMove(kBack);
+        break;
+    }
   }
-  if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS) {
-    camera_.SetMove(kRight);
-  } else if (glfwGetKey(window, GLFW_KEY_D) == GLFW_RELEASE) {
-    camera_.UnsetMove(kRight);
+  if (key == GLFW_KEY_D) {
+    switch (action) {
+      case GLFW_PRESS:
+        camera_.SetMove(kRight);
+        break;
+      case GLFW_RELEASE:
+        camera_.UnsetMove(kRight);
+        break;
+    }
   }
-  if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS) {
-    camera_.SetMove(kLeft);
-  } else if (glfwGetKey(window, GLFW_KEY_A) == GLFW_RELEASE) {
-    camera_.UnsetMove(kLeft);
+  if (key == GLFW_KEY_A) {
+    switch (action) {
+      case GLFW_PRESS:
+        camera_.SetMove(kLeft);
+        break;
+      case GLFW_RELEASE:
+        camera_.UnsetMove(kLeft);
+        break;
+    }
   }
-  if (glfwGetKey(window, GLFW_KEY_E) == GLFW_PRESS) {
-    camera_.SetMove(kUp);
-  } else if (glfwGetKey(window, GLFW_KEY_E) == GLFW_RELEASE) {
-    camera_.UnsetMove(kUp);
+  if (key == GLFW_KEY_E) {
+    switch (action) {
+      case GLFW_PRESS:
+        camera_.SetMove(kUp);
+        break;
+      case GLFW_RELEASE:
+        camera_.UnsetMove(kUp);
+        break;
+    }
   }
-  if (glfwGetKey(window, GLFW_KEY_Q) == GLFW_PRESS) {
-    camera_.SetMove(kDown);
-  } else if (glfwGetKey(window, GLFW_KEY_Q) == GLFW_RELEASE) {
-    camera_.UnsetMove(kDown);
+  if (key == GLFW_KEY_Q) {
+    switch (action) {
+      case GLFW_PRESS:
+        camera_.SetMove(kDown);
+        break;
+      case GLFW_RELEASE:
+        camera_.UnsetMove(kDown);
+        break;
+    }
   }
-  if (glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS) {
-    camera_.SetMoveSpeed(0.15f);
-  } else if (glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_RELEASE) {
-    camera_.SetMoveSpeed(0.05f);
+}
+
+void Context::ProcessMouseInput(int button, int action, double x, double y) {
+  if (button == GLFW_MOUSE_BUTTON_RIGHT) {
+    switch (action) {
+      case GLFW_PRESS:
+        camera_direction_control_ = true;
+        break;
+      case GLFW_RELEASE:
+        camera_direction_control_ = false;
+        break;
+    }
+  }
+  if (button == GLFW_MOUSE_BUTTON_LEFT) {
+    switch (action) {
+      case GLFW_PRESS: {
+        index_framebuffer_->Bind();
+        int height = index_framebuffer_->color_attachment()->height();
+        auto pixel = index_framebuffer_->color_attachment()->GetTexPixel(
+            (int)x, height - (int)y);
+        size_t id = RGBAToId(pixel);
+        pick_id_ = -1;
+        pick_object_ = nullptr;
+        for (const auto& object : objects_) {
+          if (id == object->id()) {
+            pick_object_ = object;
+            pick_id_ = id;
+            break;
+          }
+        }
+        break;
+      }
+      case GLFW_RELEASE:
+        drag_ = false;
+        break;
+    }
   }
 }
 
@@ -367,19 +417,22 @@ void Context::ProcessMouseMove(double x, double y) {
 
   if (pick_object_) {
     cursor_ray_ = CalcCursorRay(cur_cursor);
-    float dist;
-    is_ray_hit_ = pick_object_->Intersect(cursor_ray_, dist);
-    if (is_ray_hit_) {
-      ray_hit_point_ = cursor_ray_.position + cursor_ray_.direction * dist;
+    auto dist = pick_object_->Intersect(cursor_ray_);
+    if (dist) {
+      is_hit_ = true;
+      hit_point_ = cursor_ray_.position + cursor_ray_.direction * dist.value();
+    } else {
+      is_hit_ = false;
     }
 
     if (ctrl_) {
-      if (!now_drag_ && is_ray_hit_) {
-        prev_ratio_ = dist / glm::length(world_far_ - world_near_);
-        prev_position_ = cursor_ray_.position + cursor_ray_.direction * dist;
-        now_drag_ = true;
+      if (!drag_ && is_hit_) {
+        prev_ratio_ = dist.value() / glm::length(world_far_ - world_near_);
+        prev_position_ =
+            cursor_ray_.position + cursor_ray_.direction * dist.value();
+        drag_ = true;
       }
-      if (now_drag_) {
+      if (drag_) {
         glm::vec3 new_pos =
             world_near_ + prev_ratio_ * (world_far_ - world_near_);
         glm::vec3 translate(new_pos - prev_position_);
@@ -388,14 +441,12 @@ void Context::ProcessMouseMove(double x, double y) {
         prev_position_ = new_pos;
       }
     }
-    if (shift_ && is_ray_hit_) {
+    if (shift_ && is_hit_) {
       glm::vec3 cur_vector =
-          ray_hit_point_ - pick_object_->bounding_sphere_center();
-      if (!now_drag_) {
-        now_drag_ = true;
+          hit_point_ - pick_object_->bounding_sphere_center();
+      if (!drag_) {
+        drag_ = true;
       } else {
-        glm::vec3 cur_vector =
-            ray_hit_point_ - pick_object_->bounding_sphere_center();
         glm::quat q_rotate = glm::rotation(glm::normalize(prev_vector_),
                                            glm::normalize(cur_vector));
         pick_object_->transform().set_rotate(
@@ -403,32 +454,6 @@ void Context::ProcessMouseMove(double x, double y) {
       }
       prev_vector_ = cur_vector;
     }
-  }
-}
-
-void Context::ProcessMouseButton(int button, int action, double x, double y) {
-  if (button == GLFW_MOUSE_BUTTON_RIGHT && action == GLFW_PRESS) {
-    camera_direction_control_ = true;
-  } else if (button == GLFW_MOUSE_BUTTON_RIGHT && action == GLFW_RELEASE) {
-    camera_direction_control_ = false;
-  }
-  if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS) {
-    index_framebuffer_->Bind();
-    int height = index_framebuffer_->color_attachment()->height();
-    auto pixel = index_framebuffer_->color_attachment()->GetTexPixel(
-        (int)x, height - (int)y);
-    size_t id = RGBAToId(pixel);
-    pick_id_ = -1;
-    pick_object_ = nullptr;
-    for (const auto& object : objects_) {
-      if (id == object->id()) {
-        pick_object_ = object;
-        pick_id_ = id;
-        break;
-      }
-    }
-  } else if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_RELEASE) {
-    now_drag_ = false;
   }
 }
 
@@ -446,18 +471,6 @@ void Context::ReshapeViewport(int width, int height) {
 }
 
 void Context::RenderImGui() {
-  // if (ImGui::BeginMainMenuBar()) {
-  //   if (ImGui::BeginMenu("Open")) {
-  //     if (ImGui::MenuItem("Settings")) {
-  //       is_setting_open_ = true;
-  //     }
-  //     if (ImGui::MenuItem("Framebuffer")) {
-  //       is_frambuffer_open_ = true;
-  //     }
-  //     ImGui::EndMenu();
-  //   }
-  //   ImGui::EndMainMenuBar();
-  // }
   if (is_setting_open_) {
     if (ImGui::Begin("Settings", &is_setting_open_,
                      ImGuiWindowFlags_AlwaysAutoResize)) {
@@ -568,16 +581,16 @@ void Context::RenderImGui() {
         ImGui::EndMenuBar();
       }
 
-      ImGui::Image(reinterpret_cast<ImTextureID>(
-                       index_framebuffer_->color_attachment()->id()),
+      ImGui::Image(reinterpret_cast<ImTextureID>(static_cast<uintptr_t>(
+                       index_framebuffer_->color_attachment()->id())),
                    ImVec2(imgui_image_size_ * ((float)width_ / (float)height_),
                           (float)imgui_image_size_),
                    ImVec2(0, 1), ImVec2(1, 0));
-      ImGui::Image(
-          reinterpret_cast<ImTextureID>(framebuffer_->color_attachment()->id()),
-          ImVec2(imgui_image_size_ * ((float)width_ / (float)height_),
-                 (float)imgui_image_size_),
-          ImVec2(0, 1), ImVec2(1, 0));
+      ImGui::Image(reinterpret_cast<ImTextureID>(static_cast<uintptr_t>(
+                       framebuffer_->color_attachment()->id())),
+                   ImVec2(imgui_image_size_ * ((float)width_ / (float)height_),
+                          (float)imgui_image_size_),
+                   ImVec2(0, 1), ImVec2(1, 0));
       ImGui::InputInt("Size", &imgui_image_size_);
 
       if (isModalOpen) {
@@ -618,13 +631,15 @@ void Context::RenderImGui() {
         if (mesh->material()->diffuse_) {
           ImGui::Text("Diffuse texture");
           ImGui::Image(
-              reinterpret_cast<ImTextureID>(mesh->material()->diffuse_->id()),
+              reinterpret_cast<ImTextureID>(
+                  static_cast<uintptr_t>(mesh->material()->diffuse_->id())),
               ImVec2((float)150, (float)150), ImVec2(0, 1), ImVec2(1, 0));
         }
         if (mesh->material()->specular_) {
           ImGui::Text("Specular texture");
           ImGui::Image(
-              reinterpret_cast<ImTextureID>(mesh->material()->specular_->id()),
+              reinterpret_cast<ImTextureID>(
+                  static_cast<uintptr_t>(mesh->material()->specular_->id())),
               ImVec2((float)150, (float)150), ImVec2(0, 1), ImVec2(1, 0));
         }
       }

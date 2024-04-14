@@ -109,7 +109,7 @@ void OnKeyEvent(GLFWwindow *window, int key, int scancode, int action,
               mods & GLFW_MOD_SHIFT ? "S" : "-",
               mods & GLFW_MOD_ALT ? "A" : "-");
   auto ptr = reinterpret_cast<Context *>(glfwGetWindowUserPointer(window));
-  ptr->ProcessKeyboardInput(window);
+  ptr->ProcessKeyboardInput(window, key, action);
   if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS) {
     glfwSetWindowShouldClose(window, true);
   }
@@ -135,5 +135,5 @@ void OnMouseButton(GLFWwindow *window, int button, int action, int modifier) {
   auto context = (Context *)glfwGetWindowUserPointer(window);
   double x, y;
   glfwGetCursorPos(window, &x, &y);
-  context->ProcessMouseButton(button, action, x, y);
+  context->ProcessMouseInput(button, action, x, y);
 }

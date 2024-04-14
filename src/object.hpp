@@ -51,7 +51,7 @@ class BoundingSphere {
   }
   ~BoundingSphere() {}
 
-  bool Intersect(const Ray &ray, float &dist, const Transform &t) {
+  std::optional<float> Intersect(const Ray &ray, const Transform &t) {
     const glm::vec3 center = CalcCenter(t);
     float radius = radius_;
 
@@ -63,11 +63,11 @@ class BoundingSphere {
     if (det >= 0.0f) {
       const float d1 = (-b - sqrt(det)) / 2.0f;
       const float d2 = (-b + sqrt(det)) / 2.0f;
-      dist = glm::min(d1, d2);
-      return true;
+      float dist = glm::min(d1, d2);
+      return dist;
     }
 
-    return false;
+    return {};
   }
 
   glm::vec3 CalcCenter(const Transform &t) {
@@ -107,11 +107,11 @@ class Object {
     bounding_sphere_ = BoundingSphere::Create(mesh_->vertex_min(),
                                               mesh_->vertex_max(), radius);
   }
-  bool Intersect(const Ray &ray, float &dist) {
+  std::optional<float> Intersect(const Ray &ray) {
     if (!bounding_sphere_) {
-      return false;
+      return {};
     }
-    return bounding_sphere_->Intersect(ray, dist, transform_);
+    return bounding_sphere_->Intersect(ray, transform_);
   }
 
   glm::vec3 bounding_sphere_center() const {

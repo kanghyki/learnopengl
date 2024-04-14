@@ -21,9 +21,9 @@ class Context {
   void Update();
   void Render();
   void RenderImGui();
-  void ProcessKeyboardInput(GLFWwindow* window);
+  void ProcessKeyboardInput(GLFWwindow* window, int key, int action);
+  void ProcessMouseInput(int button, int action, double x, double y);
   void ProcessMouseMove(double x, double y);
-  void ProcessMouseButton(int button, int action, double x, double y);
   void ProcessMouseScroll(double xoffset, double yoffset);
   void ReshapeViewport(int width, int height);
   void ImguiModal(const std::string& title, const std::string& text,
@@ -39,6 +39,7 @@ class Context {
   uint32_t clear_bit_{0};
   int width_{WINDOW_WIDTH};
   int height_{WINDOW_HEIGHT};
+  std::shared_ptr<Buffer> ubo{nullptr};
   // programs
   std::unique_ptr<Program> simple_program_{nullptr};
   std::unique_ptr<Program> plane_program_{nullptr};
@@ -64,12 +65,12 @@ class Context {
   Ray cursor_ray_;
   glm::vec3 world_near_;
   glm::vec3 world_far_;
-  glm::vec3 ray_hit_point_{0.0f};
   glm::vec3 prev_vector_;
   float prev_ratio_{0.0f};
   glm::vec3 prev_position_{0.0f};
-  bool now_drag_{false};
-  bool is_ray_hit_{false};
+  glm::vec3 hit_point_{0.0f};
+  bool is_hit_{false};
+  bool drag_{false};
   bool ctrl_{false};
   bool shift_{false};
 
