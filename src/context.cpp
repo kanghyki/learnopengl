@@ -136,10 +136,17 @@ bool Context::Init() {
     sphere_->set_material(std::move(mat));
   }
   {  // plane mesh
-    plane_texture_ = Texture::Create(
-        Image::CreateSingleColorImage(4, 4, glm::vec4(0.4f, 0.4f, 0.4f, 0.5f))
-            .get());
+    post_plane_ = Mesh::CreatePlane();
+
     plane_ = Mesh::CreatePlane();
+    auto mat = Material::Create();
+    mat->specular_ = Texture::Create(
+        Image::CreateSingleColorImage(4, 4, glm::vec4(0.3f, 0.3f, 0.3f, 1.0f))
+            .get());
+    mat->diffuse_ = Texture::Create(
+        Image::CreateSingleColorImage(4, 4, glm::vec4(0.8f, 0.8f, 0.8f, 1.0f))
+            .get());
+    plane_->set_material(mat);
   }
   {  // model
     model_ = Model::Load("model/resources/teapot.obj");
@@ -150,13 +157,18 @@ bool Context::Init() {
 
   light_ = Light::Create(sphere_);
   light_->CreateBoundingSphere(0.5f);
-  light_->transform().set_translate(glm::vec3(0.0f, 3.0f, 0.0f));
-  light_->transform().set_scale(glm::vec3(0.5f));
+  light_->transform().set_translate(glm::vec3(0.0f, 5.0f, 0.0f));
+  // light_->transform().set_scale(glm::vec3(0.5f));
   objects_.push_back(light_);
+
+  auto floor = Object::Create(plane_);
+  floor->transform().set_scale(glm::vec3(10.0f));
+  floor->transform().set_rotate(glm::vec3(90.0f, 0.0f, 0.0f));
+  objects_.push_back(floor);
 
   for (int i = -2; i < 3; ++i) {
     for (int j = -2; j < 3; ++j) {
-      for (int k = -2; k < 3; ++k) {
+      for (int k = 1; k < 6; ++k) {
         auto box = Object::Create(box_);
         box->transform().set_translate(glm::vec3(0.5f) * glm::vec3(j, k, i));
         box->transform().set_scale(glm::vec3(0.3f));
@@ -166,7 +178,21 @@ bool Context::Init() {
     }
   }
 
-  ubo = Buffer::Create(GL_UNIFORM_BUFFER, GL_STATIC_DRAW, NULL, 153, 1);
+  // shader에 uniform block 연결, binding point 0번
+  glUniformBlockBinding(
+      simple_program_->id(),
+      glGetUniformBlockIndex(simple_program_->id(), "Transform"), 0);
+  glUniformBlockBinding(
+      lighting_program_->id(),
+      glGetUniformBlockIndex(lighting_program_->id(), "Transform"), 0);
+  glUniformBlockBinding(
+      cube_program_->id(),
+      glGetUniformBlockIndex(cube_program_->id(), "Transform"), 0);
+
+  ubo_transform_ = Buffer::Create(GL_UNIFORM_BUFFER, GL_STATIC_DRAW, NULL,
+                                  sizeof(glm::mat4), 2);
+  // ubo를 bingding point 0번
+  glBindBufferBase(GL_UNIFORM_BUFFER, 0, ubo_transform_->id());
 
   return true;
 }
@@ -177,10 +203,20 @@ void Context::Render() {
   RenderImGui();
   framebuffer_->Bind();
   glEnable(GL_DEPTH_TEST);
+  // glEnable(GL_BLEND);
+  // glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
   glClearColor(clear_color_.r, clear_color_.g, clear_color_.b, clear_color_.a);
   glClear(clear_bit_);
   auto projection = camera_.GetPerspectiveProjectionMatrix();
   auto view = camera_.GetViewMatrix();
+
+  // copy
+  glBindBuffer(GL_UNIFORM_BUFFER, ubo_transform_->id());
+  glBufferSubData(GL_UNIFORM_BUFFER, 0, sizeof(glm::mat4),
+                  glm::value_ptr(view));
+  glBufferSubData(GL_UNIFORM_BUFFER, sizeof(glm::mat4), sizeof(glm::mat4),
+                  glm::value_ptr(projection));
+  glBindBuffer(GL_UNIFORM_BUFFER, 0);
 
   {  // cube program
     glActiveTexture(GL_TEXTURE0);
@@ -190,7 +226,7 @@ void Context::Render() {
                  glm::scale(glm::mat4(1.0), glm::vec3(100.0f));
     cube_program_->Use();
     cube_program_->SetUniform("cube", 0);
-    cube_program_->SetUniform("transform", projection * view * model);
+    cube_program_->SetUniform("model", model);
     sphere_->Draw(cube_program_.get());
   }
   {  // simple program
@@ -199,7 +235,7 @@ void Context::Render() {
       auto model = glm::translate(glm::mat4(1.0), hit_point_) *
                    glm::scale(glm::mat4(1.0), glm::vec3(0.1f));
       simple_program_->SetUniform("color", glm::vec4(0.0f, 1.0f, 0.0f, 1.0f));
-      simple_program_->SetUniform("transform", projection * view * model);
+      simple_program_->SetUniform("model", model);
       sphere_->Draw(simple_program_.get());
     }
   }
@@ -219,8 +255,6 @@ void Context::Render() {
     lighting_program_->SetUniform("light.ambient", light_->ambient);
     lighting_program_->SetUniform("light.diffuse", light_->diffuse);
     lighting_program_->SetUniform("light.specular", light_->specular);
-    lighting_program_->SetUniform("projection", projection);
-    lighting_program_->SetUniform("view", view);
 
     for (const auto& object : objects_) {
       lighting_program_->SetUniform("model", object->transform().ModelMatrix());
@@ -247,8 +281,10 @@ void Context::Render() {
     simple_program_->SetUniform(
         "color", glm::vec4((float)r / 255, (float)g / 255, (float)b / 255,
                            (float)a / 255));
-    simple_program_->SetUniform(
-        "transform", projection * view * object->transform().ModelMatrix());
+
+    simple_program_->SetUniform("model", object->transform().ModelMatrix());
+    // simple_program_->SetUniform(
+    //     "model", projection * view * object->transform().ModelMatrix());
     object->Draw(simple_program_.get());
   }
 
@@ -269,7 +305,7 @@ void Context::Render() {
     glActiveTexture(GL_TEXTURE0);
     framebuffer_->color_attachment()->Bind();
     post_program_->SetUniform("tex", 0);
-    plane_->Draw(post_program_.get());
+    post_plane_->Draw(post_program_.get());
   }
 }
 
@@ -614,19 +650,21 @@ void Context::RenderImGui() {
                     transform.rotate_euler().x, transform.rotate_euler().y,
                     transform.rotate_euler().z);
 
-        if (mesh->material()->diffuse_) {
-          ImGui::Text("Diffuse texture");
-          ImGui::Image(
-              reinterpret_cast<ImTextureID>(
-                  static_cast<uintptr_t>(mesh->material()->diffuse_->id())),
-              ImVec2((float)150, (float)150), ImVec2(0, 1), ImVec2(1, 0));
-        }
-        if (mesh->material()->specular_) {
-          ImGui::Text("Specular texture");
-          ImGui::Image(
-              reinterpret_cast<ImTextureID>(
-                  static_cast<uintptr_t>(mesh->material()->specular_->id())),
-              ImVec2((float)150, (float)150), ImVec2(0, 1), ImVec2(1, 0));
+        if (mesh->material()) {
+          if (mesh->material()->diffuse_) {
+            ImGui::Text("Diffuse texture");
+            ImGui::Image(
+                reinterpret_cast<ImTextureID>(
+                    static_cast<uintptr_t>(mesh->material()->diffuse_->id())),
+                ImVec2((float)150, (float)150), ImVec2(0, 1), ImVec2(1, 0));
+          }
+          if (mesh->material()->specular_) {
+            ImGui::Text("Specular texture");
+            ImGui::Image(
+                reinterpret_cast<ImTextureID>(
+                    static_cast<uintptr_t>(mesh->material()->specular_->id())),
+                ImVec2((float)150, (float)150), ImVec2(0, 1), ImVec2(1, 0));
+          }
         }
       }
     }
