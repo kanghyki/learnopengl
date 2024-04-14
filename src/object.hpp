@@ -11,12 +11,13 @@ class Transform {
   Transform(){};
   ~Transform(){};
 
-  glm::mat4 Matrix() const {
-    auto t = glm::translate(glm::mat4(1.0f), translate_);
-    auto s = glm::scale(glm::mat4(1.0f), scale_);
-    auto r = glm::toMat4(quat_);
-
-    return t * s * r;
+  glm::mat4 ModelMatrix() const {
+    return TranslateMatrix() * ScaleMatrix() * RotateMatrix();
+  }
+  glm::mat4 ScaleMatrix() const { return glm::scale(glm::mat4(1.0f), scale_); }
+  glm::mat4 RotateMatrix() const { return glm::toMat4(quat_); }
+  glm::mat4 TranslateMatrix() const {
+    return glm::translate(glm::mat4(1.0f), translate_);
   }
 
   void set_translate(const glm::vec3 &t) { translate_ = t; }
@@ -41,19 +42,17 @@ class Transform {
 
 class BoundingSphere {
  public:
-  static std::unique_ptr<BoundingSphere> Create(const glm::vec3 &min,
-                                                const glm::vec3 &max,
-                                                float radius) {
-    auto ptr =
-        std::unique_ptr<BoundingSphere>(new BoundingSphere(min, max, radius));
+  static std::unique_ptr<BoundingSphere> Create(const Transform &t,
+                                                const float radius) {
+    auto ptr = std::unique_ptr<BoundingSphere>(new BoundingSphere(t, radius));
 
     return std::move(ptr);
   }
   ~BoundingSphere() {}
 
-  std::optional<float> Intersect(const Ray &ray, const Transform &t) {
-    const glm::vec3 center = CalcCenter(t);
-    float radius = radius_;
+  std::optional<float> Intersect(const Ray &ray) {
+    const glm::vec3 center = translated_center();
+    const float radius = scaled_radius();
 
     const float b = 2.0f * glm::dot(ray.direction, ray.position - center);
     const float c = glm::dot(ray.position - center, ray.position - center) -
@@ -70,20 +69,21 @@ class BoundingSphere {
     return {};
   }
 
-  glm::vec3 CalcCenter(const Transform &t) {
-    glm::vec3 center = (max_ + min_) / 2.0f;
+ private:
+  BoundingSphere(const Transform &t, const float radius)
+      : t_(t), radius_(radius) {}
 
-    return t.Matrix() * glm::vec4(center, 1.0f);
+  glm::vec3 translated_center() const {
+    return t_.TranslateMatrix() * glm::vec4(0.0f, 0.0f, 0.0f, 1.0f);
   }
 
- private:
-  // TODO: smallest
-  BoundingSphere(const glm::vec3 &min, const glm::vec3 &max, float radius)
-      : min_(min), max_(max), radius_(radius) {}
+  float scaled_radius() const {
+    return glm::max(glm::max(t_.scale().x, t_.scale().y), t_.scale().z) *
+           radius_;
+  }
 
-  glm::vec3 min_;
-  glm::vec3 max_;
-  float radius_;
+  const Transform &t_;
+  const float radius_;
 };
 
 class Object {
@@ -104,18 +104,13 @@ class Object {
   }
 
   void CreateBoundingSphere(float radius) {
-    bounding_sphere_ = BoundingSphere::Create(mesh_->vertex_min(),
-                                              mesh_->vertex_max(), radius);
+    bounding_sphere_ = BoundingSphere::Create(transform_, radius);
   }
   std::optional<float> Intersect(const Ray &ray) {
     if (!bounding_sphere_) {
       return {};
     }
-    return bounding_sphere_->Intersect(ray, transform_);
-  }
-
-  glm::vec3 bounding_sphere_center() const {
-    return bounding_sphere_->CalcCenter(transform_);
+    return bounding_sphere_->Intersect(ray);
   }
 
  private:

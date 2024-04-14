@@ -32,9 +32,6 @@ class Mesh {
     material_ = material;
   }
 
-  inline glm::vec3 vertex_min() const { return vertex_min_; }
-  inline glm::vec3 vertex_max() const { return vertex_max_; }
-
  private:
   Mesh();
   Mesh(const Mesh &mesh);
@@ -47,9 +44,6 @@ class Mesh {
   std::shared_ptr<Buffer> vb_{nullptr};
   std::shared_ptr<Buffer> ib_{nullptr};
   std::shared_ptr<Material> material_{nullptr};
-
-  glm::vec3 vertex_min_{std::numeric_limits<float>::max()};
-  glm::vec3 vertex_max_{std::numeric_limits<float>::min()};
 };
 
 #endif

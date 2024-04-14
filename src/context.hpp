@@ -89,7 +89,6 @@ class Context {
   glm::vec4 clear_color_{0.3f, 0.3f, 0.3f, 1.0f};
 
   bool is_wireframe_active_{false};
-  bool is_animation_active_{true};
   int light_type_{0};
   int imgui_image_size_{300};
   bool is_setting_open_{true};

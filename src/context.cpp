@@ -155,7 +155,7 @@ bool Context::Init() {
         box->transform().set_translate(glm::vec3(0.5f) * glm::vec3(j, k, i) +
                                        glm::vec3(2.0f));
         box->transform().set_scale(glm::vec3(0.3f));
-        box->CreateBoundingSphere(0.2f);
+        box->CreateBoundingSphere(0.5f);
         objects_.push_back(box);
       }
     }
@@ -164,12 +164,8 @@ bool Context::Init() {
   auto sphere_object = Object::Create(sphere_);
   sphere_object->transform().set_translate(glm::vec3(0.0f, 0.0f, 0.0f));
   sphere_object->transform().set_scale(glm::vec3(2.0f));
-  sphere_object->CreateBoundingSphere(1.0f);
+  sphere_object->CreateBoundingSphere(0.5f);
   objects_.push_back(sphere_object);
-
-  SPDLOG_INFO("light_ size : {}", sizeof(light_));
-  SPDLOG_INFO("glm size : {}", sizeof(glm::vec3(1.0f)));
-  ubo = Buffer::Create(GL_UNIFORM_BUFFER, GL_STATIC_DRAW, NULL, 152, 1);
 
   return true;
 }
@@ -233,7 +229,7 @@ void Context::Render() {
     lighting_program_->SetUniform("view", view);
 
     for (const auto& object : objects_) {
-      lighting_program_->SetUniform("model", object->transform().Matrix());
+      lighting_program_->SetUniform("model", object->transform().ModelMatrix());
       lighting_program_->SetUniform("isPick", pick_id_ == object->id());
       object->Draw(lighting_program_.get());
     }
@@ -258,7 +254,7 @@ void Context::Render() {
         "color", glm::vec4((float)r / 255, (float)g / 255, (float)b / 255,
                            (float)a / 255));
     simple_program_->SetUniform(
-        "transform", projection * view * object->transform().Matrix());
+        "transform", projection * view * object->transform().ModelMatrix());
     object->Draw(simple_program_.get());
   }
 
@@ -443,7 +439,8 @@ void Context::ProcessMouseMove(double x, double y) {
     }
     if (shift_ && is_hit_) {
       glm::vec3 cur_vector =
-          hit_point_ - pick_object_->bounding_sphere_center();
+          hit_point_ - glm::vec3(pick_object_->transform().TranslateMatrix() *
+                                 glm::vec4(0.0f, 0.0f, 0.0f, 1.0f));
       if (!drag_) {
         drag_ = true;
       } else {
@@ -543,7 +540,6 @@ void Context::RenderImGui() {
             light_.direction = camera_.front_;
           }
         }
-        ImGui::Text("All");
         ImGui::ColorEdit3("ambient", glm::value_ptr(light_.ambient));
         ImGui::ColorEdit3("diffuse", glm::value_ptr(light_.diffuse));
         ImGui::ColorEdit3("specular", glm::value_ptr(light_.specular));
@@ -558,7 +554,6 @@ void Context::RenderImGui() {
             glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
           }
         }
-        ImGui::Checkbox("Active animation", &is_animation_active_);
         ImGui::DragFloat("Gamma", &gamma_, 0.01f, 0.0f, 2.0f);
       }
     }

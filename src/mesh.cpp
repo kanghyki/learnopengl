@@ -15,11 +15,6 @@ std::shared_ptr<Mesh> Mesh::Create(const std::vector<Vertex> &vertices,
 
 void Mesh::Init(const std::vector<Vertex> &vertices,
                 const std::vector<uint32_t> &indices, uint32_t primitive_type) {
-  for (const auto &vertex : vertices) {
-    vertex_min_ = glm::min(vertex_min_, vertex.position);
-    vertex_max_ = glm::max(vertex_max_, vertex.position);
-  }
-
   va_ = VertexArray::Create();
   vb_ = Buffer::Create(GL_ARRAY_BUFFER, GL_STATIC_DRAW, vertices.data(),
                        sizeof(Vertex), vertices.size());
