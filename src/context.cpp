@@ -130,7 +130,7 @@ bool Context::Init() {
 
     mat->diffuse_ = Texture::Create(Image::Load("image/wall.jpg", true).get());
     mat->specular_ = Texture::Create(
-        Image::CreateSingleColorImage(4, 4, glm::vec4(0.7f, 0.7f, 0.7f, 1.0f))
+        Image::CreateSingleColorImage(4, 4, glm::vec4(0.8f, 0.8f, 0.8f, 1.0f))
             .get());
     sphere_ = Mesh::CreateSphere(35, 35);
     sphere_->set_material(std::move(mat));
@@ -148,24 +148,25 @@ bool Context::Init() {
     }
   }
 
-  for (int i = 0; i < 5; ++i) {
-    for (int j = 0; j < 5; ++j) {
-      for (int k = 0; k < 5; ++k) {
+  light_ = Light::Create(sphere_);
+  light_->CreateBoundingSphere(0.5f);
+  light_->transform().set_translate(glm::vec3(0.0f, 3.0f, 0.0f));
+  light_->transform().set_scale(glm::vec3(0.5f));
+  objects_.push_back(light_);
+
+  for (int i = -2; i < 3; ++i) {
+    for (int j = -2; j < 3; ++j) {
+      for (int k = -2; k < 3; ++k) {
         auto box = Object::Create(box_);
-        box->transform().set_translate(glm::vec3(0.5f) * glm::vec3(j, k, i) +
-                                       glm::vec3(2.0f));
+        box->transform().set_translate(glm::vec3(0.5f) * glm::vec3(j, k, i));
         box->transform().set_scale(glm::vec3(0.3f));
-        box->CreateBoundingSphere(0.5f);
+        box->CreateBoundingSphere(0.7f);
         objects_.push_back(box);
       }
     }
   }
 
-  auto sphere_object = Object::Create(sphere_);
-  sphere_object->transform().set_translate(glm::vec3(0.0f, 0.0f, 0.0f));
-  sphere_object->transform().set_scale(glm::vec3(2.0f));
-  sphere_object->CreateBoundingSphere(0.5f);
-  objects_.push_back(sphere_object);
+  ubo = Buffer::Create(GL_UNIFORM_BUFFER, GL_STATIC_DRAW, NULL, 153, 1);
 
   return true;
 }
@@ -176,6 +177,7 @@ void Context::Render() {
   RenderImGui();
   framebuffer_->Bind();
   glEnable(GL_DEPTH_TEST);
+  glClearColor(clear_color_.r, clear_color_.g, clear_color_.b, clear_color_.a);
   glClear(clear_bit_);
   auto projection = camera_.GetPerspectiveProjectionMatrix();
   auto view = camera_.GetViewMatrix();
@@ -192,20 +194,12 @@ void Context::Render() {
     sphere_->Draw(cube_program_.get());
   }
   {  // simple program
-    auto lightModelTransform = glm::translate(glm::mat4(1.0), light_.position) *
-                               glm::scale(glm::mat4(1.0), glm::vec3(0.1f));
     simple_program_->Use();
-    simple_program_->SetUniform(
-        "color", glm::vec4(light_.ambient + light_.diffuse, 1.0f));
-    simple_program_->SetUniform("transform",
-                                projection * view * lightModelTransform);
-    box_->Draw(simple_program_.get());
     if (is_hit_) {
-      auto cursor_model = glm::translate(glm::mat4(1.0), hit_point_) *
-                          glm::scale(glm::mat4(1.0), glm::vec3(0.1f));
-      simple_program_->SetUniform("color", glm::vec4(0.0f, 1.0f, 0, 1.0f));
-      simple_program_->SetUniform("transform",
-                                  projection * view * cursor_model);
+      auto model = glm::translate(glm::mat4(1.0), hit_point_) *
+                   glm::scale(glm::mat4(1.0), glm::vec3(0.1f));
+      simple_program_->SetUniform("color", glm::vec4(0.0f, 1.0f, 0.0f, 1.0f));
+      simple_program_->SetUniform("transform", projection * view * model);
       sphere_->Draw(simple_program_.get());
     }
   }
@@ -213,18 +207,18 @@ void Context::Render() {
     lighting_program_->Use();
     lighting_program_->SetUniform("lightType", light_type_);
     lighting_program_->SetUniform("viewPos", camera_.position_);
-    lighting_program_->SetUniform("light.position", light_.position);
-    lighting_program_->SetUniform("light.direction", light_.direction);
+    lighting_program_->SetUniform("light.position", light_->position());
+    lighting_program_->SetUniform("light.direction", light_->direction());
     lighting_program_->SetUniform(
         "light.cutoff",
-        glm::vec2(cosf(glm::radians(light_.cutoff[0])),
-                  cosf(glm::radians(light_.cutoff[0] + light_.cutoff[1]))));
-    lighting_program_->SetUniform("light.constant", light_.constant);
-    lighting_program_->SetUniform("light.linear", light_.linear);
-    lighting_program_->SetUniform("light.quadratic", light_.quadratic);
-    lighting_program_->SetUniform("light.ambient", light_.ambient);
-    lighting_program_->SetUniform("light.diffuse", light_.diffuse);
-    lighting_program_->SetUniform("light.specular", light_.specular);
+        glm::vec2(cosf(glm::radians(light_->cutoff[0])),
+                  cosf(glm::radians(light_->cutoff[0] + light_->cutoff[1]))));
+    lighting_program_->SetUniform("light.constant", light_->constant);
+    lighting_program_->SetUniform("light.linear", light_->linear);
+    lighting_program_->SetUniform("light.quadratic", light_->quadratic);
+    lighting_program_->SetUniform("light.ambient", light_->ambient);
+    lighting_program_->SetUniform("light.diffuse", light_->diffuse);
+    lighting_program_->SetUniform("light.specular", light_->specular);
     lighting_program_->SetUniform("projection", projection);
     lighting_program_->SetUniform("view", view);
 
@@ -413,7 +407,7 @@ void Context::ProcessMouseMove(double x, double y) {
 
   if (pick_object_) {
     cursor_ray_ = CalcCursorRay(cur_cursor);
-    auto dist = pick_object_->Intersect(cursor_ray_);
+    auto dist = pick_object_->Intersect(cursor_ray_, pick_object_->transform());
     if (dist) {
       is_hit_ = true;
       hit_point_ = cursor_ray_.position + cursor_ray_.direction * dist.value();
@@ -519,30 +513,27 @@ void Context::RenderImGui() {
         ImGui::SameLine();
         ImGui::RadioButton("Spot", &light_type_, 2);
         if (light_type_ == 0) {
-          ImGui::DragFloat3("direction", glm::value_ptr(light_.direction),
-                            0.01f);
-          if (ImGui::Button("Sync the camera")) {
-            light_.direction = camera_.front_;
-          }
+          ImGui::Text("%10s : x(%.3f), y(%.3f), z(%.3f)", "Direction",
+                      light_->direction().x, light_->direction().y,
+                      light_->direction().z);
         } else if (light_type_ == 1) {
-          ImGui::DragFloat3("position", glm::value_ptr(light_.position), 0.01f);
-          if (ImGui::Button("Sync the camera")) {
-            light_.position = camera_.position_ - (camera_.front_ * 0.2f);
-          }
+          ImGui::Text("%10s : x(%.3f), y(%.3f), z(%.3f)", "Position",
+                      light_->position().x, light_->position().y,
+                      light_->position().z);
         } else if (light_type_ == 2) {
-          ImGui::DragFloat3("direction", glm::value_ptr(light_.direction),
-                            0.01f);
-          ImGui::DragFloat3("position", glm::value_ptr(light_.position), 0.01f);
-          ImGui::DragFloat2("cutoff", glm::value_ptr(light_.cutoff), 0.5f, 0.0f,
-                            180.0f);
-          if (ImGui::Button("Sync the camera")) {
-            light_.position = camera_.position_ - (camera_.front_ * 0.2f);
-            light_.direction = camera_.front_;
-          }
+          ImGui::Text("%10s : x(%.3f), y(%.3f), z(%.3f)", "Direction",
+                      light_->direction().x, light_->direction().y,
+                      light_->direction().z);
+          ImGui::Text("%10s : x(%.3f), y(%.3f), z(%.3f)", "Position",
+                      light_->position().x, light_->position().y,
+                      light_->position().z);
+          ImGui::DragFloat2("cutoff", glm::value_ptr(light_->cutoff), 0.5f,
+                            0.0f, 180.0f);
         }
-        ImGui::ColorEdit3("ambient", glm::value_ptr(light_.ambient));
-        ImGui::ColorEdit3("diffuse", glm::value_ptr(light_.diffuse));
-        ImGui::ColorEdit3("specular", glm::value_ptr(light_.specular));
+        ImGui::Separator();
+        ImGui::ColorEdit3("ambient", glm::value_ptr(light_->ambient));
+        ImGui::ColorEdit3("diffuse", glm::value_ptr(light_->diffuse));
+        ImGui::ColorEdit3("specular", glm::value_ptr(light_->specular));
       }
       ImGui::Spacing();
       ImGui::Spacing();

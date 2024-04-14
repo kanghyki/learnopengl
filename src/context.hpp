@@ -36,6 +36,7 @@ class Context {
   Context();
   bool Init();
 
+  glm::vec4 clear_color_{0.0f};
   uint32_t clear_bit_{0};
   int width_{WINDOW_WIDTH};
   int height_{WINDOW_HEIGHT};
@@ -74,7 +75,7 @@ class Context {
   bool ctrl_{false};
   bool shift_{false};
 
-  struct Light light_;
+  std::shared_ptr<Light> light_{nullptr};
 
   Camera camera_;
   glm::vec2 prev_cursor_{0.0f};
@@ -85,8 +86,6 @@ class Context {
   std::unique_ptr<Framebuffer> index_framebuffer_{nullptr};
   std::unique_ptr<Program> post_program_{nullptr};
   float gamma_{1.0f};
-
-  glm::vec4 clear_color_{0.3f, 0.3f, 0.3f, 1.0f};
 
   bool is_wireframe_active_{false};
   int light_type_{0};

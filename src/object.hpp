@@ -42,17 +42,16 @@ class Transform {
 
 class BoundingSphere {
  public:
-  static std::unique_ptr<BoundingSphere> Create(const Transform &t,
-                                                const float radius) {
-    auto ptr = std::unique_ptr<BoundingSphere>(new BoundingSphere(t, radius));
+  static std::unique_ptr<BoundingSphere> Create(const float radius) {
+    auto ptr = std::unique_ptr<BoundingSphere>(new BoundingSphere(radius));
 
     return std::move(ptr);
   }
   ~BoundingSphere() {}
 
-  std::optional<float> Intersect(const Ray &ray) {
-    const glm::vec3 center = translated_center();
-    const float radius = scaled_radius();
+  std::optional<float> Intersect(const Ray &ray, const Transform &t) {
+    const glm::vec3 center = translated_center(t);
+    const float radius = scaled_radius(t);
 
     const float b = 2.0f * glm::dot(ray.direction, ray.position - center);
     const float c = glm::dot(ray.position - center, ray.position - center) -
@@ -70,23 +69,66 @@ class BoundingSphere {
   }
 
  private:
-  BoundingSphere(const Transform &t, const float radius)
-      : t_(t), radius_(radius) {}
+  BoundingSphere(const float radius) : radius_(radius) {}
 
-  glm::vec3 translated_center() const {
-    return t_.TranslateMatrix() * glm::vec4(0.0f, 0.0f, 0.0f, 1.0f);
+  glm::vec3 translated_center(const Transform &t) const {
+    return t.TranslateMatrix() * glm::vec4(0.0f, 0.0f, 0.0f, 1.0f);
   }
 
-  float scaled_radius() const {
-    return glm::max(glm::max(t_.scale().x, t_.scale().y), t_.scale().z) *
-           radius_;
+  float scaled_radius(const Transform &t) const {
+    return glm::max(glm::max(t.scale().x, t.scale().y), t.scale().z) * radius_;
   }
 
-  const Transform &t_;
   const float radius_;
 };
 
-class Object {
+class DrawableObject {
+ public:
+  DrawableObject(std::shared_ptr<Mesh> mesh) : mesh_(mesh){};
+  virtual ~DrawableObject(){};
+
+  inline void Draw(const Program *p) const { mesh_->Draw(p); }
+  inline std::shared_ptr<Mesh> mesh() const { return mesh_; }
+
+ private:
+  std::shared_ptr<Mesh> mesh_;
+};
+
+class TransformableObject {
+ public:
+  TransformableObject(){};
+  virtual ~TransformableObject(){};
+
+  inline Transform &transform() { return transform_; }
+  inline const Transform &transform() const { return transform_; }
+
+ private:
+  Transform transform_;
+};
+
+class TouchableObject {
+ public:
+  TouchableObject() {}
+  virtual ~TouchableObject() {}
+
+  void CreateBoundingSphere(float radius) {
+    bounding_sphere_ = BoundingSphere::Create(radius);
+  }
+
+  std::optional<float> Intersect(const Ray &ray, const Transform &t) {
+    if (!bounding_sphere_) {
+      return {};
+    }
+    return bounding_sphere_->Intersect(ray, t);
+  }
+
+ private:
+  std::unique_ptr<BoundingSphere> bounding_sphere_{nullptr};
+};
+
+class Object : public DrawableObject,
+               public TransformableObject,
+               public TouchableObject {
  public:
   static std::shared_ptr<Object> Create(std::shared_ptr<Mesh> mesh) {
     auto object = std::shared_ptr<Object>(new Object(mesh));
@@ -95,31 +137,19 @@ class Object {
   }
   ~Object(){};
 
-  inline void Draw(const Program *p) const { mesh_->Draw(p); }
-  inline Transform &transform() { return transform_; }
   inline size_t id() const { return id_; }
-  inline std::shared_ptr<Mesh> mesh() const { return mesh_; }
-  inline void set_material(std::shared_ptr<Material> m) {
-    mesh_->set_material(std::move(m));
-  }
 
-  void CreateBoundingSphere(float radius) {
-    bounding_sphere_ = BoundingSphere::Create(transform_, radius);
-  }
-  std::optional<float> Intersect(const Ray &ray) {
-    if (!bounding_sphere_) {
-      return {};
-    }
-    return bounding_sphere_->Intersect(ray);
-  }
+ protected:
+  Object(std::shared_ptr<Mesh> mesh)
+      : DrawableObject(mesh),
+        TransformableObject(),
+        TouchableObject(),
+        id_(Object::kId++) {}
 
  private:
   static size_t kId;
-  Object(std::shared_ptr<Mesh> mesh) : id_(Object::kId++), mesh_(mesh) {}
 
-  size_t id_;
-  Transform transform_;
-  std::shared_ptr<Mesh> mesh_;
+  const size_t id_;
   std::unique_ptr<BoundingSphere> bounding_sphere_{nullptr};
 };
 
