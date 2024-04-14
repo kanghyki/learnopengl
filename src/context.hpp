@@ -81,7 +81,7 @@ class Context {
   bool is_hit_{false};
   bool drag_{false};
   bool ctrl_{false};
-  bool shift_{false};
+  bool left_mouse_{false};
 
   std::shared_ptr<Light> light_{nullptr};
   bool is_blinn_{false};

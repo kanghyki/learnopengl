@@ -369,20 +369,26 @@ void Context::ProcessKeyboardInput(GLFWwindow* window, int key, int action) {
         break;
       case GLFW_RELEASE:
         ctrl_ = false;
-        drag_ = false;
         break;
     }
   }
   if (key == GLFW_KEY_LEFT_SHIFT) {
     switch (action) {
       case GLFW_PRESS:
-        camera_.SetMoveSpeed(0.15f);
-        shift_ = true;
+        camera_.SetMove(kDown);
         break;
       case GLFW_RELEASE:
-        camera_.SetMoveSpeed(0.05f);
-        shift_ = false;
-        drag_ = false;
+        camera_.UnsetMove(kDown);
+        break;
+    }
+  }
+  if (key == GLFW_KEY_SPACE) {
+    switch (action) {
+      case GLFW_PRESS:
+        camera_.SetMove(kUp);
+        break;
+      case GLFW_RELEASE:
+        camera_.UnsetMove(kUp);
         break;
     }
   }
@@ -426,26 +432,6 @@ void Context::ProcessKeyboardInput(GLFWwindow* window, int key, int action) {
         break;
     }
   }
-  if (key == GLFW_KEY_E) {
-    switch (action) {
-      case GLFW_PRESS:
-        camera_.SetMove(kUp);
-        break;
-      case GLFW_RELEASE:
-        camera_.UnsetMove(kUp);
-        break;
-    }
-  }
-  if (key == GLFW_KEY_Q) {
-    switch (action) {
-      case GLFW_PRESS:
-        camera_.SetMove(kDown);
-        break;
-      case GLFW_RELEASE:
-        camera_.UnsetMove(kDown);
-        break;
-    }
-  }
 }
 
 ObjectType GetObjectType(std::shared_ptr<Object> p) {
@@ -469,6 +455,7 @@ void Context::ProcessMouseInput(int button, int action, double x, double y) {
   if (button == GLFW_MOUSE_BUTTON_LEFT) {
     switch (action) {
       case GLFW_PRESS: {
+        left_mouse_ = true;
         index_framebuffer_->Bind();
         int height = index_framebuffer_->color_attachment()->height();
         auto pixel = index_framebuffer_->color_attachment()->GetTexPixel(
@@ -487,6 +474,7 @@ void Context::ProcessMouseInput(int button, int action, double x, double y) {
         break;
       }
       case GLFW_RELEASE:
+        left_mouse_ = false;
         drag_ = false;
         break;
     }
@@ -511,7 +499,7 @@ void Context::ProcessMouseMove(double x, double y) {
       is_hit_ = false;
     }
 
-    if (ctrl_) {
+    if (left_mouse_ && ctrl_) {
       if (!drag_ && is_hit_) {
         prev_ratio_ = dist.value() / glm::length(world_far_ - world_near_);
         prev_position_ =
@@ -527,7 +515,7 @@ void Context::ProcessMouseMove(double x, double y) {
         prev_position_ = new_pos;
       }
     }
-    if (shift_ && is_hit_) {
+    if (left_mouse_ && is_hit_) {
       glm::vec3 cur_vector =
           hit_point_ - glm::vec3(pick_object_->transform().TranslateMatrix() *
                                  glm::vec4(0.0f, 0.0f, 0.0f, 1.0f));
