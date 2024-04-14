@@ -69,6 +69,7 @@ class Context {
   std::vector<std::shared_ptr<Object>> objects_;
   size_t pick_id_{(size_t)-1};
   std::shared_ptr<Object> pick_object_{nullptr};
+  ObjectType object_type_{kNormal};
 
   Ray cursor_ray_;
   glm::vec3 world_near_;
@@ -95,7 +96,6 @@ class Context {
   float gamma_{1.0f};
 
   bool is_wireframe_active_{false};
-  int light_type_{0};
   int imgui_image_size_{300};
   bool is_setting_open_{true};
   bool is_frambuffer_open_{true};

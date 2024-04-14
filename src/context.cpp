@@ -140,10 +140,9 @@ bool Context::Init() {
 
     plane_ = Mesh::CreatePlane();
     auto mat = Material::Create();
-    mat->diffuse_ =
-        Texture::Create(Image::Load("image/window.png", true).get());
-    mat->specular_ = Texture::Create(
-        Image::CreateSingleColorImage(4, 4, glm::vec4(1.0f)).get());
+    mat->diffuse_ = Texture::Create(
+        Image::CreateSingleColorImage(4, 4, glm::vec4(0.5f, 0.4f, 0.05f, 1.0f))
+            .get());
     plane_->set_material(mat);
   }
   {  // model
@@ -288,7 +287,7 @@ void Context::Render() {
   }
   {  // lighting program
     lighting_program_->Use();
-    lighting_program_->SetUniform("lightType", light_type_);
+    lighting_program_->SetUniform("lightType", light_->type());
     lighting_program_->SetUniform("viewPos", camera_.position_);
     lighting_program_->SetUniform("light.position", light_->position());
     lighting_program_->SetUniform("light.direction", light_->direction());
@@ -445,6 +444,13 @@ void Context::ProcessKeyboardInput(GLFWwindow* window, int key, int action) {
   }
 }
 
+ObjectType GetObjectType(std::shared_ptr<Object> p) {
+  std::shared_ptr<Light> light = std::dynamic_pointer_cast<Light>(p);
+
+  if (light) return kLight;
+  return kNormal;
+}
+
 void Context::ProcessMouseInput(int button, int action, double x, double y) {
   if (button == GLFW_MOUSE_BUTTON_RIGHT) {
     switch (action) {
@@ -470,6 +476,7 @@ void Context::ProcessMouseInput(int button, int action, double x, double y) {
           if (id == object->id()) {
             pick_object_ = object;
             pick_id_ = id;
+            object_type_ = GetObjectType(object);
             break;
           }
         }
@@ -592,20 +599,20 @@ void Context::RenderImGui() {
       ImGui::Spacing();
       ImGui::Spacing();
       if (ImGui::CollapsingHeader("Light", ImGuiTreeNodeFlags_DefaultOpen)) {
-        ImGui::RadioButton("Directional", &light_type_, 0);
+        ImGui::RadioButton("Directional", (int*)&light_->type(), kDirectional);
         ImGui::SameLine();
-        ImGui::RadioButton("Point", &light_type_, 1);
+        ImGui::RadioButton("Point", (int*)&light_->type(), kPoint);
         ImGui::SameLine();
-        ImGui::RadioButton("Spot", &light_type_, 2);
-        if (light_type_ == 0) {
+        ImGui::RadioButton("Spot", (int*)&light_->type(), kSpot);
+        if (light_->type() == kDirectional) {
           ImGui::Text("%10s : x(%.3f), y(%.3f), z(%.3f)", "Direction",
                       light_->direction().x, light_->direction().y,
                       light_->direction().z);
-        } else if (light_type_ == 1) {
+        } else if (light_->type() == kPoint) {
           ImGui::Text("%10s : x(%.3f), y(%.3f), z(%.3f)", "Position",
                       light_->position().x, light_->position().y,
                       light_->position().z);
-        } else if (light_type_ == 2) {
+        } else if (light_->type() == kSpot) {
           ImGui::Text("%10s : x(%.3f), y(%.3f), z(%.3f)", "Direction",
                       light_->direction().x, light_->direction().y,
                       light_->direction().z);
@@ -686,6 +693,14 @@ void Context::RenderImGui() {
   {
     if (ImGui::Begin("Object")) {
       if (pick_object_) {
+        switch (object_type_) {
+          case kNormal:
+            ImGui::Text("Object type: Normal");
+            break;
+          case kLight:
+            ImGui::Text("Object type: Light");
+            break;
+        }
         ImGui::Text("Object id : %d", pick_id_);
         std::shared_ptr<Mesh> mesh = pick_object_->mesh();
         Transform& transform = pick_object_->transform();
@@ -713,6 +728,43 @@ void Context::RenderImGui() {
                 reinterpret_cast<ImTextureID>(
                     static_cast<uintptr_t>(mesh->material()->specular_->id())),
                 ImVec2((float)150, (float)150), ImVec2(0, 1), ImVec2(1, 0));
+          }
+
+          if (object_type_ == kLight) {
+            std::shared_ptr<Light> light =
+                std::dynamic_pointer_cast<Light>(pick_object_);
+            switch (light->type()) {
+              case kDirectional:
+                ImGui::Text("Light type : Directional");
+                ImGui::Text("%10s : x(%.3f), y(%.3f), z(%.3f)", "Direction",
+                            light_->direction().x, light_->direction().y,
+                            light_->direction().z);
+                break;
+              case kPoint:
+                ImGui::Text("Light type : Point");
+                ImGui::Text("%10s : x(%.3f), y(%.3f), z(%.3f)", "Position",
+                            light_->position().x, light_->position().y,
+                            light_->position().z);
+                break;
+              case kSpot:
+                ImGui::Text("Light type : Spot");
+                ImGui::Text("%10s : x(%.3f), y(%.3f), z(%.3f)", "Direction",
+                            light_->direction().x, light_->direction().y,
+                            light_->direction().z);
+                ImGui::Text("%10s : x(%.3f), y(%.3f), z(%.3f)", "Position",
+                            light_->position().x, light_->position().y,
+                            light_->position().z);
+                ImGui::Text("%10s : x(%.3f), y(%.3f)", "Cut off",
+                            light_->cutoff.x, light_->cutoff.y);
+                break;
+            }
+            ImGui::Text("%10s : x(%.3f), y(%.3f), z(%.3f)", "Ambient",
+                        light->ambient.x, light->ambient.y, light->ambient.z);
+            ImGui::Text("%10s : x(%.3f), y(%.3f), z(%.3f)", "diffuse",
+                        light->diffuse.x, light->diffuse.y, light->diffuse.z);
+            ImGui::Text("%10s : x(%.3f), y(%.3f), z(%.3f)", "specular",
+                        light->specular.x, light->specular.y,
+                        light->specular.z);
           }
         }
       }

@@ -5,6 +5,12 @@
 #include "object.hpp"
 #include "texture.hpp"
 
+enum LightType {
+  kDirectional,
+  kPoint,
+  kSpot,
+};
+
 class Light : public Object {
  public:
   static std::shared_ptr<Light> Create(std::shared_ptr<Mesh> mesh) {
@@ -13,6 +19,9 @@ class Light : public Object {
     return sptr;
   }
   ~Light(){};
+
+  // TODO: refactor
+  LightType& type() { return type_; }
 
   // Point & Spot
   glm::vec3 position() const { return transform().translate(); }
@@ -37,6 +46,7 @@ class Light : public Object {
   Light(std::shared_ptr<Mesh> mesh) : Object(mesh){};
 
   glm::vec3 direction_{glm::vec3(0.0f, -1.0f, 0.0f)};
+  LightType type_{kPoint};
 };
 
 #endif

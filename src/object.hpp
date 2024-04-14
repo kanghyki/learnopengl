@@ -87,8 +87,8 @@ class DrawableObject {
   DrawableObject(std::shared_ptr<Mesh> mesh) : mesh_(mesh){};
   virtual ~DrawableObject(){};
 
-  inline void Draw(const Program *p) const { mesh_->Draw(p); }
-  inline std::shared_ptr<Mesh> mesh() const { return mesh_; }
+  inline virtual void Draw(const Program *p) const final { mesh_->Draw(p); }
+  inline virtual std::shared_ptr<Mesh> mesh() const final { return mesh_; }
 
  private:
   std::shared_ptr<Mesh> mesh_;
@@ -99,8 +99,8 @@ class TransformableObject {
   TransformableObject(){};
   virtual ~TransformableObject(){};
 
-  inline Transform &transform() { return transform_; }
-  inline const Transform &transform() const { return transform_; }
+  inline virtual Transform &transform() final { return transform_; }
+  inline virtual const Transform &transform() const final { return transform_; }
 
  private:
   Transform transform_;
@@ -111,11 +111,12 @@ class TouchableObject {
   TouchableObject() {}
   virtual ~TouchableObject() {}
 
-  void CreateBoundingSphere(float radius) {
+  virtual void CreateBoundingSphere(float radius) final {
     bounding_sphere_ = BoundingSphere::Create(radius);
   }
 
-  std::optional<float> Intersect(const Ray &ray, const Transform &t) {
+  virtual std::optional<float> Intersect(const Ray &ray,
+                                         const Transform &t) final {
     if (!bounding_sphere_) {
       return {};
     }
@@ -151,6 +152,11 @@ class Object : public DrawableObject,
 
   const size_t id_;
   std::unique_ptr<BoundingSphere> bounding_sphere_{nullptr};
+};
+
+enum ObjectType {
+  kNormal,
+  kLight,
 };
 
 #endif
