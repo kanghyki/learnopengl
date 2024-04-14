@@ -9,7 +9,7 @@
 struct Vertex {
   glm::vec3 position;
   glm::vec3 normal;
-  glm::vec2 texCoord;
+  glm::vec2 tex_coord;
 };
 
 class Mesh {
@@ -24,9 +24,11 @@ class Mesh {
 
   void Draw(const Program *program) const;
 
-  inline const VertexArray *va() const { return va_.get(); }
-  inline std::shared_ptr<Buffer> vb() const { return vb_; }
-  inline std::shared_ptr<Buffer> ib() const { return ib_; }
+  inline const VertexArray *vertex_array() const { return vertex_array_.get(); }
+  inline std::shared_ptr<Buffer> vertex_buffer() const {
+    return vertex_buffer_;
+  }
+  inline std::shared_ptr<Buffer> index_buffer() const { return index_buffer_; }
   inline std::shared_ptr<Material> material() const { return material_; }
   inline void set_material(std::shared_ptr<Material> material) {
     material_ = material;
@@ -40,9 +42,9 @@ class Mesh {
             const std::vector<uint32_t> &indices, uint32_t primitive_type);
 
   uint32_t primitive_type_{GL_TRIANGLES};
-  std::unique_ptr<VertexArray> va_{nullptr};
-  std::shared_ptr<Buffer> vb_{nullptr};
-  std::shared_ptr<Buffer> ib_{nullptr};
+  std::unique_ptr<VertexArray> vertex_array_{nullptr};
+  std::shared_ptr<Buffer> vertex_buffer_{nullptr};
+  std::shared_ptr<Buffer> index_buffer_{nullptr};
   std::shared_ptr<Material> material_{nullptr};
 };
 

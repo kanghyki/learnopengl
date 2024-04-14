@@ -24,6 +24,6 @@ void Buffer::Init(uint32_t buffer_type, uint32_t usage, const void *data,
   stride_ = stride;
   count_ = count;
   glGenBuffers(1, &id_);
-  glBindBuffer(buffer_type_, id_);
+  Bind();
   glBufferData(buffer_type_, stride_ * count_, data, usage);
 }

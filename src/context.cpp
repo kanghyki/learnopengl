@@ -97,21 +97,6 @@ bool Context::Init() {
     return false;
   }
 
-  grass_program_ = Program::Create("shader/grass.vs", "shader/grass.fs");
-  if (!grass_program_) {
-    return false;
-  }
-  grass_texture_ = Texture::Create(Image::Load("image/grass.png").get());
-  if (!grass_texture_) {
-    return false;
-  }
-  grass_pos_.resize(10000);
-  for (size_t i = 0; i < grass_pos_.size(); i++) {
-    grass_pos_[i].x = ((float)rand() / (float)RAND_MAX * 2.0f - 1.0f) * 5.0f;
-    grass_pos_[i].z = ((float)rand() / (float)RAND_MAX * 2.0f - 1.0f) * 5.0f;
-    grass_pos_[i].y = glm::radians((float)rand() / (float)RAND_MAX * 360.0f);
-  }
-
   {  // cube texture
     auto cubeRight = Image::Load("./image/cube_texture/right.jpg", false);
     auto cubeLeft = Image::Load("./image/cube_texture/left.jpg", false);
@@ -207,6 +192,40 @@ bool Context::Init() {
   // ubo를 bingding point 0번
   glBindBufferBase(GL_UNIFORM_BUFFER, 0, ubo_transform_->id());
 
+  {
+    grass_program_ = Program::Create("shader/grass.vs", "shader/grass.fs");
+    if (!grass_program_) {
+      return false;
+    }
+    grass_texture_ = Texture::Create(Image::Load("image/grass.png").get());
+    if (!grass_texture_) {
+      return false;
+    }
+    grass_pos_.resize(10000);
+    for (size_t i = 0; i < grass_pos_.size(); i++) {
+      grass_pos_[i].x = ((float)rand() / (float)RAND_MAX * 2.0f - 1.0f) * 5.0f;
+      grass_pos_[i].z = ((float)rand() / (float)RAND_MAX * 2.0f - 1.0f) * 5.0f;
+      grass_pos_[i].y = glm::radians((float)rand() / (float)RAND_MAX * 360.0f);
+    }
+
+    grass_instance_ = VertexArray::Create();
+    grass_instance_->Bind();
+    plain_plane_->vertex_buffer()->Bind();
+    grass_instance_->SetAttrib(0, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), 0);
+    grass_instance_->SetAttrib(1, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex),
+                               offsetof(Vertex, normal));
+    grass_instance_->SetAttrib(2, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex),
+                               offsetof(Vertex, tex_coord));
+
+    grass_pos_buffer_ =
+        Buffer::Create(GL_ARRAY_BUFFER, GL_STATIC_DRAW, grass_pos_.data(),
+                       sizeof(glm::vec3), grass_pos_.size());
+    grass_pos_buffer_->Bind();
+    grass_instance_->SetAttrib(3, 3, GL_FLOAT, GL_FALSE, sizeof(glm::vec3), 0);
+    glVertexAttribDivisor(3, 1);
+    plain_plane_->index_buffer()->Bind();
+  }
+
   return true;
 }
 
@@ -232,19 +251,18 @@ void Context::Render() {
   glBindBuffer(GL_UNIFORM_BUFFER, 0);
 
   {
+    glEnable(GL_BLEND);
+    glDisable(GL_CULL_FACE);
     grass_program_->Use();
     grass_program_->SetUniform("tex", 0);
     grass_texture_->Bind();
-    for (size_t i = 0; i < grass_pos_.size(); i++) {
-      auto modelTransform =
-          glm::translate(glm::mat4(1.0f),
-                         glm::vec3(grass_pos_[i].x, 0.5f, grass_pos_[i].z)) *
-          glm::rotate(glm::mat4(1.0f), grass_pos_[i].y,
-                      glm::vec3(0.0f, 1.0f, 0.0f));
-      auto transform = projection * view * modelTransform;
-      grass_program_->SetUniform("transform", transform);
-      plain_plane_->Draw(grass_program_.get());
-    }
+    grass_instance_->Bind();
+    auto modelTransform =
+        glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 0.5f, 0.0f));
+    auto transform = projection * view * modelTransform;
+    grass_program_->SetUniform("transform", transform);
+    glDrawElementsInstanced(GL_TRIANGLES, plain_plane_->index_buffer()->count(),
+                            GL_UNSIGNED_INT, 0, grass_pos_buffer_->count());
   }
 
   {  // cube program

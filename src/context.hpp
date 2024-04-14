@@ -48,9 +48,12 @@ class Context {
   std::unique_ptr<Program> env_map_program_{nullptr};
   std::unique_ptr<Program> cube_program_{nullptr};
   std::unique_ptr<Program> lighting_program_{nullptr};
+
   std::unique_ptr<Program> grass_program_{nullptr};
   std::unique_ptr<Texture> grass_texture_{nullptr};
   std::vector<glm::vec3> grass_pos_;
+  std::unique_ptr<Buffer> grass_pos_buffer_;
+  std::unique_ptr<VertexArray> grass_instance_;
 
   // textures
   std::unique_ptr<CubeTexture> cube_texture_{nullptr};

@@ -15,24 +15,26 @@ std::shared_ptr<Mesh> Mesh::Create(const std::vector<Vertex> &vertices,
 
 void Mesh::Init(const std::vector<Vertex> &vertices,
                 const std::vector<uint32_t> &indices, uint32_t primitive_type) {
-  va_ = VertexArray::Create();
-  vb_ = Buffer::Create(GL_ARRAY_BUFFER, GL_STATIC_DRAW, vertices.data(),
-                       sizeof(Vertex), vertices.size());
-  ib_ = Buffer::Create(GL_ELEMENT_ARRAY_BUFFER, GL_STATIC_DRAW, indices.data(),
-                       sizeof(uint32_t), indices.size());
-  va_->SetAttrib(0, 3, GL_FLOAT, false, sizeof(Vertex), 0);
-  va_->SetAttrib(1, 3, GL_FLOAT, false, sizeof(Vertex),
-                 offsetof(Vertex, normal));
-  va_->SetAttrib(2, 2, GL_FLOAT, false, sizeof(Vertex),
-                 offsetof(Vertex, texCoord));
+  vertex_array_ = VertexArray::Create();
+  vertex_buffer_ =
+      Buffer::Create(GL_ARRAY_BUFFER, GL_STATIC_DRAW, vertices.data(),
+                     sizeof(Vertex), vertices.size());
+  index_buffer_ =
+      Buffer::Create(GL_ELEMENT_ARRAY_BUFFER, GL_STATIC_DRAW, indices.data(),
+                     sizeof(uint32_t), indices.size());
+  vertex_array_->SetAttrib(0, 3, GL_FLOAT, false, sizeof(Vertex), 0);
+  vertex_array_->SetAttrib(1, 3, GL_FLOAT, false, sizeof(Vertex),
+                           offsetof(Vertex, normal));
+  vertex_array_->SetAttrib(2, 2, GL_FLOAT, false, sizeof(Vertex),
+                           offsetof(Vertex, tex_coord));
 }
 
 void Mesh::Draw(const Program *program) const {
-  va_->Bind();
+  vertex_array_->Bind();
   if (material_) {
     material_->setToProgram(program);
   }
-  glDrawElements(primitive_type_, ib_->count(), GL_UNSIGNED_INT, 0);
+  glDrawElements(primitive_type_, index_buffer_->count(), GL_UNSIGNED_INT, 0);
 }
 
 std::shared_ptr<Mesh> Mesh::CreateBox() {
@@ -119,8 +121,8 @@ std::shared_ptr<Mesh> Mesh::CreateSphere(size_t slice, size_t stack) {
           glm::vec4(yPoint, 1.0f) * glm::rotate(glm::mat4(1.0f), (d_theta * j),
                                                 glm::vec3(0.0f, -1.0f, 0.0f));
       v.normal = glm::normalize(v.position);
-      v.texCoord = glm::vec2(static_cast<float>(j) / slice,
-                             1.0f - static_cast<float>(i) / stack);
+      v.tex_coord = glm::vec2(static_cast<float>(j) / slice,
+                              1.0f - static_cast<float>(i) / stack);
       vertices.push_back(v);
     }
   }
