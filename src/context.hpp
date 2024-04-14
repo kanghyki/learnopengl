@@ -84,6 +84,7 @@ class Context {
   bool shift_{false};
 
   std::shared_ptr<Light> light_{nullptr};
+  bool is_blinn_{false};
 
   Camera camera_;
   glm::vec2 prev_cursor_{0.0f};

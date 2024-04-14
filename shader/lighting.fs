@@ -39,39 +39,42 @@ uniform int lightType;
 uniform Light light;
 uniform Material material;
 uniform bool isPick;
+uniform bool isBlinn;
 
 vec3 calcAmbient(vec3 texColor) {
-    vec3 ambient = texColor * light.ambient;
-
-    return ambient;
+    return texColor * light.ambient;
 }
 
 vec3 calcDiffuse(vec3 texColor, vec3 lightDir) {
-    vec3    pixelNorm   = normalize(fs_in.normal);
-    float   diff        = max(dot(pixelNorm, lightDir), 0.0);
-    vec3    diffuse     = diff * texColor * light.diffuse;
+    vec3    pixelNorm = normalize(fs_in.normal);
+    float   diff      = max(dot(pixelNorm, lightDir), 0.0);
 
-    return diffuse;
+    return diff * texColor * light.diffuse;
 }
 
 vec3 calcSpecular(vec3 lightDir) {
-    vec3    pixelNorm   = normalize(fs_in.normal);
-    vec3    specColor   = texture(material.specular, fs_in.texCoord).xyz;
-    vec3    viewDir     = normalize(viewPos - fs_in.position);
-    vec3    reflectDir  = reflect(-lightDir, pixelNorm);
-    float   spec        = pow(max(dot(viewDir, reflectDir), 0.0), material.shininess);
-    vec3    specular    = spec * specColor * light.specular;
+    vec3    pixelNorm = normalize(fs_in.normal);
+    vec3    specColor = texture(material.specular, fs_in.texCoord).xyz;
+    float   spec      = 0.0;
+    vec3    viewDir   = normalize(viewPos - fs_in.position);
+    if (isBlinn) {
+      vec3 halfDir  = normalize(lightDir + viewDir);
+      spec          = pow(max(dot(halfDir, pixelNorm), 0.0), material.shininess);
+    } else {
+      vec3 reflectDir = reflect(-lightDir, pixelNorm);
+      spec            = pow(max(dot(viewDir, reflectDir), 0.0), material.shininess);
+    }
 
-    return specular;
+    return spec * specColor * light.specular;
 }
 
 vec3 directionalLight() {
-    vec3 texColor   = texture(material.diffuse, fs_in.texCoord).xyz;
-    vec3 lightDir   = normalize(-light.direction);
+    vec3 texColor = texture(material.diffuse, fs_in.texCoord).xyz;
+    vec3 lightDir = normalize(-light.direction);
 
-    vec3 ambient    = calcAmbient(texColor);
-    vec3 diffuse    = calcDiffuse(texColor, lightDir);
-    vec3 specular   = calcSpecular(lightDir);
+    vec3 ambient  = calcAmbient(texColor);
+    vec3 diffuse  = calcDiffuse(texColor, lightDir);
+    vec3 specular = calcSpecular(lightDir);
 
     return ambient + diffuse + specular;
 }

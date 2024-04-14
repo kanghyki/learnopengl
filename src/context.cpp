@@ -140,9 +140,13 @@ bool Context::Init() {
 
     plane_ = Mesh::CreatePlane();
     auto mat = Material::Create();
+    mat->specular_ = Texture::Create(
+        Image::CreateSingleColorImage(4, 4, glm::vec4(0.8f, 0.8f, 0.8f, 1.0f))
+            .get());
     mat->diffuse_ = Texture::Create(
         Image::CreateSingleColorImage(4, 4, glm::vec4(0.5f, 0.4f, 0.05f, 1.0f))
             .get());
+    mat->shininess_ = 1.0f;
     plane_->set_material(mat);
   }
   {  // model
@@ -155,12 +159,12 @@ bool Context::Init() {
   light_ = Light::Create(sphere_);
   light_->CreateBoundingSphere(0.5f);
   light_->transform().set_translate(glm::vec3(0.0f, 5.0f, 0.0f));
-  // light_->transform().set_scale(glm::vec3(0.5f));
+  light_->transform().set_scale(glm::vec3(0.3f));
   objects_.push_back(light_);
 
   auto floor = Object::Create(plane_);
   floor->transform().set_scale(glm::vec3(10.0f));
-  floor->transform().set_rotate(glm::vec3(90.0f, 0.0f, 0.0f));
+  floor->transform().set_rotate(glm::vec3(-90.0f, 0.0f, 0.0f));
   objects_.push_back(floor);
 
   for (int i = -2; i < 3; ++i) {
@@ -192,37 +196,37 @@ bool Context::Init() {
   glBindBufferBase(GL_UNIFORM_BUFFER, 0, ubo_transform_->id());
 
   {
-    grass_program_ = Program::Create("shader/grass.vs", "shader/grass.fs");
-    if (!grass_program_) {
-      return false;
-    }
-    grass_texture_ = Texture::Create(Image::Load("image/grass.png").get());
-    if (!grass_texture_) {
-      return false;
-    }
-    grass_pos_.resize(10000);
-    for (size_t i = 0; i < grass_pos_.size(); i++) {
-      grass_pos_[i].x = ((float)rand() / (float)RAND_MAX * 2.0f - 1.0f) * 5.0f;
-      grass_pos_[i].z = ((float)rand() / (float)RAND_MAX * 2.0f - 1.0f) * 5.0f;
-      grass_pos_[i].y = glm::radians((float)rand() / (float)RAND_MAX * 360.0f);
-    }
+    // grass_program_ = Program::Create("shader/grass.vs", "shader/grass.fs");
+    // if (!grass_program_) {
+    //   return false;
+    // }
+    // grass_texture_ = Texture::Create(Image::Load("image/grass.png").get());
+    // if (!grass_texture_) {
+    //   return false;
+    // }
+    // grass_pos_.resize(10000);
+    // for (size_t i = 0; i < grass_pos_.size(); i++) {
+    //   grass_pos_[i].x = ((float)rand() / (float)RAND_MAX * 2.0f - 1.0f)
+    //   * 5.0f; grass_pos_[i].z = ((float)rand() / (float)RAND_MAX * 2.0f
+    //   - 1.0f) * 5.0f; grass_pos_[i].y = glm::radians((float)rand() /
+    //   (float)RAND_MAX * 360.0f);
+    // }
 
-    grass_instance_ = VertexArray::Create();
-    grass_instance_->Bind();
-    plain_plane_->vertex_buffer()->Bind();
-    grass_instance_->SetAttrib(0, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), 0);
-    grass_instance_->SetAttrib(1, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex),
-                               offsetof(Vertex, normal));
-    grass_instance_->SetAttrib(2, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex),
-                               offsetof(Vertex, tex_coord));
+    // grass_instance_ = VertexArray::Create();
+    // grass_instance_->Bind();
+    // plain_plane_->vertex_buffer()->Bind();
+    // grass_instance_->SetAttrib(0, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), 0);
+    // grass_instance_->SetAttrib(1, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex),
+    //                            offsetof(Vertex, normal));
+    // grass_instance_->SetAttrib(2, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex),
+    //                            offsetof(Vertex, tex_coord));
 
-    grass_pos_buffer_ =
-        Buffer::Create(GL_ARRAY_BUFFER, GL_STATIC_DRAW, grass_pos_.data(),
-                       sizeof(glm::vec3), grass_pos_.size());
-    grass_pos_buffer_->Bind();
-    grass_instance_->SetAttrib(3, 3, GL_FLOAT, GL_FALSE, sizeof(glm::vec3), 0);
-    glVertexAttribDivisor(3, 1);
-    plain_plane_->index_buffer()->Bind();
+    // grass_pos_buffer_ =
+    //     Buffer::Create(GL_ARRAY_BUFFER, GL_STATIC_DRAW, grass_pos_.data(),
+    //                    sizeof(glm::vec3), grass_pos_.size());
+    // grass_pos_buffer_->Bind();
+    // grass_instance_->SetAttrib(3, 3, GL_FLOAT, GL_FALSE, sizeof(glm::vec3),
+    // 0); glVertexAttribDivisor(3, 1); plain_plane_->index_buffer()->Bind();
   }
 
   return true;
@@ -250,18 +254,19 @@ void Context::Render() {
   glBindBuffer(GL_UNIFORM_BUFFER, 0);
 
   {
-    glEnable(GL_BLEND);
-    glDisable(GL_CULL_FACE);
-    grass_program_->Use();
-    grass_program_->SetUniform("tex", 0);
-    grass_texture_->Bind();
-    grass_instance_->Bind();
-    auto modelTransform =
-        glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 0.5f, 0.0f));
-    auto transform = projection * view * modelTransform;
-    grass_program_->SetUniform("transform", transform);
-    glDrawElementsInstanced(GL_TRIANGLES, plain_plane_->index_buffer()->count(),
-                            GL_UNSIGNED_INT, 0, grass_pos_buffer_->count());
+    // glEnable(GL_BLEND);
+    // glDisable(GL_CULL_FACE);
+    // grass_program_->Use();
+    // grass_program_->SetUniform("tex", 0);
+    // grass_texture_->Bind();
+    // grass_instance_->Bind();
+    // auto modelTransform =
+    //     glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 0.5f, 0.0f));
+    // auto transform = projection * view * modelTransform;
+    // grass_program_->SetUniform("transform", transform);
+    // glDrawElementsInstanced(GL_TRIANGLES,
+    // plain_plane_->index_buffer()->count(),
+    //                         GL_UNSIGNED_INT, 0, grass_pos_buffer_->count());
   }
 
   {  // cube program
@@ -301,6 +306,7 @@ void Context::Render() {
     lighting_program_->SetUniform("light.ambient", light_->ambient);
     lighting_program_->SetUniform("light.diffuse", light_->diffuse);
     lighting_program_->SetUniform("light.specular", light_->specular);
+    lighting_program_->SetUniform("isBlinn", is_blinn_);
 
     for (const auto& object : objects_) {
       lighting_program_->SetUniform("model", object->transform().ModelMatrix());
@@ -330,8 +336,6 @@ void Context::Render() {
                            (float)a / 255));
 
     simple_program_->SetUniform("model", object->transform().ModelMatrix());
-    // simple_program_->SetUniform(
-    //     "model", projection * view * object->transform().ModelMatrix());
     object->Draw(simple_program_.get());
   }
 
@@ -604,6 +608,7 @@ void Context::RenderImGui() {
         ImGui::RadioButton("Point", (int*)&light_->type(), kPoint);
         ImGui::SameLine();
         ImGui::RadioButton("Spot", (int*)&light_->type(), kSpot);
+        ImGui::Checkbox("Blinn", &is_blinn_);
         if (light_->type() == kDirectional) {
           ImGui::Text("%10s : x(%.3f), y(%.3f), z(%.3f)", "Direction",
                       light_->direction().x, light_->direction().y,
@@ -705,32 +710,42 @@ void Context::RenderImGui() {
         std::shared_ptr<Mesh> mesh = pick_object_->mesh();
         Transform& transform = pick_object_->transform();
 
-        ImGui::Text("Translate: x(%.3f), y(%.3f), z(%.3f)",
-                    transform.translate().x, transform.translate().y,
-                    transform.translate().z);
-        ImGui::Text("Scale: x(%.3f), y(%.3f), z(%.3f)", transform.scale().x,
-                    transform.scale().y, transform.scale().z);
-        ImGui::Text("Rotate: x(%.3f), y(%.3f), z(%.3f)",
-                    transform.rotate_euler().x, transform.rotate_euler().y,
-                    transform.rotate_euler().z);
+        if (ImGui::CollapsingHeader("Transform",
+                                    ImGuiTreeNodeFlags_DefaultOpen)) {
+          ImGui::Text("Translate: x(%.3f), y(%.3f), z(%.3f)",
+                      transform.translate().x, transform.translate().y,
+                      transform.translate().z);
+          ImGui::Text("Scale: x(%.3f), y(%.3f), z(%.3f)", transform.scale().x,
+                      transform.scale().y, transform.scale().z);
+          ImGui::Text("Rotate: x(%.3f), y(%.3f), z(%.3f)",
+                      transform.rotate_euler().x, transform.rotate_euler().y,
+                      transform.rotate_euler().z);
+        }
 
-        if (mesh->material()) {
-          if (mesh->material()->diffuse_) {
-            ImGui::Text("Diffuse texture");
-            ImGui::Image(
-                reinterpret_cast<ImTextureID>(
-                    static_cast<uintptr_t>(mesh->material()->diffuse_->id())),
-                ImVec2((float)150, (float)150), ImVec2(0, 1), ImVec2(1, 0));
+        if (ImGui::CollapsingHeader("Material",
+                                    ImGuiTreeNodeFlags_DefaultOpen)) {
+          if (mesh->material()) {
+            if (mesh->material()->diffuse_) {
+              ImGui::Text("Diffuse texture");
+              ImGui::Image(
+                  reinterpret_cast<ImTextureID>(
+                      static_cast<uintptr_t>(mesh->material()->diffuse_->id())),
+                  ImVec2((float)150, (float)150), ImVec2(0, 1), ImVec2(1, 0));
+            }
+            if (mesh->material()->specular_) {
+              ImGui::Text("Specular texture");
+              ImGui::Image(reinterpret_cast<ImTextureID>(static_cast<uintptr_t>(
+                               mesh->material()->specular_->id())),
+                           ImVec2((float)150, (float)150), ImVec2(0, 1),
+                           ImVec2(1, 0));
+            }
+            ImGui::DragFloat("shininess", &mesh->material()->shininess_, 0.01f);
           }
-          if (mesh->material()->specular_) {
-            ImGui::Text("Specular texture");
-            ImGui::Image(
-                reinterpret_cast<ImTextureID>(
-                    static_cast<uintptr_t>(mesh->material()->specular_->id())),
-                ImVec2((float)150, (float)150), ImVec2(0, 1), ImVec2(1, 0));
-          }
+        }
 
-          if (object_type_ == kLight) {
+        if (object_type_ == kLight) {
+          if (ImGui::CollapsingHeader("Light",
+                                      ImGuiTreeNodeFlags_DefaultOpen)) {
             std::shared_ptr<Light> light =
                 std::dynamic_pointer_cast<Light>(pick_object_);
             switch (light->type()) {
