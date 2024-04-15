@@ -52,14 +52,13 @@ std::unique_ptr<Context> Context::Create() {
 }
 
 bool Context::Init() {
-  framebuffer_ =
-      Framebuffer::Create(Texture::CreateEmpty(width_, height_, GL_RGBA));
+  framebuffer_ = Framebuffer::Create(Texture::Create(width_, height_, GL_RGBA));
   if (!framebuffer_) {
     return false;
   }
 
   index_framebuffer_ =
-      Framebuffer::Create(Texture::CreateEmpty(width_, height_, GL_RGBA));
+      Framebuffer::Create(Texture::Create(width_, height_, GL_RGBA));
   if (!index_framebuffer_) {
     return false;
   }
@@ -127,7 +126,7 @@ bool Context::Init() {
   {  // sphere mesh
     auto mat = Material::Create();
 
-    mat->diffuse_ = Texture::Create(Image::Load("image/wall.jpg", true).get());
+    mat->diffuse_ = Texture::Create(Image::Load("image/1.png", true).get());
     mat->specular_ = Texture::Create(
         Image::CreateSingleColorImage(4, 4, glm::vec4(0.8f, 0.8f, 0.8f, 1.0f))
             .get());
@@ -136,17 +135,6 @@ bool Context::Init() {
   }
   {  // plane mesh
     plain_plane_ = Mesh::CreatePlane();
-
-    plane_ = Mesh::CreatePlane();
-    auto mat = Material::Create();
-    mat->specular_ = Texture::Create(
-        Image::CreateSingleColorImage(4, 4, glm::vec4(0.8f, 0.8f, 0.8f, 1.0f))
-            .get());
-    mat->diffuse_ = Texture::Create(
-        Image::CreateSingleColorImage(4, 4, glm::vec4(0.5f, 0.4f, 0.05f, 1.0f))
-            .get());
-    mat->shininess_ = 1.0f;
-    plane_->set_material(mat);
   }
   {  // model
     model_ = Model::Load("model/resources/teapot.obj");
@@ -155,28 +143,30 @@ bool Context::Init() {
     }
   }
 
+  glm::vec3 center = glm::vec3(0.0f, 3.0f, 0.0f);
   light_ = Light::Create(sphere_);
   light_->CreateBoundingSphere(0.5f);
-  light_->transform().set_translate(glm::vec3(0.0f, 5.0f, 0.0f));
-  light_->transform().set_scale(glm::vec3(0.3f));
+  light_->transform().set_translate(center);
+  light_->transform().set_scale(glm::vec3(0.5f));
   objects_.push_back(light_);
 
-  auto floor = Object::Create(plane_);
-  floor->transform().set_scale(glm::vec3(10.0f));
-  floor->transform().set_rotate(glm::vec3(-90.0f, 0.0f, 0.0f));
-  objects_.push_back(floor);
-
-  for (int i = -2; i < 3; ++i) {
-    for (int j = -2; j < 3; ++j) {
-      for (int k = 1; k < 6; ++k) {
+  for (int i = -1; i < 2; ++i) {
+    for (int j = -1; j < 2; ++j) {
+      for (int k = -1; k < 2; ++k) {
+        if (i == 0 && j == 0 && k == 0) continue;
         auto box = Object::Create(box_);
-        box->transform().set_translate(glm::vec3(0.5f) * glm::vec3(j, k, i));
-        box->transform().set_scale(glm::vec3(0.3f));
+        box->transform().set_translate(
+            center + glm::vec3(j * 0.5f, k * 0.5, i * 0.5) * 3.0f);
+        box->transform().set_scale(glm::vec3(0.5f));
         box->CreateBoundingSphere(0.7f);
         objects_.push_back(box);
       }
     }
   }
+
+  auto floor = Object::Create(box_);
+  floor->transform().set_scale(glm::vec3(10.0f, 0.5f, 10.0f));
+  objects_.push_back(floor);
 
   // shader에 uniform block 연결, binding point 0번
   glUniformBlockBinding(
@@ -194,38 +184,9 @@ bool Context::Init() {
   // ubo를 bingding point 0번
   glBindBufferBase(GL_UNIFORM_BUFFER, 0, ubo_transform_->id());
 
-  {
-    // grass_program_ = Program::Create("shader/grass.vs", "shader/grass.fs");
-    // if (!grass_program_) {
-    //   return false;
-    // }
-    // grass_texture_ = Texture::Create(Image::Load("image/grass.png").get());
-    // if (!grass_texture_) {
-    //   return false;
-    // }
-    // grass_pos_.resize(10000);
-    // for (size_t i = 0; i < grass_pos_.size(); i++) {
-    //   grass_pos_[i].x = ((float)rand() / (float)RAND_MAX * 2.0f - 1.0f)
-    //   * 5.0f; grass_pos_[i].z = ((float)rand() / (float)RAND_MAX * 2.0f
-    //   - 1.0f) * 5.0f; grass_pos_[i].y = glm::radians((float)rand() /
-    //   (float)RAND_MAX * 360.0f);
-    // }
-
-    // grass_instance_ = VertexArray::Create();
-    // grass_instance_->Bind();
-    // plain_plane_->vertex_buffer()->Bind();
-    // grass_instance_->SetAttrib(0, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), 0);
-    // grass_instance_->SetAttrib(1, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex),
-    //                            offsetof(Vertex, normal));
-    // grass_instance_->SetAttrib(2, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex),
-    //                            offsetof(Vertex, tex_coord));
-
-    // grass_pos_buffer_ =
-    //     Buffer::Create(GL_ARRAY_BUFFER, GL_STATIC_DRAW, grass_pos_.data(),
-    //                    sizeof(glm::vec3), grass_pos_.size());
-    // grass_pos_buffer_->Bind();
-    // grass_instance_->SetAttrib(3, 3, GL_FLOAT, GL_FALSE, sizeof(glm::vec3),
-    // 0); glVertexAttribDivisor(3, 1); plain_plane_->index_buffer()->Bind();
+  depth_map_ = DepthMap::Create(1024, 1024);
+  if (!depth_map_) {
+    return false;
   }
 
   return true;
@@ -235,38 +196,61 @@ void Context::Update() { camera_.Move(); }
 
 void Context::Render() {
   RenderImGui();
+
+  {
+    auto rm = glm::rotate(glm::mat4(1.0f), glm::radians(90.0f),
+                          glm::vec3(-1.0f, 0.0f, 0.0f));
+    auto lightView = glm::lookAt(
+        light_->position(), light_->position() + light_->direction(),
+        glm::vec3(glm::vec4(light_->direction(), 0.0f) * rm));
+    glm::mat4 lightProjection;
+    if (light_->type() == kDirectional) {
+      lightProjection = glm::ortho(-10.0f, 10.0f, -10.0f, 10.0f, 1.0f, 20.0f);
+    } else {
+      lightProjection = glm::perspective(
+          glm::radians((light_->cutoff[0] + light_->cutoff[1]) * 2.0f), 1.0f,
+          1.0f, 20.0f);
+    }
+    ubo_transform_->Bind();
+    glBufferSubData(GL_UNIFORM_BUFFER, 0, sizeof(glm::mat4),
+                    glm::value_ptr(lightView));
+    glBufferSubData(GL_UNIFORM_BUFFER, sizeof(glm::mat4), sizeof(glm::mat4),
+                    glm::value_ptr(lightProjection));
+    glBindBuffer(GL_UNIFORM_BUFFER, 0);
+
+    depth_map_->Bind();
+    glEnable(GL_DEPTH_TEST);
+    glClear(GL_DEPTH_BUFFER_BIT);
+    glViewport(0, 0, depth_map_->depth_map()->width(),
+               depth_map_->depth_map()->height());
+    simple_program_->Use();
+    simple_program_->SetUniform("color", glm::vec4(1.0f, 1.0f, 1.0f, 1.0f));
+
+    for (const auto& object : objects_) {
+      simple_program_->SetUniform("model", object->transform().ModelMatrix());
+      object->Draw(simple_program_.get());
+    }
+
+    Framebuffer::BindToDefault();
+    glViewport(0, 0, width_, height_);
+  }
+
   framebuffer_->Bind();
   glEnable(GL_DEPTH_TEST);
-  glEnable(GL_BLEND);
-  glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+  // glEnable(GL_BLEND);
+  // glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
   glClearColor(clear_color_.r, clear_color_.g, clear_color_.b, clear_color_.a);
   glClear(clear_bit_);
   auto projection = camera_.GetPerspectiveProjectionMatrix();
   auto view = camera_.GetViewMatrix();
 
   // copy
-  glBindBuffer(GL_UNIFORM_BUFFER, ubo_transform_->id());
+  ubo_transform_->Bind();
   glBufferSubData(GL_UNIFORM_BUFFER, 0, sizeof(glm::mat4),
                   glm::value_ptr(view));
   glBufferSubData(GL_UNIFORM_BUFFER, sizeof(glm::mat4), sizeof(glm::mat4),
                   glm::value_ptr(projection));
   glBindBuffer(GL_UNIFORM_BUFFER, 0);
-
-  {
-    // glEnable(GL_BLEND);
-    // glDisable(GL_CULL_FACE);
-    // grass_program_->Use();
-    // grass_program_->SetUniform("tex", 0);
-    // grass_texture_->Bind();
-    // grass_instance_->Bind();
-    // auto modelTransform =
-    //     glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 0.5f, 0.0f));
-    // auto transform = projection * view * modelTransform;
-    // grass_program_->SetUniform("transform", transform);
-    // glDrawElementsInstanced(GL_TRIANGLES,
-    // plain_plane_->index_buffer()->count(),
-    //                         GL_UNSIGNED_INT, 0, grass_pos_buffer_->count());
-  }
 
   {  // cube program
     glActiveTexture(GL_TEXTURE0);
@@ -284,7 +268,7 @@ void Context::Render() {
     if (is_hit_) {
       auto model = glm::translate(glm::mat4(1.0), hit_point_) *
                    glm::scale(glm::mat4(1.0), glm::vec3(0.1f));
-      simple_program_->SetUniform("color", glm::vec4(0.0f, 1.0f, 0.0f, 1.0f));
+      simple_program_->SetUniform("color", glm::vec4(0.2f, 0.3f, 0.4f, 1.0f));
       simple_program_->SetUniform("model", model);
       sphere_->Draw(simple_program_.get());
     }
@@ -306,6 +290,25 @@ void Context::Render() {
     lighting_program_->SetUniform("light.diffuse", light_->diffuse);
     lighting_program_->SetUniform("light.specular", light_->specular);
     lighting_program_->SetUniform("isBlinn", is_blinn_);
+    glActiveTexture(GL_TEXTURE3);
+    depth_map_->depth_map()->Bind();
+    lighting_program_->SetUniform("depthMap", 3);
+    auto rm = glm::rotate(glm::mat4(1.0f), glm::radians(90.0f),
+                          glm::vec3(-1.0f, 0.0f, 0.0f));
+    auto lightView = glm::lookAt(
+        light_->position(), light_->position() + light_->direction(),
+        glm::vec3(glm::vec4(light_->direction(), 0.0f) * rm));
+    glm::mat4 lightProjection;
+    if (light_->type() == kDirectional) {
+      lightProjection = glm::ortho(-10.0f, 10.0f, -10.0f, 10.0f, 1.0f, 20.0f);
+    } else {
+      lightProjection = glm::perspective(
+          glm::radians((light_->cutoff[0] + light_->cutoff[1]) * 2.0f), 1.0f,
+          1.0f, 20.0f);
+    }
+    lighting_program_->SetUniform("lightTransform",
+                                  lightProjection * lightView);
+    glActiveTexture(GL_TEXTURE0);
 
     for (const auto& object : objects_) {
       lighting_program_->SetUniform("model", object->transform().ModelMatrix());
@@ -338,12 +341,6 @@ void Context::Render() {
     object->Draw(simple_program_.get());
   }
 
-  if (is_wireframe_active_) {
-    glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-  } else {
-    glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-  }
-
   Framebuffer::BindToDefault();
   glDisable(GL_BLEND);
   glDisable(GL_DEPTH_TEST);
@@ -357,6 +354,12 @@ void Context::Render() {
     framebuffer_->color_attachment()->Bind();
     post_program_->SetUniform("tex", 0);
     plain_plane_->Draw(post_program_.get());
+  }
+
+  if (is_wireframe_active_) {
+    glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+  } else {
+    glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
   }
 }
 
@@ -513,8 +516,7 @@ void Context::ProcessMouseMove(double x, double y) {
             pick_object_->transform().translate() + translate);
         prev_position_ = new_pos;
       }
-    }
-    if (left_mouse_ && is_hit_) {
+    } else if (left_mouse_ && is_hit_) {
       glm::vec3 cur_vector =
           hit_point_ - glm::vec3(pick_object_->transform().TranslateMatrix() *
                                  glm::vec4(0.0f, 0.0f, 0.0f, 1.0f));
@@ -538,10 +540,9 @@ void Context::ReshapeViewport(int width, int height) {
   height_ = height;
   camera_.ChangeAspect(width_, height_);
   glViewport(0, 0, width_, height_);
-  framebuffer_ =
-      Framebuffer::Create(Texture::CreateEmpty(width_, height_, GL_RGBA));
+  framebuffer_ = Framebuffer::Create(Texture::Create(width_, height_, GL_RGBA));
   index_framebuffer_ =
-      Framebuffer::Create(Texture::CreateEmpty(width_, height_, GL_RGBA));
+      Framebuffer::Create(Texture::Create(width_, height_, GL_RGBA));
 }
 
 void Context::RenderImGui() {
@@ -656,7 +657,7 @@ void Context::RenderImGui() {
   }
   ImGui::End();
 
-  if (ImGui::Begin("framebuffer", NULL)) {
+  if (ImGui::Begin("Framebuffer", NULL)) {
     auto window_size = ImGui::GetWindowSize();
     ImGui::Image(
         reinterpret_cast<ImTextureID>(
@@ -665,6 +666,26 @@ void Context::RenderImGui() {
         ImVec2(0, 1), ImVec2(1, 0));
 
     static char buf[512] = "framebuffer";
+    ImGui::Text("Save as png");
+    ImGui::SameLine();
+    ImGui::InputText("", buf, 512 - 1);
+    ImGui::SameLine();
+    if (ImGui::Button("OK", ImVec2(50, 0))) {
+      framebuffer_->color_attachment()->SaveAsPng(
+          std::string("save/") + std::string(buf) + std::string(".png"));
+    }
+  }
+  ImGui::End();
+
+  if (ImGui::Begin("Depth map", NULL)) {
+    auto window_size = ImGui::GetWindowSize();
+    ImGui::Image(
+        reinterpret_cast<ImTextureID>(
+            static_cast<uintptr_t>(depth_map_->depth_map()->id())),
+        ImVec2(window_size.x, window_size.x * ((float)height_ / (float)width_)),
+        ImVec2(0, 1), ImVec2(1, 0));
+
+    static char buf[512] = "depth_map";
     ImGui::Text("Save as png");
     ImGui::SameLine();
     ImGui::InputText("", buf, 512 - 1);

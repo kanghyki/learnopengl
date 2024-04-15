@@ -20,7 +20,6 @@ class Light : public Object {
   }
   ~Light(){};
 
-  // TODO: refactor
   LightType& type() { return type_; }
 
   // Point & Spot
@@ -35,7 +34,7 @@ class Light : public Object {
   }
 
   // Spot
-  glm::vec2 cutoff{glm::vec2(11.0f, 5.0f)};
+  glm::vec2 cutoff{glm::vec2(55.0f, 5.0f)};
 
   // All
   glm::vec3 ambient{glm::vec3(0.3f, 0.3f, 0.3f)};

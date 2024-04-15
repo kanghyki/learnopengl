@@ -31,6 +31,7 @@ class Context {
 
  private:
   Context();
+
   bool Init();
 
   std::unique_ptr<Buffer> ubo_transform_{nullptr};
@@ -45,12 +46,7 @@ class Context {
   std::unique_ptr<Program> env_map_program_{nullptr};
   std::unique_ptr<Program> cube_program_{nullptr};
   std::unique_ptr<Program> lighting_program_{nullptr};
-
-  std::unique_ptr<Program> grass_program_{nullptr};
-  std::unique_ptr<Texture> grass_texture_{nullptr};
-  std::vector<glm::vec3> grass_pos_;
-  std::unique_ptr<Buffer> grass_pos_buffer_;
-  std::unique_ptr<VertexArray> grass_instance_;
+  std::unique_ptr<Program> post_program_{nullptr};
 
   // textures
   std::unique_ptr<CubeTexture> cube_texture_{nullptr};
@@ -58,7 +54,6 @@ class Context {
   // Meshes
   std::shared_ptr<Mesh> box_{nullptr};
   std::shared_ptr<Mesh> sphere_{nullptr};
-  std::shared_ptr<Mesh> plane_{nullptr};
   std::shared_ptr<Mesh> plain_plane_{nullptr};
   std::shared_ptr<Model> model_{nullptr};
 
@@ -91,7 +86,8 @@ class Context {
 
   std::unique_ptr<Framebuffer> framebuffer_{nullptr};
   std::unique_ptr<Framebuffer> index_framebuffer_{nullptr};
-  std::unique_ptr<Program> post_program_{nullptr};
+  std::unique_ptr<DepthMap> depth_map_{nullptr};
+
   float gamma_{1.0f};
 
   bool is_wireframe_active_{false};

@@ -18,7 +18,7 @@ std::unique_ptr<Texture> Texture::Create(const Image *image) {
   return std::move(texture);
 }
 
-std::unique_ptr<Texture> Texture::CreateFromFile(const std::string &filename) {
+std::unique_ptr<Texture> Texture::Create(const std::string &filename) {
   auto image = Image::Load(filename);
   if (!image) {
     return nullptr;
@@ -32,11 +32,11 @@ std::unique_ptr<Texture> Texture::CreateFromFile(const std::string &filename) {
   return std::move(texture);
 }
 
-std::unique_ptr<Texture> Texture::CreateEmpty(int width, int height,
-                                              uint32_t format) {
+std::unique_ptr<Texture> Texture::Create(int width, int height, uint32_t format,
+                                         uint32_t type) {
   auto texture = std::unique_ptr<Texture>(new Texture());
   texture->CreateTexture();
-  texture->SetTextureFormat(width, height, format);
+  texture->SetTextureFormat(width, height, format, type);
   texture->SetFilter(GL_LINEAR, GL_LINEAR);
 
   return std::move(texture);
@@ -80,18 +80,25 @@ void Texture::SetTextureFromImage(const Image *image) {
   height_ = image->height();
   format_ = format;
 
-  glTexImage2D(GL_TEXTURE_2D, 0, format_, width_, height_, 0, format,
-               GL_UNSIGNED_BYTE, image->data());
+  glTexImage2D(GL_TEXTURE_2D, 0, format_, width_, height_, 0, format, type_,
+               image->data());
   glGenerateMipmap(GL_TEXTURE_2D);
 }
 
-void Texture::SetTextureFormat(int width, int height, uint32_t format) {
+void Texture::SetTextureFormat(int width, int height, uint32_t format,
+                               uint32_t type) {
   width_ = width;
   height_ = height;
   format_ = format;
+  type_ = type;
 
-  glTexImage2D(GL_TEXTURE_2D, 0, format_, width_, height_, 0, format_,
-               GL_UNSIGNED_BYTE, nullptr);
+  glTexImage2D(GL_TEXTURE_2D, 0, format_, width_, height_, 0, format_, type_,
+               nullptr);
+}
+
+void Texture::SetBorderColor(const glm::vec4 &color) const {
+  glTexParameterfv(GL_TEXTURE_2D, GL_TEXTURE_BORDER_COLOR,
+                   glm::value_ptr(color));
 }
 
 /*

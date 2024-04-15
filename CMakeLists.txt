@@ -24,9 +24,11 @@ src/texture.cpp       src/texture.hpp
 src/mesh.cpp          src/mesh.hpp
 src/model.cpp         src/model.hpp
 src/material.cpp      src/material.hpp
-src/framebuffer.cpp   src/framebuffer.hpp
+                      src/framebuffer.hpp
 src/object.cpp        src/object.hpp
                       src/ray.hpp
+                      src/transform.hpp
+                      src/bounding_sphere.hpp
 )
 
 include(Dependency.cmake)
