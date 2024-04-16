@@ -9,7 +9,7 @@ class Transform {
   ~Transform(){};
 
   glm::mat4 ModelMatrix() const {
-    return TranslateMatrix() * ScaleMatrix() * RotateMatrix();
+    return TranslateMatrix() * RotateMatrix() * ScaleMatrix();
   }
   glm::mat4 ScaleMatrix() const { return glm::scale(glm::mat4(1.0f), scale_); }
   glm::mat4 RotateMatrix() const { return glm::toMat4(quat_); }
