@@ -188,6 +188,10 @@ bool Context::Init() {
   if (!depth_map_) {
     return false;
   }
+  depth_map_3d_ = DepthMap::Create(1024, 1024, kThreeDimensional);
+  if (!depth_map_3d_) {
+    return false;
+  }
 
   return true;
 }
@@ -197,7 +201,7 @@ void Context::Update() { camera_.Move(); }
 void Context::Render() {
   RenderImGui();
 
-  {
+  {  // depth_map 2d
     auto rm = glm::rotate(glm::mat4(1.0f), glm::radians(90.0f),
                           glm::vec3(-1.0f, 0.0f, 0.0f));
     auto lightView = glm::lookAt(
@@ -218,22 +222,66 @@ void Context::Render() {
                     glm::value_ptr(lightProjection));
     glBindBuffer(GL_UNIFORM_BUFFER, 0);
 
-    depth_map_->Bind();
-    glEnable(GL_DEPTH_TEST);
-    glClear(GL_DEPTH_BUFFER_BIT);
-    glViewport(0, 0, depth_map_->depth_map()->width(),
-               depth_map_->depth_map()->height());
-    simple_program_->Use();
-    simple_program_->SetUniform("color", glm::vec4(1.0f, 1.0f, 1.0f, 1.0f));
+    {
+      depth_map_->Bind();
+      glEnable(GL_DEPTH_TEST);
+      glClear(GL_DEPTH_BUFFER_BIT);
+      glViewport(0, 0, depth_map_->depth_map()->width(),
+                 depth_map_->depth_map()->height());
+      simple_program_->Use();
+      simple_program_->SetUniform("color", glm::vec4(1.0f, 1.0f, 1.0f, 1.0f));
 
-    for (const auto& object : objects_) {
-      simple_program_->SetUniform("model", object->transform().ModelMatrix());
-      object->Draw(simple_program_.get());
+      for (const auto& object : objects_) {
+        simple_program_->SetUniform("model", object->transform().ModelMatrix());
+        object->Draw(simple_program_.get());
+      }
+    }
+    {
+      depth_map_3d_->Bind();
+      glEnable(GL_DEPTH_TEST);
+      glClear(GL_DEPTH_BUFFER_BIT);
+      glViewport(0, 0, depth_map_3d_->depth_map()->width(),
+                 depth_map_3d_->depth_map()->height());
+
+      simple_program_->Use();
+      simple_program_->SetUniform("color", glm::vec4(1.0f, 1.0f, 1.0f, 1.0f));
+
+      for (const auto& object : objects_) {
+        simple_program_->SetUniform("model", object->transform().ModelMatrix());
+        object->Draw(simple_program_.get());
+      }
     }
 
     Framebuffer::BindToDefault();
     glViewport(0, 0, width_, height_);
   }
+  glm::mat4 shadowProj(1.0f);
+  std::vector<glm::mat4> shadowTransforms;
+  shadowTransforms.push_back(
+      shadowProj * glm::lookAt(light_->position(),
+                               light_->position() + glm::vec3(1.0, 0.0, 0.0),
+                               glm::vec3(0.0, -1.0, 0.0)));
+  shadowTransforms.push_back(
+      shadowProj * glm::lookAt(light_->position(),
+                               light_->position() + glm::vec3(-1.0, 0.0, 0.0),
+                               glm::vec3(0.0, -1.0, 0.0)));
+  shadowTransforms.push_back(
+      shadowProj * glm::lookAt(light_->position(),
+                               light_->position() + glm::vec3(0.0, 1.0, 0.0),
+                               glm::vec3(0.0, 0.0, 1.0)));
+  shadowTransforms.push_back(
+      shadowProj * glm::lookAt(light_->position(),
+                               light_->position() + glm::vec3(0.0, -1.0, 0.0),
+                               glm::vec3(0.0, 0.0, -1.0)));
+  shadowTransforms.push_back(
+      shadowProj * glm::lookAt(light_->position(),
+                               light_->position() + glm::vec3(0.0, 0.0, 1.0),
+                               glm::vec3(0.0, -1.0, 0.0)));
+  shadowTransforms.push_back(
+      shadowProj * glm::lookAt(light_->position(),
+                               light_->position() + glm::vec3(0.0, 0.0, -1.0),
+                               glm::vec3(0.0, -1.0, 0.0)));
+  // !! glBindTexture(GL_TEXTURE_CUBE_MAP, depthCubemap);
 
   framebuffer_->Bind();
   glEnable(GL_DEPTH_TEST);

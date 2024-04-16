@@ -101,62 +101,6 @@ void Texture::SetBorderColor(const glm::vec4 &color) const {
                    glm::value_ptr(color));
 }
 
-/*
- * CubeTexture
- */
-
-CubeTexture::CubeTexture() {}
-
-CubeTexture::~CubeTexture() {
-  if (id_) {
-    glDeleteTextures(1, &id_);
-  }
-}
-
-std::unique_ptr<CubeTexture> CubeTexture::Create(
-    const std::vector<Image *> &images) {
-  auto texture = std::unique_ptr<CubeTexture>(new CubeTexture());
-  if (!texture->InitFromImages(images)) {
-    return nullptr;
-  }
-
-  return std::move(texture);
-}
-
-bool CubeTexture::InitFromImages(const std::vector<Image *> &images) {
-  glGenTextures(1, &id_);
-  Bind();
-
-  glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-  glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-  glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-  glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-  glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
-
-  for (uint32_t i = 0; i < (uint32_t)images.size(); i++) {
-    auto image = images[i];
-    GLenum format = GL_RGBA;
-    switch (image->channel_count()) {
-      case 1:
-        format = GL_RED;
-        break;
-      case 2:
-        format = GL_RG;
-        break;
-      case 3:
-        format = GL_RGB;
-        break;
-      default:
-        break;
-    }
-
-    glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, 0, GL_RGB, image->width(),
-                 image->height(), 0, format, GL_UNSIGNED_BYTE, image->data());
-  }
-
-  return true;
-}
-
 bool Texture::SaveAsPng(const std::string &filename) const {
   int channel_count = GetChannelCount();
   unsigned char *data = GetTexImage();
@@ -216,4 +160,90 @@ uint32_t Texture::GetChannelCount() const {
   }
 
   return channel_count;
+}
+
+/*
+ * CubeTexture
+ */
+
+CubeTexture::CubeTexture() {}
+
+CubeTexture::~CubeTexture() {
+  if (id_) {
+    glDeleteTextures(1, &id_);
+  }
+}
+
+std::unique_ptr<CubeTexture> CubeTexture::Create(
+    const std::vector<Image *> &images) {
+  auto texture = std::unique_ptr<CubeTexture>(new CubeTexture());
+  if (!texture->InitFromImages(images)) {
+    return nullptr;
+  }
+
+  return std::move(texture);
+}
+
+bool CubeTexture::InitFromImages(const std::vector<Image *> &images) {
+  glGenTextures(1, &id_);
+  Bind();
+
+  glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+  glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+  glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+  glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+  glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
+
+  for (uint32_t i = 0; i < (uint32_t)images.size(); i++) {
+    auto image = images[i];
+    GLenum format = GL_RGBA;
+    switch (image->channel_count()) {
+      case 1:
+        format = GL_RED;
+        break;
+      case 2:
+        format = GL_RG;
+        break;
+      case 3:
+        format = GL_RGB;
+        break;
+      default:
+        break;
+    }
+
+    glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, 0, GL_RGB, image->width(),
+                 image->height(), 0, format, GL_UNSIGNED_BYTE, image->data());
+  }
+
+  return true;
+}
+
+std::unique_ptr<CubeTexture> CubeTexture::CreateDepthCubeMap(int width,
+                                                             int height) {
+  auto texture = std::unique_ptr<CubeTexture>(new CubeTexture());
+  if (!texture->InitDepthCubeMap(width, height)) {
+    return nullptr;
+  }
+
+  return std::move(texture);
+}
+
+bool CubeTexture::InitDepthCubeMap(int width, int height) {
+  width_ = width;
+  height_ = height;
+  glGenTextures(1, &id_);
+  Bind();
+
+  glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+  glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+  glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+  glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+  glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
+
+  for (uint32_t i = 0; i < 6; i++) {
+    glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, 0, GL_DEPTH_COMPONENT,
+                 width_, height_, 0, GL_DEPTH_COMPONENT, GL_FLOAT, NULL);
+  }
+
+  return true;
 }

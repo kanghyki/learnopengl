@@ -92,13 +92,34 @@ class Framebuffer : public BaseFramebuffer {
   std::shared_ptr<Texture> color_attachment_{nullptr};
 };
 
+enum DepthMapType {
+  kTwoDimensional,
+  kThreeDimensional,
+};
+
+union uTexture {
+  std::shared_ptr<Texture> two_d;
+  std::shared_ptr<CubeTexture> three_d;
+};
+
 class DepthMap : public BaseFramebuffer {
  public:
-  static std::unique_ptr<DepthMap> Create(int width, int height) {
-    auto shadowMap = std::unique_ptr<DepthMap>(new DepthMap());
+  static std::unique_ptr<DepthMap> Create(int width, int height,
+                                          DepthMapType type = kTwoDimensional) {
+    auto shadowMap = std::unique_ptr<DepthMap>(new DepthMap(type));
 
-    if (!shadowMap->GenerateDepthMapTexture(width, height) ||
-        !shadowMap->Init()) {
+    switch (type) {
+      case kTwoDimensional:
+        shadowMap->GenerateDepthMap2dTexture(width, height);
+        break;
+      case kThreeDimensional:
+        shadowMap->GenerateDepthMap3dTexture(width, height);
+        break;
+      default:
+        return nullptr;
+    }
+
+    if (!shadowMap->Init()) {
       return nullptr;
     }
 
@@ -106,31 +127,51 @@ class DepthMap : public BaseFramebuffer {
   }
   ~DepthMap() {}
 
-  const std::shared_ptr<Texture> depth_map() const { return depth_map_; }
+  const std::shared_ptr<Texture> depth_map() const { return depth_map_2d_; }
+  const std::shared_ptr<CubeTexture> depth_map_3d() const {
+    return depth_map_3d_;
+  }
 
  private:
-  DepthMap() : BaseFramebuffer() {}
+  DepthMap(DepthMapType type) : BaseFramebuffer(), type_(type) {}
 
-  bool GenerateDepthMapTexture(int width, int height) {
-    depth_map_ = Texture::Create(width, height, GL_DEPTH_COMPONENT, GL_FLOAT);
-    if (!depth_map_) {
+  bool GenerateDepthMap2dTexture(int width, int height) {
+    depth_map_2d_ =
+        Texture::Create(width, height, GL_DEPTH_COMPONENT, GL_FLOAT);
+    if (!depth_map_2d_) {
       return false;
     }
-    depth_map_->SetFilter(GL_NEAREST, GL_NEAREST);
-    depth_map_->SetWrap(GL_CLAMP_TO_BORDER, GL_CLAMP_TO_BORDER);
-    depth_map_->SetBorderColor(glm::vec4(1.0f));
+    depth_map_2d_->SetFilter(GL_NEAREST, GL_NEAREST);
+    depth_map_2d_->SetWrap(GL_CLAMP_TO_BORDER, GL_CLAMP_TO_BORDER);
+    depth_map_2d_->SetBorderColor(glm::vec4(1.0f));
+
+    return true;
+  }
+
+  bool GenerateDepthMap3dTexture(int width, int height) {
+    depth_map_3d_ = CubeTexture::CreateDepthCubeMap(width, height);
+    if (!depth_map_3d_) {
+      return false;
+    }
 
     return true;
   }
 
   void InitTexture() {
-    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D,
-                           depth_map_->id(), 0);
+    if (type_ == kTwoDimensional) {
+      glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D,
+                             depth_map_2d_->id(), 0);
+    } else {
+      glFramebufferTexture(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT,
+                           depth_map_3d_->id(), 0);
+    }
     glDrawBuffer(GL_NONE);
     glReadBuffer(GL_NONE);
   }
 
-  std::shared_ptr<Texture> depth_map_{nullptr};
+  std::shared_ptr<Texture> depth_map_2d_{nullptr};
+  std::shared_ptr<CubeTexture> depth_map_3d_{nullptr};
+  const DepthMapType type_{kTwoDimensional};
 };
 
 #endif

@@ -87,6 +87,7 @@ class Context {
   std::unique_ptr<Framebuffer> framebuffer_{nullptr};
   std::unique_ptr<Framebuffer> index_framebuffer_{nullptr};
   std::unique_ptr<DepthMap> depth_map_{nullptr};
+  std::unique_ptr<DepthMap> depth_map_3d_{nullptr};
 
   float gamma_{1.0f};
 

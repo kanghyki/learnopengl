@@ -45,18 +45,24 @@ class CubeTexture {
  public:
   static std::unique_ptr<CubeTexture> Create(
       const std::vector<Image *> &images);
+  static std::unique_ptr<CubeTexture> CreateDepthCubeMap(int width, int height);
   ~CubeTexture();
 
   inline void Bind() const { glBindTexture(GL_TEXTURE_CUBE_MAP, id_); }
 
   inline const uint32_t id() const { return id_; }
+  inline int width() const { return width_; }
+  inline int height() const { return height_; }
 
  private:
   CubeTexture();
 
   bool InitFromImages(const std::vector<Image *> &images);
+  bool InitDepthCubeMap(int width, int height);
 
   uint32_t id_{0};
+  int width_{0};
+  int height_{0};
 };
 
 #endif
