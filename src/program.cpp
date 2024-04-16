@@ -94,3 +94,10 @@ void Program::SetUniform(const std::string &name,
   uint32_t loc = GetUniformLocation(name);
   glUniformMatrix4fv(loc, 1, GL_FALSE, glm::value_ptr(value));
 }
+
+void Program::SetUniform(const std::string &name,
+                         const std::vector<glm::mat4> &value) const {
+  uint32_t loc = GetUniformLocation(name);
+  glUniformMatrix4fv(loc, value.size(), GL_FALSE,
+                     glm::value_ptr(*(value.data())));
+}

@@ -30,7 +30,7 @@ in VS_OUT {
   vec3 position;
   vec3 normal;
   vec2 texCoord;
-  vec4 positionLight;
+  vec4 lightPosition; // directional shadow
 } fs_in;
 
 out vec4 fragColor;
@@ -41,13 +41,19 @@ uniform Light light;
 uniform Material material;
 uniform bool isPick;
 uniform bool isBlinn;
+
+// directional shadow
 uniform sampler2D depthMap;
 
-float ShadowCalculation(vec4 positionLight, vec3 normal, vec3 lightDir) {
-    vec3  depthMapCoords = (positionLight.xyz / positionLight.w) * 0.5 + 0.5;
-    float depthMapDepth  = texture(depthMap, depthMapCoords.xy).r;
-    float originDepth     = depthMapCoords.z;
-    float bias            = max(0.01 * (1.0 - dot(normal, lightDir)), 0.001);
+// omni-directional shadow
+uniform samplerCube depthMap3d;
+uniform float far_plane;
+
+float ShadowCalculation2d(vec3 normal, vec3 lightDir) {
+    vec3  depthMapCoords  = (fs_in.lightPosition.xyz / fs_in.lightPosition.w) * 0.5 + 0.5;
+    float closestDepth    = texture(depthMap, depthMapCoords.xy).r;
+    float currentDepth    = depthMapCoords.z;
+    float bias            = max(0.02 * (1.0 - dot(normal, lightDir)), 0.001);
     float shadow          = 0.0;
     vec2  texelSize       = 1.0 / textureSize(depthMap, 0);
     int   count           = 1;
@@ -55,7 +61,7 @@ float ShadowCalculation(vec4 positionLight, vec3 normal, vec3 lightDir) {
     for(int x = -1; x <= 1; ++x) {
         for (int y = -1; y <= 1; ++y) {
             float pcfDepth = texture(depthMap, depthMapCoords.xy + vec2(x, y) * texelSize).r;
-            shadow += originDepth - bias > pcfDepth ? 1.0 : 0.0;
+            shadow += currentDepth - bias > pcfDepth ? 1.0 : 0.0;
             ++count;
         }
     }
@@ -63,6 +69,17 @@ float ShadowCalculation(vec4 positionLight, vec3 normal, vec3 lightDir) {
 
     return shadow;
 }
+
+float ShadowCalculation3d()
+{
+    vec3  toLight       = fs_in.position - light.position;
+    float closestDepth  = texture(depthMap3d, normalize(toLight)).r * far_plane;
+    float currentDepth  = length(toLight);
+    float bias          = 0.05; 
+    float shadow        = currentDepth -  bias > closestDepth ? 1.0 : 0.0;
+
+    return shadow;
+}  
 
 vec3 calcAmbient(vec3 texColor) {
     return texColor * light.ambient;
@@ -97,7 +114,7 @@ vec3 directionalLight() {
     vec3  ambient  = calcAmbient(texColor);
     vec3  diffuse  = calcDiffuse(normal, texColor, lightDir);
     vec3  specular = calcSpecular(normal, lightDir);
-    float shadow   = ShadowCalculation(fs_in.positionLight, normal, lightDir);
+    float shadow   = ShadowCalculation2d(normal, lightDir);
 
     return ambient + (diffuse + specular) * (1.0 - shadow);
 }
@@ -116,8 +133,9 @@ vec3 pointLight() {
     vec3    ambient   = calcAmbient(texColor);
     vec3    diffuse   = calcDiffuse(normal, texColor, lightDir);
     vec3    specular  = calcSpecular(normal, lightDir);
+    float   shadow    = ShadowCalculation3d();
 
-    return (ambient + diffuse + specular) * attenuation;
+    return (ambient + (diffuse + specular) * (1.0 - shadow)) * attenuation;
 }
 
 vec3 spotLight() {
@@ -136,7 +154,7 @@ vec3 spotLight() {
         vec3  normal    = normalize(fs_in.normal);
         vec3  diffuse   = calcDiffuse(normal, texColor, lightDir);
         vec3  specular  = calcSpecular(normal, lightDir);
-        float shadow    = ShadowCalculation(fs_in.positionLight, normal, lightDir);
+        float shadow    = ShadowCalculation2d(normal, lightDir);
         result += (diffuse + specular) * intensity * (1.0 - shadow);
     }
     result *= attenuation;

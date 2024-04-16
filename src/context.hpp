@@ -47,12 +47,14 @@ class Context {
   std::unique_ptr<Program> cube_program_{nullptr};
   std::unique_ptr<Program> lighting_program_{nullptr};
   std::unique_ptr<Program> post_program_{nullptr};
+  std::unique_ptr<Program> depth_3d_program_{nullptr};
 
   // textures
   std::unique_ptr<CubeTexture> cube_texture_{nullptr};
 
   // Meshes
   std::shared_ptr<Mesh> box_{nullptr};
+  std::shared_ptr<Mesh> wood_box_{nullptr};
   std::shared_ptr<Mesh> sphere_{nullptr};
   std::shared_ptr<Mesh> plain_plane_{nullptr};
   std::shared_ptr<Model> model_{nullptr};

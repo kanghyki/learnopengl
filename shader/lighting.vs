@@ -15,7 +15,7 @@ out VS_OUT {
   vec3 position;
   vec3 normal;
   vec2 texCoord;
-  vec4 positionLight;
+  vec4 lightPosition; // directional shadow
 } vs_out;
 
 void main() {
@@ -23,5 +23,5 @@ void main() {
     vs_out.position = (model * vec4(aPos, 1.0)).xyz;
     vs_out.normal = (transpose(inverse(model)) * vec4(aNormal, 0.0)).xyz;
     vs_out.texCoord = aTexCoord;
-    vs_out.positionLight = lightTransform * vec4(vs_out.position, 1.0);
+    vs_out.lightPosition = lightTransform * vec4(vs_out.position, 1.0);
 }

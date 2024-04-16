@@ -95,6 +95,13 @@ bool Context::Init() {
     return false;
   }
 
+  depth_3d_program_ =
+      Program::Create("shader/omni_depth_map.vs", "shader/omni_depth_map.fs",
+                      "shader/omni_depth_map.gs");
+  if (!depth_3d_program_) {
+    return false;
+  }
+
   {  // cube texture
     auto cubeRight = Image::Load("./image/cube_texture/right.jpg", false);
     auto cubeLeft = Image::Load("./image/cube_texture/left.jpg", false);
@@ -123,6 +130,15 @@ bool Context::Init() {
     box_ = Mesh::CreateBox();
     box_->set_material(std::move(mat));
   }
+  {
+    auto mat = Material::Create();
+    mat->specular_ = Texture::Create(
+        Image::CreateSingleColorImage(4, 4, glm::vec4(1.0f, 1.0f, 1.0f, 1.0f))
+            .get());
+    mat->diffuse_ = Texture::Create("image/wood.png");
+    wood_box_ = Mesh::CreateBox();
+    wood_box_->set_material(std::move(mat));
+  }
   {  // sphere mesh
     auto mat = Material::Create();
 
@@ -143,7 +159,7 @@ bool Context::Init() {
     }
   }
 
-  glm::vec3 center = glm::vec3(0.0f, 3.0f, 0.0f);
+  glm::vec3 center = glm::vec3(0.0f, 0.0f, 0.0f);
   light_ = Light::Create(sphere_);
   light_->CreateBoundingSphere(0.5f);
   light_->transform().set_translate(center);
@@ -164,9 +180,50 @@ bool Context::Init() {
     }
   }
 
-  auto floor = Object::Create(box_);
-  floor->transform().set_scale(glm::vec3(10.0f, 0.5f, 10.0f));
-  objects_.push_back(floor);
+  {
+    auto top = Object::Create(wood_box_);
+    top->transform().set_scale(glm::vec3(10.0f, 0.5f, 10.0f));
+    top->transform().set_translate(glm::vec3(0.0f, 5.0f, 0.0f));
+    top->transform().set_rotate(glm::vec3(0.0f, 0.0f, 0.0f));
+    objects_.push_back(top);
+    auto bottom = Object::Create(wood_box_);
+    bottom->transform().set_scale(glm::vec3(10.0f, 0.5f, 10.0f));
+    bottom->transform().set_translate(glm::vec3(0.0f, -5.0f, 0.0f));
+    bottom->transform().set_rotate(glm::vec3(0.0f, 0.0f, 0.0f));
+    objects_.push_back(bottom);
+
+    auto front = Object::Create(wood_box_);
+    front->transform().set_scale(glm::vec3(10.0f, 0.5f, 10.0f));
+    front->transform().set_translate(glm::vec3(0.0f, 0.0f, 5.0f));
+    front->transform().set_rotate(glm::vec3(90.0f, 0.0f, 0.0f));
+    objects_.push_back(front);
+
+    auto back = Object::Create(wood_box_);
+    back->transform().set_scale(glm::vec3(10.0f, 0.5f, 10.0f));
+    back->transform().set_translate(glm::vec3(0.0f, 0.0f, -5.0f));
+    back->transform().set_rotate(glm::vec3(90.0f, 0.0f, 0.0f));
+    objects_.push_back(back);
+
+    auto left = Object::Create(wood_box_);
+    left->transform().set_scale(glm::vec3(10.0f, 0.5f, 10.0f));
+    left->transform().set_translate(glm::vec3(-5.0f, 0.0f, 0.0f));
+    left->transform().set_rotate(glm::vec3(0.0f, 0.0f, 90.0f));
+    objects_.push_back(left);
+
+    auto right = Object::Create(wood_box_);
+    right->transform().set_scale(glm::vec3(10.0f, 0.5f, 10.0f));
+    right->transform().set_translate(glm::vec3(5.0f, 0.0f, 0.0f));
+    right->transform().set_rotate(glm::vec3(0.0f, 0.0f, 90.0f));
+    objects_.push_back(right);
+  }
+
+  // auto floor = Object::Create(box_);
+  // floor->transform().set_scale(glm::vec3(10.0f, 0.5f, 10.0f));
+  // objects_.push_back(floor);
+
+  // auto cube = Object::Create(wood_box_);
+  // cube->transform().set_scale(glm::vec3(10.0f));
+  // objects_.push_back(cube);
 
   // shader에 uniform block 연결, binding point 0번
   glUniformBlockBinding(
@@ -240,48 +297,61 @@ void Context::Render() {
       depth_map_3d_->Bind();
       glEnable(GL_DEPTH_TEST);
       glClear(GL_DEPTH_BUFFER_BIT);
-      glViewport(0, 0, depth_map_3d_->depth_map()->width(),
-                 depth_map_3d_->depth_map()->height());
+      glViewport(0, 0, depth_map_3d_->depth_map_3d()->width(),
+                 depth_map_3d_->depth_map_3d()->height());
 
-      simple_program_->Use();
-      simple_program_->SetUniform("color", glm::vec4(1.0f, 1.0f, 1.0f, 1.0f));
+      float aspect = (float)depth_map_3d_->depth_map_3d()->width() /
+                     (float)depth_map_3d_->depth_map_3d()->height();
+      glm::mat4 shadowProj =
+          glm::perspective(glm::radians(90.0f), aspect, 0.5f, 25.0f);
+      std::vector<glm::mat4> shadowTransforms;
+      shadowTransforms.push_back(
+          shadowProj *
+          glm::lookAt(light_->position(),
+                      light_->position() + glm::vec3(1.0, 0.0, 0.0),
+                      glm::vec3(0.0, -1.0, 0.0)));
+      shadowTransforms.push_back(
+          shadowProj *
+          glm::lookAt(light_->position(),
+                      light_->position() + glm::vec3(-1.0, 0.0, 0.0),
+                      glm::vec3(0.0, -1.0, 0.0)));
+      shadowTransforms.push_back(
+          shadowProj *
+          glm::lookAt(light_->position(),
+                      light_->position() + glm::vec3(0.0, 1.0, 0.0),
+                      glm::vec3(0.0, 0.0, 1.0)));
+      shadowTransforms.push_back(
+          shadowProj *
+          glm::lookAt(light_->position(),
+                      light_->position() + glm::vec3(0.0, -1.0, 0.0),
+                      glm::vec3(0.0, 0.0, -1.0)));
+      shadowTransforms.push_back(
+          shadowProj *
+          glm::lookAt(light_->position(),
+                      light_->position() + glm::vec3(0.0, 0.0, 1.0),
+                      glm::vec3(0.0, -1.0, 0.0)));
+      shadowTransforms.push_back(
+          shadowProj *
+          glm::lookAt(light_->position(),
+                      light_->position() + glm::vec3(0.0, 0.0, -1.0),
+                      glm::vec3(0.0, -1.0, 0.0)));
+
+      depth_3d_program_->Use();
+      depth_3d_program_->SetUniform("color", glm::vec4(1.0f, 1.0f, 1.0f, 1.0f));
+      depth_3d_program_->SetUniform("shadowMatrices", shadowTransforms);
+      depth_3d_program_->SetUniform("far_plane", 25.0f);
+      depth_3d_program_->SetUniform("lightPos", light_->position());
 
       for (const auto& object : objects_) {
-        simple_program_->SetUniform("model", object->transform().ModelMatrix());
-        object->Draw(simple_program_.get());
+        depth_3d_program_->SetUniform("model",
+                                      object->transform().ModelMatrix());
+        object->Draw(depth_3d_program_.get());
       }
     }
 
     Framebuffer::BindToDefault();
     glViewport(0, 0, width_, height_);
   }
-  glm::mat4 shadowProj(1.0f);
-  std::vector<glm::mat4> shadowTransforms;
-  shadowTransforms.push_back(
-      shadowProj * glm::lookAt(light_->position(),
-                               light_->position() + glm::vec3(1.0, 0.0, 0.0),
-                               glm::vec3(0.0, -1.0, 0.0)));
-  shadowTransforms.push_back(
-      shadowProj * glm::lookAt(light_->position(),
-                               light_->position() + glm::vec3(-1.0, 0.0, 0.0),
-                               glm::vec3(0.0, -1.0, 0.0)));
-  shadowTransforms.push_back(
-      shadowProj * glm::lookAt(light_->position(),
-                               light_->position() + glm::vec3(0.0, 1.0, 0.0),
-                               glm::vec3(0.0, 0.0, 1.0)));
-  shadowTransforms.push_back(
-      shadowProj * glm::lookAt(light_->position(),
-                               light_->position() + glm::vec3(0.0, -1.0, 0.0),
-                               glm::vec3(0.0, 0.0, -1.0)));
-  shadowTransforms.push_back(
-      shadowProj * glm::lookAt(light_->position(),
-                               light_->position() + glm::vec3(0.0, 0.0, 1.0),
-                               glm::vec3(0.0, -1.0, 0.0)));
-  shadowTransforms.push_back(
-      shadowProj * glm::lookAt(light_->position(),
-                               light_->position() + glm::vec3(0.0, 0.0, -1.0),
-                               glm::vec3(0.0, -1.0, 0.0)));
-  // !! glBindTexture(GL_TEXTURE_CUBE_MAP, depthCubemap);
 
   framebuffer_->Bind();
   glEnable(GL_DEPTH_TEST);
@@ -310,6 +380,16 @@ void Context::Render() {
     cube_program_->SetUniform("cube", 0);
     cube_program_->SetUniform("model", model);
     sphere_->Draw(cube_program_.get());
+    glActiveTexture(GL_TEXTURE0);
+    // depth_map_3d_->depth_map_3d()->Bind();
+
+    // cube_program_->Use();
+    // auto model2 =
+    //     glm::translate(glm::mat4(1.0f), glm::vec3(-5.0f, 2.0f, 0.0f)) *
+    //     glm::scale(glm::mat4(1.0), glm::vec3(1.0f));
+    // cube_program_->SetUniform("cube", 0);
+    // cube_program_->SetUniform("model", model2);
+    // box_->Draw(cube_program_.get());
   }
   {  // simple program
     simple_program_->Use();
@@ -357,6 +437,12 @@ void Context::Render() {
     lighting_program_->SetUniform("lightTransform",
                                   lightProjection * lightView);
     glActiveTexture(GL_TEXTURE0);
+
+    glActiveTexture(GL_TEXTURE4);
+    depth_map_3d_->depth_map_3d()->Bind();
+    lighting_program_->SetUniform("depthMap3d", 4);
+    glActiveTexture(GL_TEXTURE0);
+    lighting_program_->SetUniform("far_plane", 25.0f);
 
     for (const auto& object : objects_) {
       lighting_program_->SetUniform("model", object->transform().ModelMatrix());
