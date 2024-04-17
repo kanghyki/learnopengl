@@ -74,8 +74,8 @@ bool Context::Init() {
     return false;
   }
 
-  lighting_program_ =
-      Program::Create("shader/lighting.vs", "shader/lighting.fs");
+  lighting_program_ = Program::Create(
+      "shader/lighting.vs", "shader/lighting.fs", "shader/lighting.gs");
   if (!lighting_program_) {
     return false;
   }
