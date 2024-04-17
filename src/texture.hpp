@@ -113,7 +113,7 @@ class Texture2d : public BaseTexture {
 class Texture3d : public BaseTexture {
  public:
   static std::unique_ptr<Texture3d> Create(const std::vector<Image *> &images);
-  static std::unique_ptr<Texture3d> Create(int width, int height,
+  static std::unique_ptr<Texture3d> Create(int width, int height, int length,
                                            uint32_t format, uint32_t type);
   ~Texture3d();
 
@@ -127,7 +127,8 @@ class Texture3d : public BaseTexture {
   Texture3d();
 
   void SetCubeMapFromImages(const std::vector<Image *> &images);
-  void SetCubeMapFormat(int width, int height, uint32_t format, uint32_t type);
+  void SetCubeMapFormat(int width, int height, int length, uint32_t format,
+                        uint32_t type);
 
   int width_{0};
   int height_{0};

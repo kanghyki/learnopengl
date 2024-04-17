@@ -64,6 +64,16 @@ bool Context::Init() {
     return false;
   }
 
+  depth_2d_map_ = DepthMap::Create(1024, k2D);
+  if (!depth_2d_map_) {
+    return false;
+  }
+
+  depth_3d_map_ = DepthMap::Create(1024, k3D);
+  if (!depth_3d_map_) {
+    return false;
+  }
+
   lighting_program_ =
       Program::Create("shader/lighting.vs", "shader/lighting.fs");
   if (!lighting_program_) {
@@ -218,14 +228,6 @@ bool Context::Init() {
     objects_.push_back(right);
   }
 
-  // auto floor = Object::Create(box_);
-  // floor->transform().set_scale(glm::vec3(10.0f, 0.5f, 10.0f));
-  // objects_.push_back(floor);
-
-  // auto cube = Object::Create(wood_box_);
-  // cube->transform().set_scale(glm::vec3(10.0f));
-  // objects_.push_back(cube);
-
   // shader에 uniform block 연결, binding point 0번
   glUniformBlockBinding(
       simple_program_->id(),
@@ -241,15 +243,6 @@ bool Context::Init() {
                                   sizeof(glm::mat4), 2);
   // ubo를 bingding point 0번
   glBindBufferBase(GL_UNIFORM_BUFFER, 0, ubo_transform_->id());
-
-  depth_map_ = DepthMap::Create(1024, 1024);
-  if (!depth_map_) {
-    return false;
-  }
-  depth_map_3d_ = DepthMap::Create(1024, 1024, kThreeDimensional);
-  if (!depth_map_3d_) {
-    return false;
-  }
 
   return true;
 }
@@ -281,11 +274,11 @@ void Context::Render() {
     glBindBuffer(GL_UNIFORM_BUFFER, 0);
 
     {
-      depth_map_->Bind();
+      depth_2d_map_->Bind();
       glEnable(GL_DEPTH_TEST);
       glClear(GL_DEPTH_BUFFER_BIT);
-      glViewport(0, 0, depth_map_->depth_map()->width(),
-                 depth_map_->depth_map()->height());
+      glViewport(0, 0, depth_2d_map_->depth_map()->width(),
+                 depth_2d_map_->depth_map()->height());
       simple_program_->Use();
       simple_program_->SetUniform("color", glm::vec4(1.0f, 1.0f, 1.0f, 1.0f));
 
@@ -295,14 +288,14 @@ void Context::Render() {
       }
     }
     {
-      depth_map_3d_->Bind();
+      depth_3d_map_->Bind();
       glEnable(GL_DEPTH_TEST);
       glClear(GL_DEPTH_BUFFER_BIT);
-      glViewport(0, 0, depth_map_3d_->depth_map_3d()->width(),
-                 depth_map_3d_->depth_map_3d()->height());
+      glViewport(0, 0, depth_3d_map_->depth_map_3d()->width(),
+                 depth_3d_map_->depth_map_3d()->height());
 
-      float aspect = (float)depth_map_3d_->depth_map_3d()->width() /
-                     (float)depth_map_3d_->depth_map_3d()->height();
+      float aspect = (float)depth_3d_map_->depth_map_3d()->width() /
+                     (float)depth_3d_map_->depth_map_3d()->height();
       glm::mat4 shadowProj =
           glm::perspective(glm::radians(90.0f), aspect, 0.5f, 25.0f);
       std::vector<glm::mat4> shadowTransforms;
@@ -420,7 +413,7 @@ void Context::Render() {
     lighting_program_->SetUniform("light.specular", light_->specular);
     lighting_program_->SetUniform("isBlinn", is_blinn_);
     glActiveTexture(GL_TEXTURE3);
-    depth_map_->depth_map()->Bind();
+    depth_2d_map_->depth_map()->Bind();
     lighting_program_->SetUniform("depthMap", 3);
     auto rm = glm::rotate(glm::mat4(1.0f), glm::radians(90.0f),
                           glm::vec3(-1.0f, 0.0f, 0.0f));
@@ -440,7 +433,7 @@ void Context::Render() {
     glActiveTexture(GL_TEXTURE0);
 
     glActiveTexture(GL_TEXTURE4);
-    depth_map_3d_->depth_map_3d()->Bind();
+    depth_3d_map_->depth_map_3d()->Bind();
     lighting_program_->SetUniform("depthMap3d", 4);
     glActiveTexture(GL_TEXTURE0);
     lighting_program_->SetUniform("far_plane", 25.0f);
@@ -817,7 +810,7 @@ void Context::RenderImGui() {
     auto window_size = ImGui::GetWindowSize();
     ImGui::Image(
         reinterpret_cast<ImTextureID>(
-            static_cast<uintptr_t>(depth_map_->depth_map()->id())),
+            static_cast<uintptr_t>(depth_2d_map_->depth_map()->id())),
         ImVec2(window_size.x, window_size.x * ((float)height_ / (float)width_)),
         ImVec2(0, 1), ImVec2(1, 0));
 

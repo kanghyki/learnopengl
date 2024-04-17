@@ -93,37 +93,31 @@ class Framebuffer : public BaseFramebuffer {
 };
 
 enum DepthMapType {
-  kTwoDimensional,
-  kThreeDimensional,
-};
-
-union uTexture {
-  std::shared_ptr<Texture2d> two_d;
-  std::shared_ptr<Texture3d> three_d;
+  k2D,
+  k3D,
 };
 
 class DepthMap : public BaseFramebuffer {
  public:
-  static std::unique_ptr<DepthMap> Create(int width, int height,
-                                          DepthMapType type = kTwoDimensional) {
-    auto shadowMap = std::unique_ptr<DepthMap>(new DepthMap(type));
+  static std::unique_ptr<DepthMap> Create(int size, DepthMapType type) {
+    auto depth_map = std::unique_ptr<DepthMap>(new DepthMap(type));
 
     switch (type) {
-      case kTwoDimensional:
-        shadowMap->GenerateDepthMap2dTexture(width, height);
+      case k2D:
+        depth_map->GenerateDepthMap2dTexture(size, size);
         break;
-      case kThreeDimensional:
-        shadowMap->GenerateDepthMap3dTexture(width, height);
+      case k3D:
+        depth_map->GenerateDepthMap3dTexture(size, size, size);
         break;
       default:
         return nullptr;
     }
 
-    if (!shadowMap->Init()) {
+    if (!depth_map->Init()) {
       return nullptr;
     }
 
-    return std::move(shadowMap);
+    return std::move(depth_map);
   }
   ~DepthMap() {}
 
@@ -148,9 +142,9 @@ class DepthMap : public BaseFramebuffer {
     return true;
   }
 
-  bool GenerateDepthMap3dTexture(int width, int height) {
+  bool GenerateDepthMap3dTexture(int width, int height, int length) {
     depth_map_3d_ =
-        Texture3d::Create(width, height, GL_DEPTH_COMPONENT, GL_FLOAT);
+        Texture3d::Create(width, height, length, GL_DEPTH_COMPONENT, GL_FLOAT);
     if (!depth_map_3d_) {
       return false;
     }
@@ -159,7 +153,7 @@ class DepthMap : public BaseFramebuffer {
   }
 
   void InitTexture() {
-    if (type_ == kTwoDimensional) {
+    if (type_ == k2D) {
       glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D,
                              depth_map_2d_->id(), 0);
     } else {
@@ -172,7 +166,7 @@ class DepthMap : public BaseFramebuffer {
 
   std::shared_ptr<Texture2d> depth_map_2d_{nullptr};
   std::shared_ptr<Texture3d> depth_map_3d_{nullptr};
-  const DepthMapType type_{kTwoDimensional};
+  const DepthMapType type_{k2D};
 };
 
 #endif

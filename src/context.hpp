@@ -86,10 +86,11 @@ class Context {
   bool camera_direction_control_{false};
   bool camera_fast_move_{false};
 
+  // TODO:
   std::unique_ptr<Framebuffer> framebuffer_{nullptr};
   std::unique_ptr<Framebuffer> index_framebuffer_{nullptr};
-  std::unique_ptr<DepthMap> depth_map_{nullptr};
-  std::unique_ptr<DepthMap> depth_map_3d_{nullptr};
+  std::unique_ptr<DepthMap> depth_2d_map_{nullptr};
+  std::unique_ptr<DepthMap> depth_3d_map_{nullptr};
 
   float gamma_{1.0f};
 

@@ -129,24 +129,23 @@ std::unique_ptr<Texture3d> Texture3d::Create(
   return std::move(texture);
 }
 
-std::unique_ptr<Texture3d> Texture3d::Create(int width, int height,
+std::unique_ptr<Texture3d> Texture3d::Create(int width, int height, int length,
                                              uint32_t format, uint32_t type) {
   auto texture = std::unique_ptr<Texture3d>(new Texture3d());
   texture->Bind();
   texture->SetFilter(GL_LINEAR, GL_LINEAR);
   texture->SetWrap(GL_CLAMP_TO_EDGE, GL_CLAMP_TO_EDGE, GL_CLAMP_TO_EDGE);
-  texture->SetCubeMapFormat(width, height, format, type);
+  texture->SetCubeMapFormat(width, height, length, format, type);
 
   return std::move(texture);
 }
 
 void Texture3d::SetCubeMapFromImages(const std::vector<Image *> &images) {
-  // FIXME:
   // width_ = -1;
   // height_ = -1;
   // length_ = -1;
-  // format_ = GL_RGBA;
   type_ = GL_UNSIGNED_BYTE;
+  // format_ = GL_RGBA;
 
   for (uint32_t i = 0; i < (uint32_t)images.size(); i++) {
     Image *image = images[i];
@@ -157,12 +156,11 @@ void Texture3d::SetCubeMapFromImages(const std::vector<Image *> &images) {
   }
 }
 
-void Texture3d::SetCubeMapFormat(int width, int height, uint32_t format,
-                                 uint32_t type) {
+void Texture3d::SetCubeMapFormat(int width, int height, int length,
+                                 uint32_t format, uint32_t type) {
   width_ = width;
   height_ = height;
-  // FIXME:
-  length_ = height;
+  length_ = length;
   type_ = type;
   format_ = format;
 
