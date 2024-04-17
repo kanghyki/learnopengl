@@ -52,13 +52,14 @@ std::unique_ptr<Context> Context::Create() {
 }
 
 bool Context::Init() {
-  framebuffer_ = Framebuffer::Create(Texture::Create(width_, height_, GL_RGBA));
+  framebuffer_ =
+      Framebuffer::Create(Texture2d::Create(width_, height_, GL_RGBA));
   if (!framebuffer_) {
     return false;
   }
 
   index_framebuffer_ =
-      Framebuffer::Create(Texture::Create(width_, height_, GL_RGBA));
+      Framebuffer::Create(Texture2d::Create(width_, height_, GL_RGBA));
   if (!index_framebuffer_) {
     return false;
   }
@@ -109,7 +110,7 @@ bool Context::Init() {
     auto cubeBottom = Image::Load("./image/cube_texture/bottom.jpg", false);
     auto cubeFront = Image::Load("./image/cube_texture/front.jpg", false);
     auto cubeBack = Image::Load("./image/cube_texture/back.jpg", false);
-    cube_texture_ = CubeTexture::Create({
+    cube_texture_ = Texture3d::Create({
         cubeRight.get(),
         cubeLeft.get(),
         cubeTop.get(),
@@ -121,10 +122,10 @@ bool Context::Init() {
 
   {
     auto mat = Material::Create();
-    mat->specular_ = Texture::Create(
+    mat->specular_ = Texture2d::Create(
         Image::CreateSingleColorImage(4, 4, glm::vec4(0.0f, 0.7f, 0.0f, 1.0f))
             .get());
-    mat->diffuse_ = Texture::Create(
+    mat->diffuse_ = Texture2d::Create(
         Image::CreateSingleColorImage(4, 4, glm::vec4(0.1f, 0.5f, 0.1f, 1.0f))
             .get());
     box_ = Mesh::CreateBox();
@@ -132,18 +133,18 @@ bool Context::Init() {
   }
   {
     auto mat = Material::Create();
-    mat->specular_ = Texture::Create(
+    mat->specular_ = Texture2d::Create(
         Image::CreateSingleColorImage(4, 4, glm::vec4(1.0f, 1.0f, 1.0f, 1.0f))
             .get());
-    mat->diffuse_ = Texture::Create("image/wood.png");
+    mat->diffuse_ = Texture2d::Create("image/wood.png");
     wood_box_ = Mesh::CreateBox();
     wood_box_->set_material(std::move(mat));
   }
   {  // sphere mesh
     auto mat = Material::Create();
 
-    mat->diffuse_ = Texture::Create(Image::Load("image/1.png", true).get());
-    mat->specular_ = Texture::Create(
+    mat->diffuse_ = Texture2d::Create(Image::Load("image/1.png", true).get());
+    mat->specular_ = Texture2d::Create(
         Image::CreateSingleColorImage(4, 4, glm::vec4(0.8f, 0.8f, 0.8f, 1.0f))
             .get());
     sphere_ = Mesh::CreateSphere(35, 35);
@@ -674,9 +675,10 @@ void Context::ReshapeViewport(int width, int height) {
   height_ = height;
   camera_.ChangeAspect(width_, height_);
   glViewport(0, 0, width_, height_);
-  framebuffer_ = Framebuffer::Create(Texture::Create(width_, height_, GL_RGBA));
+  framebuffer_ =
+      Framebuffer::Create(Texture2d::Create(width_, height_, GL_RGBA));
   index_framebuffer_ =
-      Framebuffer::Create(Texture::Create(width_, height_, GL_RGBA));
+      Framebuffer::Create(Texture2d::Create(width_, height_, GL_RGBA));
 }
 
 void Context::RenderImGui() {

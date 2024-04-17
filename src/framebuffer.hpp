@@ -46,7 +46,7 @@ class BaseFramebuffer {
 class Framebuffer : public BaseFramebuffer {
  public:
   static std::unique_ptr<Framebuffer> Create(
-      const std::shared_ptr<Texture> color_attachment) {
+      const std::shared_ptr<Texture2d> color_attachment) {
     auto framebuffer = std::unique_ptr<Framebuffer>(new Framebuffer());
 
     framebuffer->SetColorAttachment(color_attachment);
@@ -63,14 +63,14 @@ class Framebuffer : public BaseFramebuffer {
     }
   }
 
-  inline const std::shared_ptr<Texture> color_attachment() const {
+  inline const std::shared_ptr<Texture2d> color_attachment() const {
     return color_attachment_;
   };
 
  private:
   Framebuffer() : BaseFramebuffer() {}
 
-  void SetColorAttachment(const std::shared_ptr<Texture> color_attachment) {
+  void SetColorAttachment(const std::shared_ptr<Texture2d> color_attachment) {
     color_attachment_ = color_attachment;
   }
   void InitTexture() {
@@ -89,7 +89,7 @@ class Framebuffer : public BaseFramebuffer {
   }
 
   uint32_t depth_stencil_buffer_{0};
-  std::shared_ptr<Texture> color_attachment_{nullptr};
+  std::shared_ptr<Texture2d> color_attachment_{nullptr};
 };
 
 enum DepthMapType {
@@ -98,8 +98,8 @@ enum DepthMapType {
 };
 
 union uTexture {
-  std::shared_ptr<Texture> two_d;
-  std::shared_ptr<CubeTexture> three_d;
+  std::shared_ptr<Texture2d> two_d;
+  std::shared_ptr<Texture3d> three_d;
 };
 
 class DepthMap : public BaseFramebuffer {
@@ -127,8 +127,8 @@ class DepthMap : public BaseFramebuffer {
   }
   ~DepthMap() {}
 
-  const std::shared_ptr<Texture> depth_map() const { return depth_map_2d_; }
-  const std::shared_ptr<CubeTexture> depth_map_3d() const {
+  const std::shared_ptr<Texture2d> depth_map() const { return depth_map_2d_; }
+  const std::shared_ptr<Texture3d> depth_map_3d() const {
     return depth_map_3d_;
   }
 
@@ -137,7 +137,7 @@ class DepthMap : public BaseFramebuffer {
 
   bool GenerateDepthMap2dTexture(int width, int height) {
     depth_map_2d_ =
-        Texture::Create(width, height, GL_DEPTH_COMPONENT, GL_FLOAT);
+        Texture2d::Create(width, height, GL_DEPTH_COMPONENT, GL_FLOAT);
     if (!depth_map_2d_) {
       return false;
     }
@@ -149,7 +149,8 @@ class DepthMap : public BaseFramebuffer {
   }
 
   bool GenerateDepthMap3dTexture(int width, int height) {
-    depth_map_3d_ = CubeTexture::CreateDepthCubeMap(width, height);
+    depth_map_3d_ =
+        Texture3d::Create(width, height, GL_DEPTH_COMPONENT, GL_FLOAT);
     if (!depth_map_3d_) {
       return false;
     }
@@ -169,8 +170,8 @@ class DepthMap : public BaseFramebuffer {
     glReadBuffer(GL_NONE);
   }
 
-  std::shared_ptr<Texture> depth_map_2d_{nullptr};
-  std::shared_ptr<CubeTexture> depth_map_3d_{nullptr};
+  std::shared_ptr<Texture2d> depth_map_2d_{nullptr};
+  std::shared_ptr<Texture3d> depth_map_3d_{nullptr};
   const DepthMapType type_{kTwoDimensional};
 };
 

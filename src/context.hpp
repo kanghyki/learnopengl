@@ -50,7 +50,7 @@ class Context {
   std::unique_ptr<Program> depth_3d_program_{nullptr};
 
   // textures
-  std::unique_ptr<CubeTexture> cube_texture_{nullptr};
+  std::unique_ptr<Texture3d> cube_texture_{nullptr};
 
   // Meshes
   std::shared_ptr<Mesh> box_{nullptr};

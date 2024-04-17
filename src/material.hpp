@@ -12,8 +12,8 @@ class Material {
 
   void SetToProgram(const Program *program) const;
 
-  std::unique_ptr<Texture> diffuse_{nullptr};
-  std::unique_ptr<Texture> specular_{nullptr};
+  std::unique_ptr<Texture2d> diffuse_{nullptr};
+  std::unique_ptr<Texture2d> specular_{nullptr};
   float shininess_{30.0f};
 
  private:

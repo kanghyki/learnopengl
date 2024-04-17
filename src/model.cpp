@@ -106,10 +106,10 @@ bool Model::ParseObjToMesh(const std::string &data) {
 bool Model::LoadMaterial() {
   auto material = Material::Create();
 
-  material->specular_ = Texture::Create(
+  material->specular_ = Texture2d::Create(
       Image::CreateSingleColorImage(4, 4, glm::vec4(1.0f, 1.0f, 1.0f, 1.0f))
           .get());
-  material->diffuse_ = Texture::Create(
+  material->diffuse_ = Texture2d::Create(
       Image::CreateSingleColorImage(4, 4, glm::vec4(0.7f, 0.7f, 0.7f, 1.0f))
           .get());
   mesh_->set_material(material);
