@@ -113,6 +113,12 @@ bool Context::Init() {
     return false;
   }
 
+  normal_program_ = Program::Create("shader/normal.vs", "shader/normal.fs",
+                                    "shader/normal.gs");
+  if (!normal_program_) {
+    return false;
+  }
+
   {  // cube texture
     auto cubeRight = Image::Load("./image/cube_texture/right.jpg", false);
     auto cubeLeft = Image::Load("./image/cube_texture/left.jpg", false);
@@ -442,6 +448,14 @@ void Context::Render() {
       lighting_program_->SetUniform("model", object->transform().ModelMatrix());
       lighting_program_->SetUniform("isPick", pick_id_ == object->id());
       object->Draw(lighting_program_.get());
+    }
+
+    normal_program_->Use();
+    for (const auto& object : objects_) {
+      normal_program_->SetUniform("length", 0.1f);
+      normal_program_->SetUniform(
+          "transform", projection * view * object->transform().ModelMatrix());
+      object->Draw(normal_program_.get());
     }
   }
 

@@ -48,6 +48,7 @@ class Context {
   std::unique_ptr<Program> lighting_program_{nullptr};
   std::unique_ptr<Program> post_program_{nullptr};
   std::unique_ptr<Program> depth_3d_program_{nullptr};
+  std::unique_ptr<Program> normal_program_{nullptr};
 
   // textures
   std::unique_ptr<Texture3d> cube_texture_{nullptr};
