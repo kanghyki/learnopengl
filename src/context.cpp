@@ -401,6 +401,7 @@ void Context::Render() {
       sphere_->Draw(simple_program_.get());
     }
   }
+
   {  // lighting program
     lighting_program_->Use();
     lighting_program_->SetUniform("lightType", light_->type());
@@ -445,18 +446,46 @@ void Context::Render() {
     lighting_program_->SetUniform("far_plane", 25.0f);
 
     for (const auto& object : objects_) {
-      lighting_program_->SetUniform("model", object->transform().ModelMatrix());
-      lighting_program_->SetUniform("isPick", pick_id_ == object->id());
-      object->Draw(lighting_program_.get());
+      if (object != pick_object_) {
+        lighting_program_->SetUniform("model",
+                                      object->transform().ModelMatrix());
+        object->Draw(lighting_program_.get());
+      }
+    }
+    if (pick_object_) {
+      glEnable(GL_STENCIL_TEST);
+      glStencilOp(GL_KEEP, GL_KEEP, GL_REPLACE);
+      glStencilFunc(GL_ALWAYS, 1, 0xFF);
+      glStencilMask(0xFF);
+
+      auto model = pick_object_->transform().ModelMatrix();
+      lighting_program_->SetUniform("model", model);
+      pick_object_->Draw(lighting_program_.get());
+
+      glStencilFunc(GL_NOTEQUAL, 1, 0xFF);
+      glStencilMask(0x00);
+      // glDisable(GL_DEPTH_TEST);
+      simple_program_->Use();
+      simple_program_->SetUniform("color", glm::vec4(0.8f, 0.8f, 0.4f, 1.0f));
+      simple_program_->SetUniform(
+          "model",
+          model * glm::scale(glm::mat4(1.0f), glm::vec3(1.05f, 1.05f, 1.05f)));
+      pick_object_->Draw(simple_program_.get());
+
+      glEnable(GL_DEPTH_TEST);
+      glDisable(GL_STENCIL_TEST);
+      glStencilFunc(GL_ALWAYS, 1, 0xFF);
+      glStencilMask(0xFF);
     }
 
-    normal_program_->Use();
-    for (const auto& object : objects_) {
-      normal_program_->SetUniform("length", 0.1f);
-      normal_program_->SetUniform(
-          "transform", projection * view * object->transform().ModelMatrix());
-      object->Draw(normal_program_.get());
-    }
+    // normal_program_->Use();
+    // for (const auto& object : objects_) {
+    //   normal_program_->SetUniform("length", 0.1f);
+    //   normal_program_->SetUniform(
+    //       "transform", projection * view *
+    //       object->transform().ModelMatrix());
+    //   object->Draw(normal_program_.get());
+    // }
   }
 
   index_framebuffer_->Bind();

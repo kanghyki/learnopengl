@@ -39,7 +39,6 @@ uniform vec3 viewPos;
 uniform int lightType;
 uniform Light light;
 uniform Material material;
-uniform bool isPick;
 uniform bool isBlinn;
 
 // directional shadow
@@ -174,7 +173,4 @@ void main() {
     }
 
     fragColor = vec4(result, 1.0);
-    if (isPick) {
-      fragColor = vec4(pow(fragColor.rgb, vec3(0.3)), 1.0);
-    }
 }
