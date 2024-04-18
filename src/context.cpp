@@ -113,8 +113,9 @@ bool Context::Init() {
     return false;
   }
 
-  normal_program_ = Program::Create("shader/normal.vs", "shader/normal.fs",
-                                    "shader/normal.gs");
+  normal_program_ =
+      Program::Create("shader/vertex_normal.vs", "shader/vertex_normal.fs",
+                      "shader/vertex_normal.gs");
   if (!normal_program_) {
     return false;
   }
@@ -381,15 +382,6 @@ void Context::Render() {
     cube_program_->SetUniform("model", model);
     sphere_->Draw(cube_program_.get());
     glActiveTexture(GL_TEXTURE0);
-    // depth_map_3d_->depth_map_3d()->Bind();
-
-    // cube_program_->Use();
-    // auto model2 =
-    //     glm::translate(glm::mat4(1.0f), glm::vec3(-5.0f, 2.0f, 0.0f)) *
-    //     glm::scale(glm::mat4(1.0), glm::vec3(1.0f));
-    // cube_program_->SetUniform("cube", 0);
-    // cube_program_->SetUniform("model", model2);
-    // box_->Draw(cube_program_.get());
   }
   {  // simple program
     simple_program_->Use();
@@ -458,34 +450,33 @@ void Context::Render() {
       glStencilFunc(GL_ALWAYS, 1, 0xFF);
       glStencilMask(0xFF);
 
-      auto model = pick_object_->transform().ModelMatrix();
-      lighting_program_->SetUniform("model", model);
+      auto modelTransform = pick_object_->transform().ModelMatrix();
+      lighting_program_->SetUniform("model", modelTransform);
       pick_object_->Draw(lighting_program_.get());
 
       glStencilFunc(GL_NOTEQUAL, 1, 0xFF);
       glStencilMask(0x00);
-      // glDisable(GL_DEPTH_TEST);
       simple_program_->Use();
       simple_program_->SetUniform("color", glm::vec4(0.8f, 0.8f, 0.4f, 1.0f));
       simple_program_->SetUniform(
-          "model",
-          model * glm::scale(glm::mat4(1.0f), glm::vec3(1.05f, 1.05f, 1.05f)));
+          "model", modelTransform * glm::scale(glm::mat4(1.0f),
+                                               glm::vec3(1.05f, 1.05f, 1.05f)));
       pick_object_->Draw(simple_program_.get());
 
-      glEnable(GL_DEPTH_TEST);
       glDisable(GL_STENCIL_TEST);
       glStencilFunc(GL_ALWAYS, 1, 0xFF);
       glStencilMask(0xFF);
     }
 
-    // normal_program_->Use();
-    // for (const auto& object : objects_) {
-    //   normal_program_->SetUniform("length", 0.1f);
-    //   normal_program_->SetUniform(
-    //       "transform", projection * view *
-    //       object->transform().ModelMatrix());
-    //   object->Draw(normal_program_.get());
-    // }
+    if (is_show_vertex_normal_) {
+      normal_program_->Use();
+      for (const auto& object : objects_) {
+        normal_program_->SetUniform("length", 0.1f);
+        normal_program_->SetUniform(
+            "transform", projection * view * object->transform().ModelMatrix());
+        object->Draw(normal_program_.get());
+      }
+    }
   }
 
   index_framebuffer_->Bind();
@@ -527,7 +518,7 @@ void Context::Render() {
     plain_plane_->Draw(post_program_.get());
   }
 
-  if (is_wireframe_active_) {
+  if (is_active_wireframe_) {
     glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
   } else {
     glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
@@ -718,8 +709,8 @@ void Context::ReshapeViewport(int width, int height) {
 }
 
 void Context::RenderImGui() {
-  if (is_setting_open_) {
-    if (ImGui::Begin("Settings", &is_setting_open_,
+  if (is_open_setting_) {
+    if (ImGui::Begin("Settings", &is_open_setting_,
                      ImGuiWindowFlags_AlwaysAutoResize)) {
       static float prev_time = 0;
       static int frames = 0;
@@ -795,13 +786,14 @@ void Context::RenderImGui() {
       ImGui::Spacing();
       ImGui::Spacing();
       if (ImGui::CollapsingHeader("Extras", ImGuiTreeNodeFlags_DefaultOpen)) {
-        if (ImGui::Checkbox("Active wireFrame", &is_wireframe_active_)) {
-          if (is_wireframe_active_) {
+        if (ImGui::Checkbox("Active wireFrame", &is_active_wireframe_)) {
+          if (is_active_wireframe_) {
             glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
           } else {
             glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
           }
         }
+        ImGui::Checkbox("Show vertex normal", &is_show_vertex_normal_);
         ImGui::DragFloat("Gamma", &gamma_, 0.01f, 0.0f, 2.0f);
       }
     }

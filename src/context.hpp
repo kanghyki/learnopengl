@@ -95,9 +95,10 @@ class Context {
 
   float gamma_{1.0f};
 
-  bool is_wireframe_active_{false};
   int imgui_image_size_{800};
-  bool is_setting_open_{true};
+  bool is_open_setting_{true};
+  bool is_active_wireframe_{false};
+  bool is_show_vertex_normal_{false};
 };
 
 size_t RGBAToId(std::array<uint8_t, 4> rgba);

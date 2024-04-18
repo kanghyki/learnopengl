@@ -23,7 +23,7 @@ class BaseFramebuffer {
     glGenFramebuffers(1, &id_);
     Bind();
 
-    InitTexture();
+    InitSomething();
 
     if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {
       SPDLOG_ERROR("failed to create framebuffer");
@@ -36,7 +36,7 @@ class BaseFramebuffer {
  protected:
   uint32_t id_{0};
 
-  virtual void InitTexture() = 0;
+  virtual void InitSomething() = 0;
 
  private:
   BaseFramebuffer(const BaseFramebuffer&);
@@ -70,10 +70,7 @@ class Framebuffer : public BaseFramebuffer {
  private:
   Framebuffer() : BaseFramebuffer() {}
 
-  void SetColorAttachment(const std::shared_ptr<Texture2d> color_attachment) {
-    color_attachment_ = color_attachment;
-  }
-  void InitTexture() {
+  void InitSomething() {
     glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D,
                            color_attachment_->id(), 0);
 
@@ -86,6 +83,10 @@ class Framebuffer : public BaseFramebuffer {
 
     glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT,
                               GL_RENDERBUFFER, depth_stencil_buffer_);
+  }
+
+  void SetColorAttachment(const std::shared_ptr<Texture2d> color_attachment) {
+    color_attachment_ = color_attachment;
   }
 
   uint32_t depth_stencil_buffer_{0};
@@ -129,6 +130,18 @@ class DepthMap : public BaseFramebuffer {
  private:
   DepthMap(DepthMapType type) : BaseFramebuffer(), type_(type) {}
 
+  void InitSomething() {
+    if (type_ == k2D) {
+      glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D,
+                             depth_map_2d_->id(), 0);
+    } else {
+      glFramebufferTexture(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT,
+                           depth_map_3d_->id(), 0);
+    }
+    glDrawBuffer(GL_NONE);
+    glReadBuffer(GL_NONE);
+  }
+
   bool GenerateDepthMap2dTexture(int width, int height) {
     depth_map_2d_ =
         Texture2d::Create(width, height, GL_DEPTH_COMPONENT, GL_FLOAT);
@@ -150,18 +163,6 @@ class DepthMap : public BaseFramebuffer {
     }
 
     return true;
-  }
-
-  void InitTexture() {
-    if (type_ == k2D) {
-      glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D,
-                             depth_map_2d_->id(), 0);
-    } else {
-      glFramebufferTexture(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT,
-                           depth_map_3d_->id(), 0);
-    }
-    glDrawBuffer(GL_NONE);
-    glReadBuffer(GL_NONE);
   }
 
   std::shared_ptr<Texture2d> depth_map_2d_{nullptr};
