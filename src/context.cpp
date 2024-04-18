@@ -536,7 +536,7 @@ void Context::ProcessKeyboardInput(GLFWwindow* window, int key, int action) {
         break;
     }
   }
-  if (key == GLFW_KEY_LEFT_SHIFT) {
+  if (key == GLFW_KEY_Q) {
     switch (action) {
       case GLFW_PRESS:
         camera_.SetMove(kDown);
@@ -546,7 +546,7 @@ void Context::ProcessKeyboardInput(GLFWwindow* window, int key, int action) {
         break;
     }
   }
-  if (key == GLFW_KEY_SPACE) {
+  if (key == GLFW_KEY_E) {
     switch (action) {
       case GLFW_PRESS:
         camera_.SetMove(kUp);
