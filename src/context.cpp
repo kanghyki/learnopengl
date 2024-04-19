@@ -4,35 +4,6 @@
 
 #include "image.hpp"
 
-void Context::CalcCursorRay(glm::vec2 cursor) {
-  float ndc_x = (float)cursor.x / (width_ * 0.5f) - 1.0f;
-  float ndc_y = (float)cursor.y / (height_ * 0.5f) - 1.0f;
-
-  glm::vec4 near_pos = glm::vec4(ndc_x, -ndc_y, 0.0f, 1.0f);
-  glm::vec4 far_pos = glm::vec4(ndc_x, -ndc_y, 1.0f, 1.0f);
-
-  glm::mat4 i_proj = glm::inverse(camera_.GetPerspectiveProjectionMatrix());
-  glm::mat4 i_view = glm::inverse(camera_.GetViewMatrix());
-
-  glm::vec4 view_near_temp = i_proj * near_pos;
-  glm::vec4 view_near_position = view_near_temp / view_near_temp.w;
-  glm::vec4 world_near_position = i_view * view_near_position;
-
-  glm::vec4 view_far_temp = i_proj * far_pos;
-  glm::vec4 view_far_position = view_far_temp / view_far_temp.w;
-  glm::vec4 world_far_position = i_view * view_far_position;
-
-  world_near_ = world_near_position;
-  world_far_ = world_far_position;
-
-  Ray ray;
-  ray.position = glm::vec3(world_near_position);
-  ray.direction =
-      glm::normalize(glm::vec3(world_far_position - world_near_position));
-
-  cursor_ray_ = ray;
-}
-
 Context::Context() {
   clear_bit_ =
       GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT;
@@ -52,14 +23,33 @@ std::unique_ptr<Context> Context::Create() {
 }
 
 bool Context::Init() {
-  framebuffer_ =
-      Framebuffer::Create(Texture2d::Create(width_, height_, GL_RGBA));
+  gaussian_blur_framebuffer_[0] = Framebuffer::Create(
+      {Texture2d::Create(width_, height_, GL_RGBA16F, GL_RGBA, GL_FLOAT)});
+  if (!gaussian_blur_framebuffer_[0]) {
+    return false;
+  }
+
+  gaussian_blur_framebuffer_[1] = Framebuffer::Create(
+      {Texture2d::Create(width_, height_, GL_RGBA16F, GL_RGBA, GL_FLOAT)});
+  if (!gaussian_blur_framebuffer_[1]) {
+    return false;
+  }
+
+  gaussian_blur_program_ =
+      Program::Create("shader/gaussian_blur.vs", "shader/gaussian_blur.fs");
+  if (!gaussian_blur_program_) {
+    return false;
+  }
+
+  framebuffer_ = Framebuffer::Create(
+      {Texture2d::Create(width_, height_, GL_RGBA16F, GL_RGBA, GL_FLOAT),
+       Texture2d::Create(width_, height_, GL_RGBA16F, GL_RGBA, GL_FLOAT)});
   if (!framebuffer_) {
     return false;
   }
 
   index_framebuffer_ =
-      Framebuffer::Create(Texture2d::Create(width_, height_, GL_RGBA));
+      Framebuffer::Create({Texture2d::Create(width_, height_)});
   if (!index_framebuffer_) {
     return false;
   }
@@ -85,7 +75,7 @@ bool Context::Init() {
     return false;
   }
 
-  post_program_ = Program::Create("shader/texture.vs", "shader/gamma.fs");
+  post_program_ = Program::Create("shader/post.vs", "shader/post.fs");
   if (!post_program_) {
     return false;
   }
@@ -113,10 +103,10 @@ bool Context::Init() {
     return false;
   }
 
-  normal_program_ =
+  vertex_normal_program_ =
       Program::Create("shader/vertex_normal.vs", "shader/vertex_normal.fs",
                       "shader/vertex_normal.gs");
-  if (!normal_program_) {
+  if (!vertex_normal_program_) {
     return false;
   }
 
@@ -160,7 +150,9 @@ bool Context::Init() {
   {  // sphere mesh
     auto mat = Material::Create();
 
-    mat->diffuse_ = Texture2d::Create(Image::Load("image/1.png", true).get());
+    mat->diffuse_ = Texture2d::Create(
+        Image::CreateSingleColorImage(4, 4, glm::vec4(1.0f, 1.0f, 1.0f, 1.0f))
+            .get());
     mat->specular_ = Texture2d::Create(
         Image::CreateSingleColorImage(4, 4, glm::vec4(0.8f, 0.8f, 0.8f, 1.0f))
             .get());
@@ -168,7 +160,7 @@ bool Context::Init() {
     sphere_->set_material(std::move(mat));
   }
   {  // plane mesh
-    plain_plane_ = Mesh::CreatePlane();
+    plane_ = Mesh::CreatePlane();
   }
   {  // model
     model_ = Model::Load("model/resources/teapot.obj");
@@ -199,40 +191,41 @@ bool Context::Init() {
   }
 
   {
-    auto top = Object::Create(wood_box_);
-    top->transform().set_scale(glm::vec3(10.0f, 0.5f, 10.0f));
-    top->transform().set_translate(glm::vec3(0.0f, 5.0f, 0.0f));
-    top->transform().set_rotate(glm::vec3(0.0f, 0.0f, 0.0f));
-    objects_.push_back(top);
+    // auto top = Object::Create(wood_box_);
+    // top->transform().set_scale(glm::vec3(10.0f, 0.5f, 10.0f));
+    // top->transform().set_translate(glm::vec3(0.0f, 5.0f, 0.0f));
+    // top->transform().set_rotate(glm::vec3(0.0f, 0.0f, 0.0f));
+    // objects_.push_back(top);
+
     auto bottom = Object::Create(wood_box_);
     bottom->transform().set_scale(glm::vec3(10.0f, 0.5f, 10.0f));
     bottom->transform().set_translate(glm::vec3(0.0f, -5.0f, 0.0f));
     bottom->transform().set_rotate(glm::vec3(0.0f, 0.0f, 0.0f));
     objects_.push_back(bottom);
 
-    auto front = Object::Create(wood_box_);
-    front->transform().set_scale(glm::vec3(10.0f, 0.5f, 10.0f));
-    front->transform().set_translate(glm::vec3(0.0f, 0.0f, 5.0f));
-    front->transform().set_rotate(glm::vec3(90.0f, 0.0f, 0.0f));
-    objects_.push_back(front);
+    // auto front = Object::Create(wood_box_);
+    // front->transform().set_scale(glm::vec3(10.0f, 0.5f, 10.0f));
+    // front->transform().set_translate(glm::vec3(0.0f, 0.0f, 5.0f));
+    // front->transform().set_rotate(glm::vec3(90.0f, 0.0f, 0.0f));
+    // objects_.push_back(front);
 
-    auto back = Object::Create(wood_box_);
-    back->transform().set_scale(glm::vec3(10.0f, 0.5f, 10.0f));
-    back->transform().set_translate(glm::vec3(0.0f, 0.0f, -5.0f));
-    back->transform().set_rotate(glm::vec3(90.0f, 0.0f, 0.0f));
-    objects_.push_back(back);
+    // auto back = Object::Create(wood_box_);
+    // back->transform().set_scale(glm::vec3(10.0f, 0.5f, 10.0f));
+    // back->transform().set_translate(glm::vec3(0.0f, 0.0f, -5.0f));
+    // back->transform().set_rotate(glm::vec3(90.0f, 0.0f, 0.0f));
+    // objects_.push_back(back);
 
-    auto left = Object::Create(wood_box_);
-    left->transform().set_scale(glm::vec3(10.0f, 0.5f, 10.0f));
-    left->transform().set_translate(glm::vec3(-5.0f, 0.0f, 0.0f));
-    left->transform().set_rotate(glm::vec3(0.0f, 0.0f, 90.0f));
-    objects_.push_back(left);
+    // auto left = Object::Create(wood_box_);
+    // left->transform().set_scale(glm::vec3(10.0f, 0.5f, 10.0f));
+    // left->transform().set_translate(glm::vec3(-5.0f, 0.0f, 0.0f));
+    // left->transform().set_rotate(glm::vec3(0.0f, 0.0f, 90.0f));
+    // objects_.push_back(left);
 
-    auto right = Object::Create(wood_box_);
-    right->transform().set_scale(glm::vec3(10.0f, 0.5f, 10.0f));
-    right->transform().set_translate(glm::vec3(5.0f, 0.0f, 0.0f));
-    right->transform().set_rotate(glm::vec3(0.0f, 0.0f, 90.0f));
-    objects_.push_back(right);
+    // auto right = Object::Create(wood_box_);
+    // right->transform().set_scale(glm::vec3(10.0f, 0.5f, 10.0f));
+    // right->transform().set_translate(glm::vec3(5.0f, 0.0f, 0.0f));
+    // right->transform().set_rotate(glm::vec3(0.0f, 0.0f, 90.0f));
+    // objects_.push_back(right);
   }
 
   // shader에 uniform block 연결, binding point 0번
@@ -371,18 +364,18 @@ void Context::Render() {
                   glm::value_ptr(projection));
   glBindBuffer(GL_UNIFORM_BUFFER, 0);
 
-  {  // cube program
-    glActiveTexture(GL_TEXTURE0);
-    cube_texture_->Bind();
+  // {  // cube program
+  //   glActiveTexture(GL_TEXTURE0);
+  //   cube_texture_->Bind();
 
-    auto model = glm::translate(glm::mat4(1.0), camera_.position_) *
-                 glm::scale(glm::mat4(1.0), glm::vec3(100.0f));
-    cube_program_->Use();
-    cube_program_->SetUniform("cube", 0);
-    cube_program_->SetUniform("model", model);
-    sphere_->Draw(cube_program_.get());
-    glActiveTexture(GL_TEXTURE0);
-  }
+  //   auto model = glm::translate(glm::mat4(1.0), camera_.position_) *
+  //                glm::scale(glm::mat4(1.0), glm::vec3(100.0f));
+  //   cube_program_->Use();
+  //   cube_program_->SetUniform("cube", 0);
+  //   cube_program_->SetUniform("model", model);
+  //   sphere_->Draw(cube_program_.get());
+  //   glActiveTexture(GL_TEXTURE0);
+  // }
   {  // simple program
     simple_program_->Use();
     if (is_hit_) {
@@ -469,12 +462,12 @@ void Context::Render() {
     }
 
     if (is_show_vertex_normal_) {
-      normal_program_->Use();
+      vertex_normal_program_->Use();
       for (const auto& object : objects_) {
-        normal_program_->SetUniform("length", 0.1f);
-        normal_program_->SetUniform(
+        vertex_normal_program_->SetUniform("length", 0.1f);
+        vertex_normal_program_->SetUniform(
             "transform", projection * view * object->transform().ModelMatrix());
-        object->Draw(normal_program_.get());
+        object->Draw(vertex_normal_program_.get());
       }
     }
   }
@@ -503,6 +496,43 @@ void Context::Render() {
     object->Draw(simple_program_.get());
   }
 
+  {
+    glDisable(GL_DEPTH_TEST);
+    bool horizontal = true, flag = true;
+    auto model = glm::scale(glm::mat4(1.0f), glm::vec3(2.0f, 2.0f, 2.0f));
+    gaussian_blur_program_->Use();
+    gaussian_blur_program_->SetUniform("transform", model);
+
+    // fbo -> fbo copy
+    // framebuffer_->Bind(GL_READ_FRAMEBUFFER);
+    // gaussian_blur_framebuffer_[0]->Bind(GL_DRAW_FRAMEBUFFER);
+    // glBlitFramebuffer(0, 0, width_, height_, 0, 0, width_, height_ ,
+    //                   GL_COLOR_BUFFER_BIT, GL_NEAREST);
+
+    // fbo -> texture copy
+    // framebuffer_->Bind(GL_READ_FRAMEBUFFER);
+    // gaussian_blur_framebuffer_[0]->color_attachment(0)->Bind();
+    // glCopyTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 0, 0, width_ / 2, height_ /
+    // 2);
+
+    for (unsigned int i = 0; i < 5 * 2; i++) {
+      gaussian_blur_framebuffer_[horizontal]->Bind();
+      gaussian_blur_program_->SetUniform("horizontal", horizontal);
+      glActiveTexture(GL_TEXTURE0);
+      if (flag) {
+        framebuffer_->color_attachment(1)->Bind();
+      } else {
+        gaussian_blur_framebuffer_[!horizontal]->color_attachment(0)->Bind();
+      }
+      gaussian_blur_program_->SetUniform("image", 0);
+      plane_->Draw(gaussian_blur_program_.get());
+      horizontal = !horizontal;
+      if (flag) {
+        flag = false;
+      }
+    }
+  }
+
   Framebuffer::BindToDefault();
   glDisable(GL_BLEND);
   glDisable(GL_DEPTH_TEST);
@@ -512,10 +542,16 @@ void Context::Render() {
     post_program_->Use();
     post_program_->SetUniform("transform", model);
     post_program_->SetUniform("gamma", gamma_);
+    post_program_->SetUniform("exposure", exposure_);
+    post_program_->SetUniform("hdr_on", hdr_);
+    post_program_->SetUniform("bloom_on", bloom_);
     glActiveTexture(GL_TEXTURE0);
-    framebuffer_->color_attachment()->Bind();
-    post_program_->SetUniform("tex", 0);
-    plain_plane_->Draw(post_program_.get());
+    framebuffer_->color_attachment(0)->Bind();
+    post_program_->SetUniform("colorTex", 0);
+    glActiveTexture(GL_TEXTURE1);
+    gaussian_blur_framebuffer_[0]->color_attachment(0)->Bind();
+    post_program_->SetUniform("bloomBlur", 1);
+    plane_->Draw(post_program_.get());
   }
 
   if (is_active_wireframe_) {
@@ -621,8 +657,8 @@ void Context::ProcessMouseInput(int button, int action, double x, double y) {
       case GLFW_PRESS: {
         left_mouse_ = true;
         index_framebuffer_->Bind();
-        int height = index_framebuffer_->color_attachment()->height();
-        auto pixel = index_framebuffer_->color_attachment()->GetTexPixel(
+        int height = index_framebuffer_->color_attachment(0)->height();
+        auto pixel = index_framebuffer_->color_attachment(0)->GetTexPixel(
             (int)x, height - (int)y);
         size_t id = RGBAToId(pixel);
         pick_id_ = -1;
@@ -702,10 +738,15 @@ void Context::ReshapeViewport(int width, int height) {
   height_ = height;
   camera_.ChangeAspect(width_, height_);
   glViewport(0, 0, width_, height_);
-  framebuffer_ =
-      Framebuffer::Create(Texture2d::Create(width_, height_, GL_RGBA));
+  framebuffer_ = Framebuffer::Create(
+      {Texture2d::Create(width_, height_, GL_RGBA16F, GL_RGBA, GL_FLOAT),
+       Texture2d::Create(width_, height_, GL_RGBA16F, GL_RGBA, GL_FLOAT)});
   index_framebuffer_ =
-      Framebuffer::Create(Texture2d::Create(width_, height_, GL_RGBA));
+      Framebuffer::Create({Texture2d::Create(width_, height_)});
+  gaussian_blur_framebuffer_[0] = Framebuffer::Create(
+      {Texture2d::Create(width_, height_, GL_RGBA16F, GL_RGBA, GL_FLOAT)});
+  gaussian_blur_framebuffer_[1] = Framebuffer::Create(
+      {Texture2d::Create(width_, height_, GL_RGBA16F, GL_RGBA, GL_FLOAT)});
 }
 
 void Context::RenderImGui() {
@@ -794,7 +835,12 @@ void Context::RenderImGui() {
           }
         }
         ImGui::Checkbox("Show vertex normal", &is_show_vertex_normal_);
-        ImGui::DragFloat("Gamma", &gamma_, 0.01f, 0.0f, 2.0f);
+        ImGui::Separator();
+        ImGui::Text("Post processing");
+        ImGui::Checkbox("HDR", &hdr_);
+        ImGui::Checkbox("Bloom", &bloom_);
+        ImGui::DragFloat("Gamma", &gamma_, 0.01f, 0.0f, 5.0f);
+        ImGui::DragFloat("Exposure", &exposure_, 0.01f, 0.0f, 10.0f);
       }
     }
     ImGui::End();
@@ -805,7 +851,7 @@ void Context::RenderImGui() {
 
     ImGui::Image(
         reinterpret_cast<ImTextureID>(static_cast<uintptr_t>(
-            index_framebuffer_->color_attachment()->id())),
+            index_framebuffer_->color_attachment(0)->id())),
         ImVec2(window_size.x, window_size.x * ((float)height_ / (float)width_)),
         ImVec2(0, 1), ImVec2(1, 0));
 
@@ -815,9 +861,31 @@ void Context::RenderImGui() {
     ImGui::InputText("", buf, 512 - 1);
     ImGui::SameLine();
     if (ImGui::Button("OK", ImVec2(50, 0))) {
-      index_framebuffer_->color_attachment()->SaveAsPng(
+      index_framebuffer_->color_attachment(0)->SaveAsPng(
           std::string("save/") + std::string(buf) + std::string(".png"));
     }
+  }
+  ImGui::End();
+  if (ImGui::Begin("for blur", NULL)) {
+    auto window_size = ImGui::GetWindowSize();
+    ImGui::Text("framebuffer_->color_attachment(1)");
+    ImGui::Image(
+        reinterpret_cast<ImTextureID>(
+            static_cast<uintptr_t>(framebuffer_->color_attachment(1)->id())),
+        ImVec2(window_size.x, window_size.x * ((float)height_ / (float)width_)),
+        ImVec2(0, 1), ImVec2(1, 0));
+    ImGui::Text("pingpong_[0]->color_attachment(0)");
+    ImGui::Image(
+        reinterpret_cast<ImTextureID>(static_cast<uintptr_t>(
+            gaussian_blur_framebuffer_[0]->color_attachment(0)->id())),
+        ImVec2(window_size.x, window_size.x * ((float)height_ / (float)width_)),
+        ImVec2(0, 1), ImVec2(1, 0));
+    ImGui::Text("pingpong_[1]->color_attachment(0)");
+    ImGui::Image(
+        reinterpret_cast<ImTextureID>(static_cast<uintptr_t>(
+            gaussian_blur_framebuffer_[1]->color_attachment(0)->id())),
+        ImVec2(window_size.x, window_size.x * ((float)height_ / (float)width_)),
+        ImVec2(0, 1), ImVec2(1, 0));
   }
   ImGui::End();
 
@@ -825,7 +893,7 @@ void Context::RenderImGui() {
     auto window_size = ImGui::GetWindowSize();
     ImGui::Image(
         reinterpret_cast<ImTextureID>(
-            static_cast<uintptr_t>(framebuffer_->color_attachment()->id())),
+            static_cast<uintptr_t>(framebuffer_->color_attachment(0)->id())),
         ImVec2(window_size.x, window_size.x * ((float)height_ / (float)width_)),
         ImVec2(0, 1), ImVec2(1, 0));
 
@@ -835,7 +903,7 @@ void Context::RenderImGui() {
     ImGui::InputText("", buf, 512 - 1);
     ImGui::SameLine();
     if (ImGui::Button("OK", ImVec2(50, 0))) {
-      framebuffer_->color_attachment()->SaveAsPng(
+      framebuffer_->color_attachment(0)->SaveAsPng(
           std::string("save/") + std::string(buf) + std::string(".png"));
     }
   }
@@ -855,7 +923,7 @@ void Context::RenderImGui() {
     ImGui::InputText("", buf, 512 - 1);
     ImGui::SameLine();
     if (ImGui::Button("OK", ImVec2(50, 0))) {
-      framebuffer_->color_attachment()->SaveAsPng(
+      framebuffer_->color_attachment(0)->SaveAsPng(
           std::string("save/") + std::string(buf) + std::string(".png"));
     }
   }
@@ -975,4 +1043,33 @@ std::array<uint8_t, 4> IdToRGBA(size_t id) {
   rgba[3] = (id >> 24) & 0xFF;
 
   return {rgba[0], rgba[1], rgba[2], rgba[3]};
+}
+
+void Context::CalcCursorRay(glm::vec2 cursor) {
+  float ndc_x = (float)cursor.x / (width_ * 0.5f) - 1.0f;
+  float ndc_y = (float)cursor.y / (height_ * 0.5f) - 1.0f;
+
+  glm::vec4 near_pos = glm::vec4(ndc_x, -ndc_y, 0.0f, 1.0f);
+  glm::vec4 far_pos = glm::vec4(ndc_x, -ndc_y, 1.0f, 1.0f);
+
+  glm::mat4 i_proj = glm::inverse(camera_.GetPerspectiveProjectionMatrix());
+  glm::mat4 i_view = glm::inverse(camera_.GetViewMatrix());
+
+  glm::vec4 view_near_temp = i_proj * near_pos;
+  glm::vec4 view_near_position = view_near_temp / view_near_temp.w;
+  glm::vec4 world_near_position = i_view * view_near_position;
+
+  glm::vec4 view_far_temp = i_proj * far_pos;
+  glm::vec4 view_far_position = view_far_temp / view_far_temp.w;
+  glm::vec4 world_far_position = i_view * view_far_position;
+
+  world_near_ = world_near_position;
+  world_far_ = world_far_position;
+
+  Ray ray;
+  ray.position = glm::vec3(world_near_position);
+  ray.direction =
+      glm::normalize(glm::vec3(world_far_position - world_near_position));
+
+  cursor_ray_ = ray;
 }

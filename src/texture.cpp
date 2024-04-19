@@ -33,12 +33,13 @@ std::unique_ptr<Texture2d> Texture2d::Create(const std::string &filename) {
 }
 
 std::unique_ptr<Texture2d> Texture2d::Create(int width, int height,
+                                             uint32_t inner_format,
                                              uint32_t format, uint32_t type) {
   auto texture = std::unique_ptr<Texture2d>(new Texture2d());
   texture->Bind();
   texture->SetFilter(GL_LINEAR, GL_LINEAR);
   texture->SetWrap(GL_CLAMP_TO_EDGE, GL_CLAMP_TO_EDGE);
-  texture->SetTextureFormat(width, height, format, type);
+  texture->SetTextureFormat(width, height, inner_format, format, type);
 
   return std::move(texture);
 }
@@ -48,20 +49,21 @@ void Texture2d::SetTextureFromImage(const Image *image) {
   height_ = image->height();
   format_ = ChannelCountToRGBAFormat(image->channel_count());
 
-  glTexImage2D(GL_TEXTURE_2D, 0, format_, width_, height_, 0, format_, type_,
-               image->data());
+  glTexImage2D(GL_TEXTURE_2D, 0, inner_format_, width_, height_, 0, format_,
+               type_, image->data());
   glGenerateMipmap(GL_TEXTURE_2D);
 }
 
-void Texture2d::SetTextureFormat(int width, int height, uint32_t format,
-                                 uint32_t type) {
+void Texture2d::SetTextureFormat(int width, int height, uint32_t inner_format,
+                                 uint32_t format, uint32_t type) {
   width_ = width;
   height_ = height;
+  inner_format_ = inner_format;
   format_ = format;
   type_ = type;
 
-  glTexImage2D(GL_TEXTURE_2D, 0, format_, width_, height_, 0, format_, type_,
-               nullptr);
+  glTexImage2D(GL_TEXTURE_2D, 0, inner_format_, width_, height_, 0, format_,
+               type_, nullptr);
 }
 
 void Texture2d::SetBorderColor(const glm::vec4 &color) const {

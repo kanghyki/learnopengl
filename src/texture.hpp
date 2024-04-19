@@ -83,19 +83,22 @@ class Texture2d : public BaseTexture {
   static std::unique_ptr<Texture2d> Create(const Image *image);
   static std::unique_ptr<Texture2d> Create(const std::string &filename);
   static std::unique_ptr<Texture2d> Create(int width, int height,
-                                           uint32_t format,
+                                           uint32_t inner_format = GL_RGBA,
+                                           uint32_t format = GL_RGBA,
                                            uint32_t type = GL_UNSIGNED_BYTE);
   ~Texture2d();
 
   bool SaveAsPng(const std::string &filename) const;
 
-  void SetTextureFormat(int width, int height, uint32_t format, uint32_t type);
+  void SetTextureFormat(int width, int height, uint32_t inner_format,
+                        uint32_t format, uint32_t type);
   void SetBorderColor(const glm::vec4 &color) const;
   unsigned char *GetTexImage() const;
   std::array<uint8_t, 4> GetTexPixel(int x, int y) const;
 
   inline int width() const { return width_; }
   inline int height() const { return height_; }
+  inline uint32_t inner_format() const { return inner_format_; }
   inline uint32_t format() const { return format_; }
   inline uint32_t type() const { return type_; }
 
@@ -106,6 +109,7 @@ class Texture2d : public BaseTexture {
 
   int width_{0};
   int height_{0};
+  uint32_t inner_format_{GL_RGBA};
   uint32_t format_{GL_RGBA};
   uint32_t type_{GL_UNSIGNED_BYTE};
 };

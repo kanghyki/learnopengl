@@ -15,7 +15,9 @@ class BaseFramebuffer {
     }
   }
 
-  virtual inline void Bind() final { glBindFramebuffer(GL_FRAMEBUFFER, id_); }
+  virtual inline void Bind(uint32_t target = GL_FRAMEBUFFER) final {
+    glBindFramebuffer(target, id_);
+  }
   virtual inline uint32_t id() const final { return id_; }
   virtual bool Init() final {
     bool ret = true;
@@ -46,10 +48,10 @@ class BaseFramebuffer {
 class Framebuffer : public BaseFramebuffer {
  public:
   static std::unique_ptr<Framebuffer> Create(
-      const std::shared_ptr<Texture2d> color_attachment) {
+      const std::vector<std::shared_ptr<Texture2d>> color_attachments) {
     auto framebuffer = std::unique_ptr<Framebuffer>(new Framebuffer());
 
-    framebuffer->SetColorAttachment(color_attachment);
+    framebuffer->set_color_attachments(color_attachments);
     if (!framebuffer->Init()) {
       return nullptr;
     }
@@ -63,34 +65,49 @@ class Framebuffer : public BaseFramebuffer {
     }
   }
 
-  inline const std::shared_ptr<Texture2d> color_attachment() const {
-    return color_attachment_;
+  inline const std::shared_ptr<Texture2d> color_attachment(int i) const {
+    if (i >= 0 && i < color_attachments_.size()) {
+      return color_attachments_[i];
+    }
+
+    return nullptr;
   };
 
  private:
   Framebuffer() : BaseFramebuffer() {}
 
   void InitSomething() {
-    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D,
-                           color_attachment_->id(), 0);
+    for (size_t i = 0; i < color_attachments_.size(); ++i) {
+      glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0 + i,
+                             GL_TEXTURE_2D, color_attachments_[i]->id(), 0);
+    }
 
-    glGenRenderbuffers(1, &depth_stencil_buffer_);
-    glBindRenderbuffer(GL_RENDERBUFFER, depth_stencil_buffer_);
-    glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH24_STENCIL8,
-                          color_attachment_->width(),
-                          color_attachment_->height());
-    glBindRenderbuffer(GL_RENDERBUFFER, 0);
+    if (color_attachments_.size() > 0) {
+      std::vector<GLenum> attachments(color_attachments_.size());
+      for (size_t i = 0; i < color_attachments_.size(); ++i) {
+        attachments[i] = GL_COLOR_ATTACHMENT0 + i;
+      }
+      glDrawBuffers(color_attachments_.size(), attachments.data());
 
-    glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT,
-                              GL_RENDERBUFFER, depth_stencil_buffer_);
+      // depth stencil buffer
+      glGenRenderbuffers(1, &depth_stencil_buffer_);
+      glBindRenderbuffer(GL_RENDERBUFFER, depth_stencil_buffer_);
+      glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH24_STENCIL8,
+                            color_attachments_[0]->width(),
+                            color_attachments_[0]->height());
+      glBindRenderbuffer(GL_RENDERBUFFER, 0);
+      glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT,
+                                GL_RENDERBUFFER, depth_stencil_buffer_);
+    }
   }
 
-  void SetColorAttachment(const std::shared_ptr<Texture2d> color_attachment) {
-    color_attachment_ = color_attachment;
+  void set_color_attachments(
+      const std::vector<std::shared_ptr<Texture2d>> color_attachments) {
+    color_attachments_ = color_attachments;
   }
 
   uint32_t depth_stencil_buffer_{0};
-  std::shared_ptr<Texture2d> color_attachment_{nullptr};
+  std::vector<std::shared_ptr<Texture2d>> color_attachments_;
 };
 
 enum DepthMapType {
@@ -143,8 +160,8 @@ class DepthMap : public BaseFramebuffer {
   }
 
   bool GenerateDepthMap2dTexture(int width, int height) {
-    depth_map_2d_ =
-        Texture2d::Create(width, height, GL_DEPTH_COMPONENT, GL_FLOAT);
+    depth_map_2d_ = Texture2d::Create(width, height, GL_DEPTH_COMPONENT,
+                                      GL_DEPTH_COMPONENT, GL_FLOAT);
     if (!depth_map_2d_) {
       return false;
     }

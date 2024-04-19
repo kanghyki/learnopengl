@@ -48,7 +48,7 @@ class Context {
   std::unique_ptr<Program> lighting_program_{nullptr};
   std::unique_ptr<Program> post_program_{nullptr};
   std::unique_ptr<Program> depth_3d_program_{nullptr};
-  std::unique_ptr<Program> normal_program_{nullptr};
+  std::unique_ptr<Program> vertex_normal_program_{nullptr};
 
   // textures
   std::unique_ptr<Texture3d> cube_texture_{nullptr};
@@ -57,7 +57,7 @@ class Context {
   std::shared_ptr<Mesh> box_{nullptr};
   std::shared_ptr<Mesh> wood_box_{nullptr};
   std::shared_ptr<Mesh> sphere_{nullptr};
-  std::shared_ptr<Mesh> plain_plane_{nullptr};
+  std::shared_ptr<Mesh> plane_{nullptr};
   std::shared_ptr<Model> model_{nullptr};
 
   // objects
@@ -87,13 +87,18 @@ class Context {
   bool camera_direction_control_{false};
   bool camera_fast_move_{false};
 
-  // TODO:
   std::unique_ptr<Framebuffer> framebuffer_{nullptr};
   std::unique_ptr<Framebuffer> index_framebuffer_{nullptr};
   std::unique_ptr<DepthMap> depth_2d_map_{nullptr};
   std::unique_ptr<DepthMap> depth_3d_map_{nullptr};
 
-  float gamma_{1.0f};
+  std::unique_ptr<Framebuffer> gaussian_blur_framebuffer_[2];
+  std::unique_ptr<Program> gaussian_blur_program_{nullptr};
+
+  float gamma_{2.0f};
+  float exposure_{3.0f};
+  bool bloom_{true};
+  bool hdr_{true};
 
   int imgui_image_size_{800};
   bool is_open_setting_{true};
