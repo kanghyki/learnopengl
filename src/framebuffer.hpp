@@ -6,7 +6,9 @@
 
 class BaseFramebuffer {
  public:
-  inline static void BindToDefault() { glBindFramebuffer(GL_FRAMEBUFFER, 0); };
+  inline static void BindToDefault(uint32_t target = GL_FRAMEBUFFER) {
+    glBindFramebuffer(target, 0);
+  };
 
   BaseFramebuffer() {}
   ~BaseFramebuffer() {
