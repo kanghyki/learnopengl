@@ -176,8 +176,8 @@ bool Context::Init() {
   glm::vec3 center = glm::vec3(0.0f, 0.0f, 0.0f);
   light_ = Light::Create(sphere_);
   light_->CreateBoundingSphere(0.5f);
-  light_->transform().set_translate(center);
-  light_->transform().set_scale(glm::vec3(0.5f));
+  light_->transform().translate_ = center;
+  light_->transform().scale_ = glm::vec3(0.5f);
   objects_.push_back(light_);
 
   for (int i = -1; i < 2; ++i) {
@@ -185,9 +185,9 @@ bool Context::Init() {
       for (int k = -1; k < 2; ++k) {
         if (i == 0 && j == 0 && k == 0) continue;
         auto box = Object::Create(box_);
-        box->transform().set_translate(
-            center + glm::vec3(j * 0.5f, k * 0.5, i * 0.5) * 3.0f);
-        box->transform().set_scale(glm::vec3(0.5f));
+        box->transform().translate_ =
+            center + glm::vec3(j * 0.5f, k * 0.5, i * 0.5) * 3.0f;
+        box->transform().scale_ = glm::vec3(0.5f);
         box->CreateBoundingSphere(0.7f);
         objects_.push_back(box);
       }
@@ -202,8 +202,8 @@ bool Context::Init() {
     // objects_.push_back(top);
 
     auto bottom = Object::Create(wood_box_);
-    bottom->transform().set_scale(glm::vec3(10.0f, 0.5f, 10.0f));
-    bottom->transform().set_translate(glm::vec3(0.0f, -5.0f, 0.0f));
+    bottom->transform().scale_ = (glm::vec3(10.0f, 0.5f, 10.0f));
+    bottom->transform().translate_ = (glm::vec3(0.0f, -5.0f, 0.0f));
     bottom->transform().set_rotate(glm::vec3(0.0f, 0.0f, 0.0f));
     objects_.push_back(bottom);
 
@@ -714,8 +714,8 @@ void Context::ProcessMouseMove(double x, double y) {
         glm::vec3 new_pos =
             world_near_ + prev_ratio_ * (world_far_ - world_near_);
         glm::vec3 translate(new_pos - prev_position_);
-        pick_object_->transform().set_translate(
-            pick_object_->transform().translate() + translate);
+        pick_object_->transform().translate_ =
+            (pick_object_->transform().translate_ + translate);
         prev_position_ = new_pos;
       }
     } else if (left_mouse_ && is_hit_) {
@@ -950,11 +950,9 @@ void Context::RenderImGui() {
 
         if (ImGui::CollapsingHeader("Transform",
                                     ImGuiTreeNodeFlags_DefaultOpen)) {
-          ImGui::Text("Translate: x(%.3f), y(%.3f), z(%.3f)",
-                      transform.translate().x, transform.translate().y,
-                      transform.translate().z);
-          ImGui::Text("Scale: x(%.3f), y(%.3f), z(%.3f)", transform.scale().x,
-                      transform.scale().y, transform.scale().z);
+          ImGui::DragFloat3("Translate", glm::value_ptr(transform.translate_),
+                            0.01f);
+          ImGui::DragFloat3("Scale", glm::value_ptr(transform.scale_), 0.01f);
           ImGui::Text("Rotate: x(%.3f), y(%.3f), z(%.3f)",
                       transform.rotate_euler().x, transform.rotate_euler().y,
                       transform.rotate_euler().z);

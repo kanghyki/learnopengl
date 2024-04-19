@@ -41,7 +41,7 @@ class BoundingSphere {
   }
 
   float scaled_radius(const Transform &t) const {
-    return glm::max(glm::max(t.scale().x, t.scale().y), t.scale().z) * radius_;
+    return glm::max(glm::max(t.scale_.x, t.scale_.y), t.scale_.z) * radius_;
   }
 
   const float radius_;

@@ -23,7 +23,7 @@ class Light : public Object {
   LightType& type() { return type_; }
 
   // Point & Spot
-  glm::vec3 position() const { return transform().translate(); }
+  glm::vec3 position() const { return transform().translate_; }
   const float constant{1.0f};
   const float linear{0.09f};
   const float quadratic{0.032f};
