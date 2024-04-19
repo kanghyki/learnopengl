@@ -163,10 +163,14 @@ bool Context::Init() {
     plane_ = Mesh::CreatePlane();
   }
   {  // model
-    model_ = Model::Load("model/resources/teapot.obj");
+    model_ = Model::Load("model/backpack/backpack.obj");
     if (!model_) {
       return false;
     }
+  }
+  for (size_t i = 0; i < model_->meshes_count(); ++i) {
+    auto m = Object::Create(model_->mesh(i));
+    objects_.push_back(m);
   }
 
   glm::vec3 center = glm::vec3(0.0f, 0.0f, 0.0f);

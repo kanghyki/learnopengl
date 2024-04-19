@@ -6,113 +6,91 @@ Model::~Model() {}
 
 std::unique_ptr<Model> Model::Load(const std::string &filename) {
   auto model = std::unique_ptr<Model>(new Model());
-  std::optional<std::string> data = LoadTextFile(filename);
 
-  if (!data || !model->ParseObjToMesh(*data)) {
+  if (!model->LoadByAssimp(filename)) {
     return nullptr;
   }
-  if (!model->ParseObjToMesh(*data)) {
-    return nullptr;
-  }
-
   return std::move(model);
 }
 
-void Model::Draw(const Program *program) const { mesh_->Draw(program); }
-
-bool Model::ParseObjToMesh(const std::string &data) {
-  std::vector<Vertex> vertexes;
-  std::vector<uint32_t> indices;
-  std::vector<glm::vec3> temp_vertexes;
-  std::vector<glm::vec2> temp_texcoords;
-  std::vector<glm::vec3> temp_normals;
-  std::vector<std::string> lines = Split(data, "\n");
-
-  for (const auto &line : lines) {
-    std::vector<std::string> word = Split(line, " ");
-    std::string prefix = word[0];
-    word.erase(word.begin());
-
-    if (word.size() == 0 || prefix.rfind("#", 0) == 0) {
-      continue;
-    } else if (prefix == "v") {
-      glm::vec3 temp;
-      temp.x = std::stof(word[0]);
-      temp.y = std::stof(word[1]);
-      temp.z = std::stof(word[2]);
-      temp_vertexes.push_back(temp);
-    } else if (prefix == "vt") {
-      glm::vec2 temp;
-      temp.x = std::stof(word[0]);
-      temp.y = std::stof(word[1]);
-      temp_texcoords.push_back(temp);
-    } else if (prefix == "vn") {
-      glm::vec3 temp;
-      temp.x = std::stof(word[0]);
-      temp.y = std::stof(word[1]);
-      temp.z = std::stof(word[2]);
-      temp_normals.push_back(temp);
-    } else if (prefix == "f") {
-      std::vector<VertexIndex> vi;
-      for (size_t i = 0; i < word.size(); ++i) {
-        std::vector<std::string> vtx = Split(word[i], "/");
-        VertexIndex index = {-1, -1, -1};
-        index.v += std::stoi(vtx[0]);
-        if (vtx.size() == 3) {
-          index.vt += std::stoi(vtx[1]);
-          index.vn += std::stoi(vtx[2]);
-        }
-        vi.push_back(index);
-      }
-
-      std::vector<Vertex> temp_v;
-      for (size_t i = 0; i < word.size(); ++i) {
-        VertexIndex index = vi[i];
-        glm::vec3 v = temp_vertexes[index.v];
-        glm::vec3 vn =
-            index.vn != -1 ? temp_normals[index.vn] : glm::vec3(0.0f);
-        glm::vec2 vt =
-            index.vt != -1 ? temp_texcoords[index.vt] : glm::vec2(0.0f);
-        temp_v.push_back({v, vn, vt});
-      }
-
-      glm::vec3 v0 = temp_v[1].position - temp_v[0].position;
-      glm::vec3 v1 = temp_v[2].position - temp_v[0].position;
-      glm::vec3 n = glm::cross(v0, v1);
-      for (size_t i = 0; i < vi.size(); ++i) {
-        if (vi[i].vn == -1) {
-          temp_v[i].normal = n;
-        }
-      }
-
-      size_t before_vertex_size = vertexes.size();
-      for (size_t i = 0; i < word.size() - 2; ++i) {
-        indices.push_back(before_vertex_size);
-        indices.push_back(before_vertex_size + i + 1);
-        indices.push_back(before_vertex_size + i + 2);
-      }
-
-      vertexes.insert(vertexes.end(), temp_v.begin(), temp_v.end());
-    }
+void Model::Draw(const Program *program) const {
+  for (auto &mesh : meshes_) {
+    mesh->Draw(program);
   }
+}
 
-  mesh_ = Mesh::Create(vertexes, indices, GL_TRIANGLES);
-  LoadMaterial();
+bool Model::LoadByAssimp(const std::string &filename) {
+  Assimp::Importer importer;
 
+  auto LoadTexture =
+      [](const std::string &dirname, aiMaterial *ai_material,
+         aiTextureType ai_texture_type) -> std::unique_ptr<Texture2d> {
+    if (ai_material->GetTextureCount(ai_texture_type) <= 0) {
+      return nullptr;
+    }
+    aiString filepath;
+    ai_material->GetTexture(aiTextureType_DIFFUSE, 0, &filepath);
+    auto image = Image::Load(fmt::format(dirname + "/" + filepath.C_Str()));
+    if (!image) {
+      return nullptr;
+    }
+    return Texture2d::Create(image.get());
+  };
+  auto scene =
+      importer.ReadFile(filename, aiProcess_Triangulate | aiProcess_FlipUVs);
+  if (!scene || scene->mFlags & AI_SCENE_FLAGS_INCOMPLETE ||
+      !scene->mRootNode) {
+    SPDLOG_ERROR("failed to load model: {}", filename);
+    return false;
+  }
+  auto dirname = filename.substr(0, filename.find_last_of("/"));
+  for (uint32_t i = 0; i < scene->mNumMaterials; i++) {
+    aiMaterial *scene_material = scene->mMaterials[i];
+    std::shared_ptr<Material> material = Material::Create();
+    material->diffuse_ =
+        LoadTexture(dirname, scene_material, aiTextureType_DIFFUSE);
+    material->specular_ =
+        LoadTexture(dirname, scene_material, aiTextureType_SPECULAR);
+
+    materials_.push_back(std::move(material));
+  }
+  ProcessNode(scene->mRootNode, scene);
   return true;
 }
 
-// TODO: load material
-bool Model::LoadMaterial() {
-  auto material = Material::Create();
+void Model::ProcessNode(aiNode *ai_node, const aiScene *ai_scene) {
+  for (uint32_t i = 0; i < ai_node->mNumMeshes; i++) {
+    auto mesh_index = ai_node->mMeshes[i];
+    auto mesh = ai_scene->mMeshes[mesh_index];
+    ProcessMesh(mesh, ai_scene);
+  }
+  for (uint32_t i = 0; i < ai_node->mNumChildren; i++) {
+    ProcessNode(ai_node->mChildren[i], ai_scene);
+  }
+}
 
-  material->specular_ = Texture2d::Create(
-      Image::CreateSingleColorImage(4, 4, glm::vec4(1.0f, 1.0f, 1.0f, 1.0f))
-          .get());
-  material->diffuse_ = Texture2d::Create(
-      Image::CreateSingleColorImage(4, 4, glm::vec4(0.7f, 0.7f, 0.7f, 1.0f))
-          .get());
-  mesh_->set_material(material);
+void Model::ProcessMesh(aiMesh *ai_mesh, const aiScene *ai_scene) {
+  std::vector<Vertex> vertices(ai_mesh->mNumVertices);
+  std::vector<uint32_t> indices(ai_mesh->mNumFaces * 3);
 
-  return true;
+  for (uint32_t i = 0; i < ai_mesh->mNumVertices; i++) {
+    Vertex &v = vertices[i];
+    v.position = glm::vec3(ai_mesh->mVertices[i].x, ai_mesh->mVertices[i].y,
+                           ai_mesh->mVertices[i].z);
+    v.normal = glm::vec3(ai_mesh->mNormals[i].x, ai_mesh->mNormals[i].y,
+                         ai_mesh->mNormals[i].z);
+    v.tex_coord = glm::vec2(ai_mesh->mTextureCoords[0][i].x,
+                            ai_mesh->mTextureCoords[0][i].y);
+    v.tangent = glm::vec3(0.0f);
+  }
+  for (uint32_t i = 0; i < ai_mesh->mNumFaces; i++) {
+    indices[i * 3] = ai_mesh->mFaces[i].mIndices[0];
+    indices[i * 3 + 1] = ai_mesh->mFaces[i].mIndices[1];
+    indices[i * 3 + 2] = ai_mesh->mFaces[i].mIndices[2];
+  }
+  std::shared_ptr<Mesh> mesh = Mesh::Create(vertices, indices, GL_TRIANGLES);
+  if (ai_mesh->mMaterialIndex >= 0) {
+    mesh->set_material(materials_[ai_mesh->mMaterialIndex]);
+  }
+  meshes_.push_back(std::move(mesh));
 }

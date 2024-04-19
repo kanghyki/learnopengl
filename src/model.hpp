@@ -1,32 +1,42 @@
 #ifndef INCLUDED_MODEL_HPP
 #define INCLUDED_MODEL_HPP
 
-#include "common.hpp"
-#include "mesh.hpp"
+// clang-format off
+#include <assimp/Importer.hpp>
+#include <assimp/scene.h>
+#include <assimp/postprocess.h>
+// clang-format on
 
-struct VertexIndex {
-  int v;
-  int vt;
-  int vn;
-};
+#include "common.hpp"
+#include "material.hpp"
+#include "mesh.hpp"
+#include "texture.hpp"
 
 class Model {
  public:
-  static std::unique_ptr<Model> Load(const std::string &filename);
+  static std::unique_ptr<Model> Load(const std::string& filename);
   ~Model();
 
-  void Draw(const Program *program) const;
+  void Draw(const Program* program) const;
 
-  std::shared_ptr<Mesh> mesh() { return mesh_; }
+  std::shared_ptr<Mesh> mesh(int i) {
+    if (i >= 0 && i < meshes_.size()) {
+      return meshes_[i];
+    }
+    return nullptr;
+  }
+  size_t meshes_count() const { return meshes_.size(); }
 
  private:
   Model();
-  Model(const Model &model);
+  Model(const Model& model);
 
-  bool ParseObjToMesh(const std::string &data);
-  bool LoadMaterial();
+  bool LoadByAssimp(const std::string& filename);
+  void ProcessMesh(aiMesh* ai_mesh, const aiScene* ai_scene);
+  void ProcessNode(aiNode* ai_node, const aiScene* ai_scene);
 
-  std::shared_ptr<Mesh> mesh_;
+  std::vector<std::shared_ptr<Mesh>> meshes_;
+  std::vector<std::shared_ptr<Material>> materials_;
 };
 
 #endif
