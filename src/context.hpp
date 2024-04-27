@@ -77,6 +77,7 @@ class Context {
   bool is_hit_{false};
   bool drag_{false};
   bool ctrl_{false};
+  bool alt_{false};
   bool left_mouse_{false};
 
   std::shared_ptr<Light> light_{nullptr};
@@ -104,6 +105,7 @@ class Context {
   bool is_open_setting_{true};
   bool is_active_wireframe_{false};
   bool is_show_vertex_normal_{false};
+  bool is_active_shadow_{true};
 };
 
 size_t RGBAToId(std::array<uint8_t, 4> rgba);

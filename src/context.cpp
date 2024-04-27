@@ -54,7 +54,7 @@ bool Context::Init() {
     return false;
   }
 
-  depth_2d_map_ = DepthMap::Create(1024, k2D);
+  depth_2d_map_ = DepthMap::Create(2048, k2D);
   if (!depth_2d_map_) {
     return false;
   }
@@ -162,16 +162,16 @@ bool Context::Init() {
   {  // plane mesh
     plane_ = Mesh::CreatePlane();
   }
-  {  // model
-    model_ = Model::Load("model/backpack/backpack.obj");
-    if (!model_) {
-      return false;
-    }
-  }
-  for (size_t i = 0; i < model_->meshes_count(); ++i) {
-    auto m = Object::Create(model_->mesh(i));
-    objects_.push_back(m);
-  }
+  // {  // model
+  //   model_ = Model::Load("model/backpack/backpack.obj");
+  //   if (!model_) {
+  //     return false;
+  //   }
+  // }
+  // for (size_t i = 0; i < model_->meshes_count(); ++i) {
+  //   auto m = Object::Create(model_->mesh(i));
+  //   objects_.push_back(m);
+  // }
 
   glm::vec3 center = glm::vec3(0.0f, 0.0f, 0.0f);
   light_ = Light::Create(sphere_);
@@ -195,39 +195,41 @@ bool Context::Init() {
   }
 
   {
+    float wall_size = 15.0f;
+    float wall_t = wall_size / 2.0f;
     // auto top = Object::Create(wood_box_);
-    // top->transform().set_scale(glm::vec3(10.0f, 0.5f, 10.0f));
-    // top->transform().set_translate(glm::vec3(0.0f, 5.0f, 0.0f));
+    // top->transform().scale_ = (glm::vec3(wall_size, 0.5f, wall_size));
+    // top->transform().translate_ = (glm::vec3(0.0f, wall_t, 0.0f));
     // top->transform().set_rotate(glm::vec3(0.0f, 0.0f, 0.0f));
     // objects_.push_back(top);
 
     auto bottom = Object::Create(wood_box_);
-    bottom->transform().scale_ = (glm::vec3(10.0f, 0.5f, 10.0f));
-    bottom->transform().translate_ = (glm::vec3(0.0f, -5.0f, 0.0f));
+    bottom->transform().scale_ = (glm::vec3(wall_size, 0.5f, wall_size));
+    bottom->transform().translate_ = (glm::vec3(0.0f, -wall_t, 0.0f));
     bottom->transform().set_rotate(glm::vec3(0.0f, 0.0f, 0.0f));
     objects_.push_back(bottom);
 
     // auto front = Object::Create(wood_box_);
-    // front->transform().set_scale(glm::vec3(10.0f, 0.5f, 10.0f));
-    // front->transform().set_translate(glm::vec3(0.0f, 0.0f, 5.0f));
+    // front->transform().scale_ = (glm::vec3(wall_size, 0.5f, wall_size));
+    // front->transform().translate_ = (glm::vec3(0.0f, 0.0f, wall_t));
     // front->transform().set_rotate(glm::vec3(90.0f, 0.0f, 0.0f));
     // objects_.push_back(front);
 
     // auto back = Object::Create(wood_box_);
-    // back->transform().set_scale(glm::vec3(10.0f, 0.5f, 10.0f));
-    // back->transform().set_translate(glm::vec3(0.0f, 0.0f, -5.0f));
+    // back->transform().scale_ = (glm::vec3(wall_size, 0.5f, wall_size));
+    // back->transform().translate_ = (glm::vec3(0.0f, 0.0f, -wall_t));
     // back->transform().set_rotate(glm::vec3(90.0f, 0.0f, 0.0f));
     // objects_.push_back(back);
 
     // auto left = Object::Create(wood_box_);
-    // left->transform().set_scale(glm::vec3(10.0f, 0.5f, 10.0f));
-    // left->transform().set_translate(glm::vec3(-5.0f, 0.0f, 0.0f));
+    // left->transform().scale_ = (glm::vec3(wall_size, 0.5f, wall_size));
+    // left->transform().translate_ = (glm::vec3(-wall_t, 0.0f, 0.0f));
     // left->transform().set_rotate(glm::vec3(0.0f, 0.0f, 90.0f));
     // objects_.push_back(left);
 
     // auto right = Object::Create(wood_box_);
-    // right->transform().set_scale(glm::vec3(10.0f, 0.5f, 10.0f));
-    // right->transform().set_translate(glm::vec3(5.0f, 0.0f, 0.0f));
+    // right->transform().scale_ = (glm::vec3(wall_size, 0.5f, wall_size));
+    // right->transform().translate_ = (glm::vec3(wall_t, 0.0f, 0.0f));
     // right->transform().set_rotate(glm::vec3(0.0f, 0.0f, 90.0f));
     // objects_.push_back(right);
   }
@@ -277,6 +279,7 @@ void Context::Render() {
                     glm::value_ptr(lightProjection));
     glBindBuffer(GL_UNIFORM_BUFFER, 0);
 
+    glCullFace(GL_FRONT);
     {
       depth_2d_map_->Bind();
       glEnable(GL_DEPTH_TEST);
@@ -346,6 +349,7 @@ void Context::Render() {
         object->Draw(depth_3d_program_.get());
       }
     }
+    glCullFace(GL_BACK);
 
     Framebuffer::BindToDefault();
     glViewport(0, 0, width_, height_);
@@ -408,6 +412,7 @@ void Context::Render() {
     lighting_program_->SetUniform("light.diffuse", light_->diffuse);
     lighting_program_->SetUniform("light.specular", light_->specular);
     lighting_program_->SetUniform("isBlinn", is_blinn_);
+    lighting_program_->SetUniform("isShadow", is_active_shadow_);
     glActiveTexture(GL_TEXTURE3);
     depth_2d_map_->depth_map()->Bind();
     lighting_program_->SetUniform("depthMap", 3);
@@ -576,6 +581,16 @@ void Context::ProcessKeyboardInput(GLFWwindow* window, int key, int action) {
         break;
     }
   }
+  if (key == GLFW_KEY_LEFT_ALT) {
+    switch (action) {
+      case GLFW_PRESS:
+        alt_ = true;
+        break;
+      case GLFW_RELEASE:
+        alt_ = false;
+        break;
+    }
+  }
   if (key == GLFW_KEY_Q) {
     switch (action) {
       case GLFW_PRESS:
@@ -693,17 +708,20 @@ void Context::ProcessMouseMove(double x, double y) {
   }
   prev_cursor_ = cur_cursor;
 
+  if (!left_mouse_) {
+    return;
+  }
+
   if (pick_object_) {
     CalcCursorRay(cur_cursor);
     auto dist = pick_object_->Intersect(cursor_ray_, pick_object_->transform());
-    if (dist) {
-      is_hit_ = true;
+    is_hit_ = dist.has_value();
+
+    if (is_hit_) {
       hit_point_ = cursor_ray_.position + cursor_ray_.direction * dist.value();
-    } else {
-      is_hit_ = false;
     }
 
-    if (left_mouse_ && ctrl_) {
+    if (ctrl_) {
       if (!drag_ && is_hit_) {
         prev_ratio_ = dist.value() / glm::length(world_far_ - world_near_);
         prev_position_ =
@@ -718,7 +736,7 @@ void Context::ProcessMouseMove(double x, double y) {
             (pick_object_->transform().translate_ + translate);
         prev_position_ = new_pos;
       }
-    } else if (left_mouse_ && is_hit_) {
+    } else if (alt_ && is_hit_) {
       glm::vec3 cur_vector =
           hit_point_ - glm::vec3(pick_object_->transform().TranslateMatrix() *
                                  glm::vec4(0.0f, 0.0f, 0.0f, 1.0f));
@@ -827,6 +845,7 @@ void Context::RenderImGui() {
         ImGui::ColorEdit3("ambient", glm::value_ptr(light_->ambient));
         ImGui::ColorEdit3("diffuse", glm::value_ptr(light_->diffuse));
         ImGui::ColorEdit3("specular", glm::value_ptr(light_->specular));
+        ImGui::Checkbox("Shadow", &is_active_shadow_);
       }
       ImGui::Spacing();
       ImGui::Spacing();
