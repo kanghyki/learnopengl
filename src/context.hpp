@@ -90,8 +90,8 @@ class Context {
 
   std::unique_ptr<Framebuffer> framebuffer_{nullptr};
   std::unique_ptr<Framebuffer> index_framebuffer_{nullptr};
-  std::unique_ptr<DepthMap> depth_2d_map_{nullptr};
-  std::unique_ptr<DepthMap> depth_3d_map_{nullptr};
+  std::unique_ptr<DepthMap2d> depth_2d_map_{nullptr};
+  std::unique_ptr<DepthMap3d> depth_3d_map_{nullptr};
 
   std::unique_ptr<Framebuffer> gaussian_blur_framebuffer_[2];
   std::unique_ptr<Program> gaussian_blur_program_{nullptr};

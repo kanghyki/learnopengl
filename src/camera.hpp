@@ -73,7 +73,7 @@ struct Camera {
   float near_plane_{0.1f};
   float far_plane_{200.0f};
   unsigned char move_status_{0};
-  float move_speed_{0.05f};
+  float move_speed_{0.1f};
   float rot_speed_{0.15f};
   glm::vec3 position_{0.0f, 1.5f, 5.0f};
   mutable glm::vec3 front_{0.0f, 0.0f, -1.0f};

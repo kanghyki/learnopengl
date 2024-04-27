@@ -54,12 +54,12 @@ bool Context::Init() {
     return false;
   }
 
-  depth_2d_map_ = DepthMap::Create(2048, k2D);
+  depth_2d_map_ = DepthMap2d::Create(512);
   if (!depth_2d_map_) {
     return false;
   }
 
-  depth_3d_map_ = DepthMap::Create(1024, k3D);
+  depth_3d_map_ = DepthMap3d::Create(1024);
   if (!depth_3d_map_) {
     return false;
   }
@@ -173,29 +173,31 @@ bool Context::Init() {
   //   objects_.push_back(m);
   // }
 
-  glm::vec3 center = glm::vec3(0.0f, 0.0f, 0.0f);
+  glm::vec3 center = glm::vec3(0.0f, 20.0f, 0.0f);
+
   light_ = Light::Create(sphere_);
   light_->CreateBoundingSphere(0.5f);
   light_->transform().translate_ = center;
   light_->transform().scale_ = glm::vec3(0.5f);
   objects_.push_back(light_);
 
-  for (int i = -1; i < 2; ++i) {
-    for (int j = -1; j < 2; ++j) {
-      for (int k = -1; k < 2; ++k) {
-        if (i == 0 && j == 0 && k == 0) continue;
-        auto box = Object::Create(box_);
-        box->transform().translate_ =
-            center + glm::vec3(j * 0.5f, k * 0.5, i * 0.5) * 3.0f;
-        box->transform().scale_ = glm::vec3(0.5f);
-        box->CreateBoundingSphere(0.7f);
-        objects_.push_back(box);
-      }
-    }
+  for (int i = 0; i < 100; ++i) {
+    auto box = Object::Create(box_);
+    box->transform().translate_ =
+        center + glm::vec3(UniformRandom(-25.0f, 25.0f),
+                           UniformRandom(-15.0f, 0.0f),
+                           UniformRandom(-25.5f, 25.5f));
+    box->transform().set_rotate(glm::vec3(UniformRandom(0.0f, 360.0f),
+                                          UniformRandom(0.0f, 360.0f),
+                                          UniformRandom(0.0f, 360.0f)));
+    float scale = static_cast<float>(UniformRandom(0.5f, 1.5f));
+    box->transform().scale_ = glm::vec3(scale);
+    box->CreateBoundingSphere(scale / 1.5f);
+    objects_.push_back(box);
   }
 
   {
-    float wall_size = 15.0f;
+    float wall_size = 50.0f;
     float wall_t = wall_size / 2.0f;
     // auto top = Object::Create(wood_box_);
     // top->transform().scale_ = (glm::vec3(wall_size, 0.5f, wall_size));
@@ -205,7 +207,8 @@ bool Context::Init() {
 
     auto bottom = Object::Create(wood_box_);
     bottom->transform().scale_ = (glm::vec3(wall_size, 0.5f, wall_size));
-    bottom->transform().translate_ = (glm::vec3(0.0f, -wall_t, 0.0f));
+    // bottom->transform().translate_ = (glm::vec3(0.0f, -wall_t, 0.0f));
+    bottom->transform().translate_ = (glm::vec3(0.0f, 0.0f, 0.0f));
     bottom->transform().set_rotate(glm::vec3(0.0f, 0.0f, 0.0f));
     objects_.push_back(bottom);
 
@@ -298,11 +301,11 @@ void Context::Render() {
       depth_3d_map_->Bind();
       glEnable(GL_DEPTH_TEST);
       glClear(GL_DEPTH_BUFFER_BIT);
-      glViewport(0, 0, depth_3d_map_->depth_map_3d()->width(),
-                 depth_3d_map_->depth_map_3d()->height());
+      glViewport(0, 0, depth_3d_map_->depth_map()->width(),
+                 depth_3d_map_->depth_map()->height());
 
-      float aspect = (float)depth_3d_map_->depth_map_3d()->width() /
-                     (float)depth_3d_map_->depth_map_3d()->height();
+      float aspect = (float)depth_3d_map_->depth_map()->width() /
+                     (float)depth_3d_map_->depth_map()->height();
       glm::mat4 shadowProj =
           glm::perspective(glm::radians(90.0f), aspect, 0.5f, 25.0f);
       std::vector<glm::mat4> shadowTransforms;
@@ -361,9 +364,9 @@ void Context::Render() {
   // glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
   glClearColor(clear_color_.r, clear_color_.g, clear_color_.b, clear_color_.a);
   glClear(clear_bit_);
+
   auto projection = camera_.GetPerspectiveProjectionMatrix();
   auto view = camera_.GetViewMatrix();
-
   // copy
   ubo_transform_->Bind();
   glBufferSubData(GL_UNIFORM_BUFFER, 0, sizeof(glm::mat4),
@@ -372,18 +375,18 @@ void Context::Render() {
                   glm::value_ptr(projection));
   glBindBuffer(GL_UNIFORM_BUFFER, 0);
 
-  // {  // cube program
-  //   glActiveTexture(GL_TEXTURE0);
-  //   cube_texture_->Bind();
+  {  // cube program
+    glActiveTexture(GL_TEXTURE0);
+    cube_texture_->Bind();
 
-  //   auto model = glm::translate(glm::mat4(1.0), camera_.position_) *
-  //                glm::scale(glm::mat4(1.0), glm::vec3(100.0f));
-  //   cube_program_->Use();
-  //   cube_program_->SetUniform("cube", 0);
-  //   cube_program_->SetUniform("model", model);
-  //   sphere_->Draw(cube_program_.get());
-  //   glActiveTexture(GL_TEXTURE0);
-  // }
+    auto model = glm::translate(glm::mat4(1.0), camera_.position_) *
+                 glm::scale(glm::mat4(1.0), glm::vec3(200.0f));
+    cube_program_->Use();
+    cube_program_->SetUniform("cube", 0);
+    cube_program_->SetUniform("model", model);
+    sphere_->Draw(cube_program_.get());
+    glActiveTexture(GL_TEXTURE0);
+  }
   {  // simple program
     simple_program_->Use();
     if (is_hit_) {
@@ -434,7 +437,7 @@ void Context::Render() {
     glActiveTexture(GL_TEXTURE0);
 
     glActiveTexture(GL_TEXTURE4);
-    depth_3d_map_->depth_map_3d()->Bind();
+    depth_3d_map_->depth_map()->Bind();
     lighting_program_->SetUniform("depthMap3d", 4);
     glActiveTexture(GL_TEXTURE0);
     lighting_program_->SetUniform("far_plane", 25.0f);
