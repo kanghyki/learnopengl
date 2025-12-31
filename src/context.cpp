@@ -260,103 +260,7 @@ void Context::Update() { camera_.Move(); }
 
 void Context::Render() {
   RenderImGui();
-
-  {  // depth_map 2d
-    auto rm = glm::rotate(glm::mat4(1.0f), glm::radians(90.0f),
-                          glm::vec3(-1.0f, 0.0f, 0.0f));
-    auto lightView = glm::lookAt(
-        light_->position(), light_->position() + light_->direction(),
-        glm::vec3(glm::vec4(light_->direction(), 0.0f) * rm));
-    glm::mat4 lightProjection;
-    if (light_->type() == kDirectional) {
-      lightProjection = glm::ortho(-10.0f, 10.0f, -10.0f, 10.0f, 1.0f, 20.0f);
-    } else {
-      lightProjection = glm::perspective(
-          glm::radians((light_->cutoff[0] + light_->cutoff[1]) * 2.0f), 1.0f,
-          1.0f, 20.0f);
-    }
-    ubo_transform_->Bind();
-    glBufferSubData(GL_UNIFORM_BUFFER, 0, sizeof(glm::mat4),
-                    glm::value_ptr(lightView));
-    glBufferSubData(GL_UNIFORM_BUFFER, sizeof(glm::mat4), sizeof(glm::mat4),
-                    glm::value_ptr(lightProjection));
-    glBindBuffer(GL_UNIFORM_BUFFER, 0);
-
-    glCullFace(GL_FRONT);
-    {
-      depth_2d_map_->Bind();
-      glEnable(GL_DEPTH_TEST);
-      glClear(GL_DEPTH_BUFFER_BIT);
-      glViewport(0, 0, depth_2d_map_->depth_map()->width(),
-                 depth_2d_map_->depth_map()->height());
-      simple_program_->Use();
-      simple_program_->SetUniform("color", glm::vec4(1.0f, 1.0f, 1.0f, 1.0f));
-
-      for (const auto& object : objects_) {
-        simple_program_->SetUniform("model", object->transform().ModelMatrix());
-        object->Draw(simple_program_.get());
-      }
-    }
-    {
-      depth_3d_map_->Bind();
-      glEnable(GL_DEPTH_TEST);
-      glClear(GL_DEPTH_BUFFER_BIT);
-      glViewport(0, 0, depth_3d_map_->depth_map()->width(),
-                 depth_3d_map_->depth_map()->height());
-
-      float aspect = (float)depth_3d_map_->depth_map()->width() /
-                     (float)depth_3d_map_->depth_map()->height();
-      glm::mat4 shadowProj =
-          glm::perspective(glm::radians(90.0f), aspect, 0.5f, 25.0f);
-      std::vector<glm::mat4> shadowTransforms;
-      shadowTransforms.push_back(
-          shadowProj *
-          glm::lookAt(light_->position(),
-                      light_->position() + glm::vec3(1.0, 0.0, 0.0),
-                      glm::vec3(0.0, -1.0, 0.0)));
-      shadowTransforms.push_back(
-          shadowProj *
-          glm::lookAt(light_->position(),
-                      light_->position() + glm::vec3(-1.0, 0.0, 0.0),
-                      glm::vec3(0.0, -1.0, 0.0)));
-      shadowTransforms.push_back(
-          shadowProj *
-          glm::lookAt(light_->position(),
-                      light_->position() + glm::vec3(0.0, 1.0, 0.0),
-                      glm::vec3(0.0, 0.0, 1.0)));
-      shadowTransforms.push_back(
-          shadowProj *
-          glm::lookAt(light_->position(),
-                      light_->position() + glm::vec3(0.0, -1.0, 0.0),
-                      glm::vec3(0.0, 0.0, -1.0)));
-      shadowTransforms.push_back(
-          shadowProj *
-          glm::lookAt(light_->position(),
-                      light_->position() + glm::vec3(0.0, 0.0, 1.0),
-                      glm::vec3(0.0, -1.0, 0.0)));
-      shadowTransforms.push_back(
-          shadowProj *
-          glm::lookAt(light_->position(),
-                      light_->position() + glm::vec3(0.0, 0.0, -1.0),
-                      glm::vec3(0.0, -1.0, 0.0)));
-
-      depth_3d_program_->Use();
-      depth_3d_program_->SetUniform("color", glm::vec4(1.0f, 1.0f, 1.0f, 1.0f));
-      depth_3d_program_->SetUniform("shadowMatrices", shadowTransforms);
-      depth_3d_program_->SetUniform("far_plane", 25.0f);
-      depth_3d_program_->SetUniform("lightPos", light_->position());
-
-      for (const auto& object : objects_) {
-        depth_3d_program_->SetUniform("model",
-                                      object->transform().ModelMatrix());
-        object->Draw(depth_3d_program_.get());
-      }
-    }
-    glCullFace(GL_BACK);
-
-    Framebuffer::BindToDefault();
-    glViewport(0, 0, width_, height_);
-  }
+  RenderDepthMap();
 
   framebuffer_->Bind();
   glEnable(GL_DEPTH_TEST);
@@ -1096,4 +1000,92 @@ void Context::CalcCursorRay(glm::vec2 cursor) {
       glm::normalize(glm::vec3(world_far_position - world_near_position));
 
   cursor_ray_ = ray;
+}
+
+void Context::RenderDepthMap() const {
+  auto rm = glm::rotate(glm::mat4(1.0f), glm::radians(90.0f),
+                        glm::vec3(-1.0f, 0.0f, 0.0f));
+  auto lightView =
+      glm::lookAt(light_->position(), light_->position() + light_->direction(),
+                  glm::vec3(glm::vec4(light_->direction(), 0.0f) * rm));
+  glm::mat4 lightProjection;
+  if (light_->type() == kDirectional) {
+    lightProjection = glm::ortho(-10.0f, 10.0f, -10.0f, 10.0f, 1.0f, 20.0f);
+  } else {
+    lightProjection = glm::perspective(
+        glm::radians((light_->cutoff[0] + light_->cutoff[1]) * 2.0f), 1.0f,
+        1.0f, 20.0f);
+  }
+  ubo_transform_->Bind();
+  glBufferSubData(GL_UNIFORM_BUFFER, 0, sizeof(glm::mat4),
+                  glm::value_ptr(lightView));
+  glBufferSubData(GL_UNIFORM_BUFFER, sizeof(glm::mat4), sizeof(glm::mat4),
+                  glm::value_ptr(lightProjection));
+  glBindBuffer(GL_UNIFORM_BUFFER, 0);
+
+  glCullFace(GL_FRONT);
+  {
+    depth_2d_map_->Bind();
+    glEnable(GL_DEPTH_TEST);
+    glClear(GL_DEPTH_BUFFER_BIT);
+    glViewport(0, 0, depth_2d_map_->depth_map()->width(),
+               depth_2d_map_->depth_map()->height());
+    simple_program_->Use();
+    simple_program_->SetUniform("color", glm::vec4(1.0f, 1.0f, 1.0f, 1.0f));
+
+    for (const auto& object : objects_) {
+      simple_program_->SetUniform("model", object->transform().ModelMatrix());
+      object->Draw(simple_program_.get());
+    }
+  }
+  {
+    depth_3d_map_->Bind();
+    glEnable(GL_DEPTH_TEST);
+    glClear(GL_DEPTH_BUFFER_BIT);
+    glViewport(0, 0, depth_3d_map_->depth_map()->width(),
+               depth_3d_map_->depth_map()->height());
+
+    float aspect = (float)depth_3d_map_->depth_map()->width() /
+                   (float)depth_3d_map_->depth_map()->height();
+    glm::mat4 shadowProj =
+        glm::perspective(glm::radians(90.0f), aspect, 0.5f, 25.0f);
+    std::vector<glm::mat4> shadowTransforms;
+    shadowTransforms.push_back(
+        shadowProj * glm::lookAt(light_->position(),
+                                 light_->position() + glm::vec3(1.0, 0.0, 0.0),
+                                 glm::vec3(0.0, -1.0, 0.0)));
+    shadowTransforms.push_back(
+        shadowProj * glm::lookAt(light_->position(),
+                                 light_->position() + glm::vec3(-1.0, 0.0, 0.0),
+                                 glm::vec3(0.0, -1.0, 0.0)));
+    shadowTransforms.push_back(
+        shadowProj * glm::lookAt(light_->position(),
+                                 light_->position() + glm::vec3(0.0, 1.0, 0.0),
+                                 glm::vec3(0.0, 0.0, 1.0)));
+    shadowTransforms.push_back(
+        shadowProj * glm::lookAt(light_->position(),
+                                 light_->position() + glm::vec3(0.0, -1.0, 0.0),
+                                 glm::vec3(0.0, 0.0, -1.0)));
+    shadowTransforms.push_back(
+        shadowProj * glm::lookAt(light_->position(),
+                                 light_->position() + glm::vec3(0.0, 0.0, 1.0),
+                                 glm::vec3(0.0, -1.0, 0.0)));
+    shadowTransforms.push_back(
+        shadowProj * glm::lookAt(light_->position(),
+                                 light_->position() + glm::vec3(0.0, 0.0, -1.0),
+                                 glm::vec3(0.0, -1.0, 0.0)));
+
+    depth_3d_program_->Use();
+    depth_3d_program_->SetUniform("color", glm::vec4(1.0f, 1.0f, 1.0f, 1.0f));
+    depth_3d_program_->SetUniform("shadowMatrices", shadowTransforms);
+    depth_3d_program_->SetUniform("far_plane", 25.0f);
+    depth_3d_program_->SetUniform("lightPos", light_->position());
+
+    for (const auto& object : objects_) {
+      depth_3d_program_->SetUniform("model", object->transform().ModelMatrix());
+      object->Draw(depth_3d_program_.get());
+    }
+  }
+  glViewport(0, 0, width_, height_);
+  glCullFace(GL_BACK);
 }

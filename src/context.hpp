@@ -34,6 +34,7 @@ class Context {
 
   bool Init();
 
+  void RenderDepthMap() const;
   std::unique_ptr<Buffer> ubo_transform_{nullptr};
 
   glm::vec4 clear_color_{0.0f};
