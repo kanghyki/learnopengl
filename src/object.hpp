@@ -9,78 +9,72 @@
 #include "transform.hpp"
 
 class DrawableObject {
- public:
-  DrawableObject(std::shared_ptr<Mesh> mesh) : mesh_(mesh){};
-  virtual ~DrawableObject(){};
+  public:
+    DrawableObject(std::shared_ptr<Mesh> mesh) : mesh_(mesh) {};
+    virtual ~DrawableObject() {};
 
-  inline virtual void Draw(const Program *p) const final { mesh_->Draw(p); }
-  inline virtual std::shared_ptr<Mesh> mesh() const final { return mesh_; }
+    inline virtual void Draw(const Program* p) const final { mesh_->Draw(p); }
+    inline virtual std::shared_ptr<Mesh> mesh() const final { return mesh_; }
 
- private:
-  std::shared_ptr<Mesh> mesh_;
+  private:
+    std::shared_ptr<Mesh> mesh_;
 };
 
 class TransformableObject {
- public:
-  TransformableObject(){};
-  virtual ~TransformableObject(){};
+  public:
+    TransformableObject() {};
+    virtual ~TransformableObject() {};
 
-  inline virtual Transform &transform() final { return transform_; }
-  inline virtual const Transform &transform() const final { return transform_; }
+    inline virtual Transform& transform() final { return transform_; }
+    inline virtual const Transform& transform() const final { return transform_; }
 
- private:
-  Transform transform_;
+  private:
+    Transform transform_;
 };
 
 class TouchableObject {
- public:
-  TouchableObject() {}
-  virtual ~TouchableObject() {}
+  public:
+    TouchableObject() {}
+    virtual ~TouchableObject() {}
 
-  virtual void CreateBoundingSphere(float radius) final {
-    bounding_sphere_ = BoundingSphere::Create(radius);
-  }
-
-  virtual std::optional<float> Intersect(const Ray &ray,
-                                         const Transform &t) final {
-    if (!bounding_sphere_) {
-      return {};
+    virtual void CreateBoundingSphere(float radius) final {
+        bounding_sphere_ = BoundingSphere::Create(radius);
     }
-    return bounding_sphere_->Intersect(ray, t);
-  }
 
- private:
-  std::unique_ptr<BoundingSphere> bounding_sphere_{nullptr};
+    virtual std::optional<float> Intersect(const Ray& ray, const Transform& t) final {
+        if (!bounding_sphere_) {
+            return {};
+        }
+        return bounding_sphere_->Intersect(ray, t);
+    }
+
+  private:
+    std::unique_ptr<BoundingSphere> bounding_sphere_{nullptr};
 };
 
-class Object : public DrawableObject,
-               public TransformableObject,
-               public TouchableObject {
- public:
-  static std::shared_ptr<Object> Create(std::shared_ptr<Mesh> mesh) {
-    auto object = std::shared_ptr<Object>(new Object(mesh));
+class Object : public DrawableObject, public TransformableObject, public TouchableObject {
+  public:
+    static std::shared_ptr<Object> Create(std::shared_ptr<Mesh> mesh) {
+        auto object = std::shared_ptr<Object>(new Object(mesh));
 
-    return std::move(object);
-  }
-  ~Object(){};
+        return std::move(object);
+    }
+    ~Object() {};
 
-  inline size_t id() const { return id_; }
+    inline size_t id() const { return id_; }
 
- protected:
-  Object(std::shared_ptr<Mesh> mesh)
-      : DrawableObject(mesh),
-        TransformableObject(),
-        TouchableObject(),
-        id_(Object::kId++) {}
+  protected:
+    Object(std::shared_ptr<Mesh> mesh)
+        : DrawableObject(mesh), TransformableObject(), TouchableObject(), id_(Object::kId++) {}
 
- private:
-  static size_t kId;
-  const size_t id_;
+  private:
+    static size_t kId;
+    const size_t id_;
 };
 
 enum ObjectType {
-  kNormal,
-  kLight,
+    kNormal,
+    kLight,
 };
 
 #endif

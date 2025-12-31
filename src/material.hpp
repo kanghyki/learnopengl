@@ -6,18 +6,18 @@
 #include "texture.hpp"
 
 class Material {
- public:
-  static std::shared_ptr<Material> Create();
-  ~Material();
+  public:
+    static std::shared_ptr<Material> Create();
+    ~Material();
 
-  void SetToProgram(const Program *program) const;
+    void SetToProgram(const Program* program) const;
 
-  std::unique_ptr<Texture2d> diffuse_{nullptr};
-  std::unique_ptr<Texture2d> specular_{nullptr};
-  float shininess_{30.0f};
+    std::unique_ptr<Texture2d> diffuse_{nullptr};
+    std::unique_ptr<Texture2d> specular_{nullptr};
+    float shininess_{30.0f};
 
- private:
-  Material();
+  private:
+    Material();
 };
 
 #endif

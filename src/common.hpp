@@ -11,18 +11,17 @@
 #include <glm/gtx/quaternion.hpp>
 // clang-format on
 
-#include <stdint.h>
-
 #include <fstream>
 #include <functional>
 #include <memory>
 #include <optional>
 #include <random>
 #include <sstream>
+#include <stdint.h>
 #include <string>
 
-std::optional<std::string> LoadTextFile(const std::string &filename);
-std::vector<std::string> Split(const std::string &s, const std::string &sep);
+std::optional<std::string> LoadTextFile(const std::string& filename);
+std::vector<std::string> Split(const std::string& s, const std::string& sep);
 double UniformRandom(double min, double max);
 
 #endif

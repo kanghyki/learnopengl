@@ -4,9 +4,9 @@
 #include "common.hpp"
 
 class Ray {
- public:
-  glm::vec3 position;
-  glm::vec3 direction;
+  public:
+    glm::vec3 position;
+    glm::vec3 direction;
 };
 
 #endif

@@ -13,30 +13,30 @@
 #include "texture.hpp"
 
 class Model {
- public:
-  static std::unique_ptr<Model> Load(const std::string& filename);
-  ~Model();
+  public:
+    static std::unique_ptr<Model> Load(const std::string& filename);
+    ~Model();
 
-  void Draw(const Program* program) const;
+    void Draw(const Program* program) const;
 
-  std::shared_ptr<Mesh> mesh(int i) {
-    if (i >= 0 && i < meshes_.size()) {
-      return meshes_[i];
+    std::shared_ptr<Mesh> mesh(int i) {
+        if (i >= 0 && i < meshes_.size()) {
+            return meshes_[i];
+        }
+        return nullptr;
     }
-    return nullptr;
-  }
-  size_t meshes_count() const { return meshes_.size(); }
+    size_t meshes_count() const { return meshes_.size(); }
 
- private:
-  Model();
-  Model(const Model& model);
+  private:
+    Model();
+    Model(const Model& model);
 
-  bool LoadByAssimp(const std::string& filename);
-  void ProcessMesh(aiMesh* ai_mesh, const aiScene* ai_scene);
-  void ProcessNode(aiNode* ai_node, const aiScene* ai_scene);
+    bool LoadByAssimp(const std::string& filename);
+    void ProcessMesh(aiMesh* ai_mesh, const aiScene* ai_scene);
+    void ProcessNode(aiNode* ai_node, const aiScene* ai_scene);
 
-  std::vector<std::shared_ptr<Mesh>> meshes_;
-  std::vector<std::shared_ptr<Material>> materials_;
+    std::vector<std::shared_ptr<Mesh>> meshes_;
+    std::vector<std::shared_ptr<Material>> materials_;
 };
 
 #endif
