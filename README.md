@@ -2,6 +2,8 @@
 
 This project is a personal study repository for learning OpenGL. It implements modern OpenGL rendering techniques based on the `Learn OpenGL`.
 
+![Screenshot](./screenshot.png)
+
 ## 🔗 References
 
 - **Learn OpenGL**: [https://learnopengl.com/](https://learnopengl.com/)
