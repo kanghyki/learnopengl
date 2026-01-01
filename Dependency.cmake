@@ -26,6 +26,7 @@ ExternalProject_Add(
     PATCH_COMMAND ""
     CMAKE_ARGS
         -DCMAKE_INSTALL_PREFIX=${DEP_INSTALL_DIR}
+        -DCMAKE_POLICY_VERSION_MINIMUM=3.5
         -DGLFW_BUILD_EXAMPLES=OFF
         -DGLFW_BUILD_TESTS=OFF
         -DGLFW_BUILD_DOCS=OFF
@@ -43,6 +44,7 @@ ExternalProject_Add(
     PATCH_COMMAND ""
     CMAKE_ARGS
         -DCMAKE_INSTALL_PREFIX=${DEP_INSTALL_DIR}
+        -DCMAKE_POLICY_VERSION_MINIMUM=3.5
         -DGLAD_INSTALL=ON
     TEST_COMMAND ""
     )
@@ -108,16 +110,25 @@ ExternalProject_Add(
   PATCH_COMMAND ""
   CMAKE_ARGS
       -DCMAKE_INSTALL_PREFIX=${DEP_INSTALL_DIR}
+      -DCMAKE_POLICY_VERSION_MINIMUM=3.5
       -DBUILD_SHARED_LIBS=OFF
       -DASSIMP_BUILD_ASSIMP_TOOLS=OFF
       -DASSIMP_BUILD_TESTS=OFF
       -DASSIMP_INJECT_DEBUG_POSTFIX=OFF
-      -DASSIMP_BUILD_ZLIB=ON
+      -DASSIMP_BUILD_ZLIB=OFF
   TEST_COMMAND ""
   )
 set(DEP_LIST ${DEP_LIST} dep_assimp)
-set(DEP_LIBS ${DEP_LIBS}
-  assimp-vc143-mt$<$<CONFIG:Debug>:d>
-  zlibstatic$<$<CONFIG:Debug>:d>
-  IrrXML$<$<CONFIG:Debug>:d>
-  )
+if (WIN32)
+  set(DEP_LIBS ${DEP_LIBS}
+    assimp-vc143-mt$<$<CONFIG:Debug>:d>
+    zlibstatic$<$<CONFIG:Debug>:d>
+    IrrXML$<$<CONFIG:Debug>:d>
+    )
+else()
+  set(DEP_LIBS ${DEP_LIBS}
+    assimp
+    z
+    IrrXML
+    )
+endif()
