@@ -4,6 +4,10 @@ This project is a personal study repository for learning OpenGL. It implements m
 
 ![Screenshot](./screenshot.png)
 
+![Shadow Mapping](./shadow.gif)
+
+![Omni-Directional Shadow Mapping](./omni-shadow.gif)
+
 ## 🔗 References
 
 - **Learn OpenGL**: [https://learnopengl.com/](https://learnopengl.com/)
