@@ -33,10 +33,14 @@ src/object.cpp        src/object.hpp
 
 include(Dependency.cmake)
 
-set_target_properties(${PROJECT_NAME} PROPERTIES VS_DEBUGGER_WORKING_DIRECTORY "C:\\Users\\tnehs\\Desktop\\learn-opengl")
+set_target_properties(${PROJECT_NAME} PROPERTIES VS_DEBUGGER_WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}")
 
 if (APPLE)
     set(CMAKE_CXX_FLAGS "-framework Cocoa -framework IOKit -framework OpenGL")
+endif()
+
+if (MSVC)
+    target_compile_options(${PROJECT_NAME} PRIVATE /utf-8)
 endif()
 
 target_include_directories(${PROJECT_NAME} PUBLIC ${DEP_INCLUDE_DIR})
