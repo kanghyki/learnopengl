@@ -8,11 +8,11 @@ This project is a personal study repository for learning OpenGL. It implements m
 
 ![Omni-Directional Shadow Mapping](./omni-shadow.gif)
 
-## 🔗 References
+## References
 
 - **Learn OpenGL**: [https://learnopengl.com/](https://learnopengl.com/)
 
-## 🛠 Tech Stack
+## Tech Stack
 
 - **Language**: C++ 17
 - **Graphics API**: OpenGL 3.3+
@@ -24,7 +24,7 @@ This project is a personal study repository for learning OpenGL. It implements m
 - **Logging**: spdlog
 - **Image Loading**: stb_image
 
-## 🚀 Getting Started
+## Getting Started
 
 ### Prerequisites
 
@@ -46,14 +46,14 @@ chmod +x build.sh
 ./output
 ```
 
-## 📂 Project Structure
+## Project Structure
 
 - `src/`: Core source code for engine and rendering logic (.cpp, .hpp)
 - `shader/`: GLSL shader files (Vertex/Fragment/Geometry Shaders)
 - `imgui/`: Dear ImGui library for GUI implementation
 - `image/`: Textures and resource images
 
-## ✨ Key Features
+## Key Features
 
 - **Camera System**: Interactive camera class for free-look navigation.
 - **Lighting**: Phong and Blinn-Phong lighting models, Shadow Mapping.
