@@ -134,6 +134,9 @@ void OnCursorPos(GLFWwindow* window, double x, double y) {
     if (!ptr) {
         return;
     }
+    if (ImGui::GetIO().WantCaptureMouse) {
+        return;
+    }
     ScaleCursorToFramebuffer(window, &x, &y);
     ptr->ProcessMouseMove(x, y);
 }
@@ -142,6 +145,9 @@ void OnMouseButton(GLFWwindow* window, int button, int action, int modifier) {
     ImGui_ImplGlfw_MouseButtonCallback(window, button, action, modifier);
     auto context = (Context*)glfwGetWindowUserPointer(window);
     if (!context) {
+        return;
+    }
+    if (ImGui::GetIO().WantCaptureMouse) {
         return;
     }
     double x, y;
