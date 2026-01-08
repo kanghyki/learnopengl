@@ -10,6 +10,8 @@ void OnScroll(GLFWwindow* window, double xoffset, double yoffset);
 void OnCursorPos(GLFWwindow* window, double x, double y);
 void OnMouseButton(GLFWwindow* window, int button, int action, int modifier);
 
+void ScaleCursorToFramebuffer(GLFWwindow* window, double* x, double* y);
+
 int main(int argc, char** argv) {
     SPDLOG_INFO("Initialize glfw");
     if (!glfwInit()) {
@@ -49,8 +51,6 @@ int main(int argc, char** argv) {
     ImGui_ImplOpenGL3_CreateFontsTexture();
     ImGui_ImplOpenGL3_CreateDeviceObjects();
 
-    glViewport(0, 0, WINDOW_WIDTH, WINDOW_HEIGHT);
-
     glfwSetFramebufferSizeCallback(window, FramebufferSizeCallbackFunc);
     glfwSetKeyCallback(window, OnKeyEvent);
     glfwSetCharCallback(window, OnCharEvent);
@@ -65,6 +65,12 @@ int main(int argc, char** argv) {
         return -1;
     }
     glfwSetWindowUserPointer(window, context.get());
+    {
+        int fb_width = 0;
+        int fb_height = 0;
+        glfwGetFramebufferSize(window, &fb_width, &fb_height);
+        context->ReshapeViewport(fb_width, fb_height);
+    }
 
     SPDLOG_INFO("Start render loop");
     while (!glfwWindowShouldClose(window)) {
@@ -93,6 +99,9 @@ int main(int argc, char** argv) {
 void FramebufferSizeCallbackFunc(GLFWwindow* window, int width, int height) {
     SPDLOG_INFO("frame buffer size w:{}, h:{}", width, height);
     auto ptr = reinterpret_cast<Context*>(glfwGetWindowUserPointer(window));
+    if (!ptr) {
+        return;
+    }
     ptr->ReshapeViewport(width, height);
 }
 
@@ -122,13 +131,34 @@ void OnScroll(GLFWwindow* window, double xoffset, double yoffset) {
 
 void OnCursorPos(GLFWwindow* window, double x, double y) {
     auto ptr = reinterpret_cast<Context*>(glfwGetWindowUserPointer(window));
+    if (!ptr) {
+        return;
+    }
+    ScaleCursorToFramebuffer(window, &x, &y);
     ptr->ProcessMouseMove(x, y);
 }
 
 void OnMouseButton(GLFWwindow* window, int button, int action, int modifier) {
     ImGui_ImplGlfw_MouseButtonCallback(window, button, action, modifier);
     auto context = (Context*)glfwGetWindowUserPointer(window);
+    if (!context) {
+        return;
+    }
     double x, y;
     glfwGetCursorPos(window, &x, &y);
+    ScaleCursorToFramebuffer(window, &x, &y);
     context->ProcessMouseInput(button, action, x, y);
+}
+
+void ScaleCursorToFramebuffer(GLFWwindow* window, double* x, double* y) {
+    int win_width = 0;
+    int win_height = 0;
+    int fb_width = 0;
+    int fb_height = 0;
+    glfwGetWindowSize(window, &win_width, &win_height);
+    glfwGetFramebufferSize(window, &fb_width, &fb_height);
+    if (win_width > 0 && win_height > 0) {
+        *x *= (double)fb_width / (double)win_width;
+        *y *= (double)fb_height / (double)win_height;
+    }
 }

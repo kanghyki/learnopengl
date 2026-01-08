@@ -129,6 +129,5 @@ else()
   set(DEP_LIBS ${DEP_LIBS}
     assimp
     z
-    IrrXML
     )
 endif()
